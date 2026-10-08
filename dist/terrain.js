@@ -5,8 +5,34 @@ const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
 function hash(x,y,z){return fract(Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453);}
 export function noise(x,y,z){let a=Math.floor(x),b=Math.floor(y),c=Math.floor(z);x-=a;y-=b;z-=c;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);return mix(mix(mix(hash(a,b,c),hash(a+1,b,c),x),mix(hash(a,b+1,c),hash(a+1,b+1,c),x),y),mix(mix(hash(a,b,c+1),hash(a+1,b,c+1),x),mix(hash(a,b+1,c+1),hash(a+1,b+1,c+1),x),y),z);}
 const craters=Array.from({length:24},(_,i)=>{let z=hash(i,8,2)*2-1,a=hash(i,2,9)*Math.PI*2;return{n:new T.Vector3(Math.sqrt(1-z*z)*Math.cos(a),z,Math.sqrt(1-z*z)*Math.sin(a)),r:.018+hash(i,4,1)*.075};});
-export function height(n){let x=n.x,y=n.y,z=n.z;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
- const d=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));let flatten=1-T.MathUtils.smoothstep(d,100,700);return mix(h,120+noise(x*800,y*800,z*800)*4,flatten);}
+export function height(n){const localDistance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let x=n.x,y=n.y,z=n.z;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
+ const d=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));
+ if(d>6500)return h;
+ const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);
+ return mix(regional,h,T.MathUtils.smoothstep(d,4200,6500));}
+const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
+const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
+export function basinCoordinates(d){return{x:d.dot(landingEast)*R,z:d.dot(landingNorth)*R};}
+export function basinProfile(x,z){
+ const channel=65*Math.sin(z/370)+20*Math.sin(z/93),distance=Math.abs(x-channel);
+ const bank=T.MathUtils.smoothstep(distance,45,150);
+ const warp=45*(noise(x/650+4,z/650+9,3)-.5);
+ const mesa=T.MathUtils.smoothstep(noise((x+warp)/430+11,z/580+6,7),.48,.64);
+ return{bank,mesa,distance};
+}
+export function basinHeight(x,z){
+ const {bank,mesa}=basinProfile(x,z);
+ const uplift=32+65*noise(x/780+8,z/690+4,9);
+ const gullies=Math.pow(1-Math.abs(noise(x/110+18,z/240+5,8)*2-1),7);
+ const raw=bank*(uplift+mesa*100-gullies*13),layer=raw/14;
+ const ledges=(Math.floor(layer)+T.MathUtils.smoothstep(layer-Math.floor(layer),.24,.68))*14;
+ const terraces=mix(raw,ledges,.58*bank);
+ const floor=120+z*.008+1.4*(noise(x/95+2,z/140+3,2)-.5);
+ const gravel=(noise(x*.12+7,z*.12+3,5)-.5)*.14;
+ const broken=(noise(x*.032+9,z*.036+8,3)-.5)*2.8*bank;
+ return floor+terraces+broken+gravel;
+}
+
 export function surface(p){return R+height(p.clone().normalize());}
 export function basis(up){let east=new T.Vector3(0,1,0).cross(up);if(east.lengthSq()<.001)east.set(1,0,0);east.normalize();let north=new T.Vector3().crossVectors(up,east).normalize();return{east,north};}
 // Sample the continuous height field, independent of patch boundaries or LOD.

@@ -22,6 +22,14 @@ jobs:
         run: npm run check
       - name: Test terrain continuity
         run: npm test
+      - name: Compile terrain and atmosphere shaders
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+          node scripts/export-shaders.mjs /tmp/aether-shaders
+          for shader in /tmp/aether-shaders/*.vert; do
+            glslangValidator -l "$shader" "${shader%.vert}.frag"
+          done
       - name: Verify rover asset
         run: |
           node --input-type=module <<'NODE'
@@ -58,3 +66,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+

@@ -32,4 +32,6 @@ for(const [material,shader]of [[field.mesh.material,T.ShaderLib.standard],[field
  const copy={vertexShader:shader.vertexShader,fragmentShader:shader.fragmentShader};material.onBeforeCompile(copy);
  assert(copy.vertexShader.includes('rockDistance=length'));assert(copy.fragmentShader.includes('if(visibility<=threshold)discard'));
 }
+const pebbles=new RockField(new T.Group(),{rock:null,rn:null,rr:null},terrain,true);
+assert.notEqual(field.mesh.material.customProgramCacheKey(),pebbles.mesh.material.customProgramCacheKey(),'Different fade distances need separate shader programs');
 console.log('Ground contact, tyre clearance, persistent rock cells and shadow fading: pass');
