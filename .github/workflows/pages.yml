@@ -1,0 +1,60 @@
+name: Test and deploy Aether
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript
+        run: npm run check
+      - name: Test terrain continuity
+        run: npm test
+      - name: Verify rover asset
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { gunzipSync } from 'node:zlib';
+          import assert from 'node:assert/strict';
+          const glb = gunzipSync(readFileSync('dist/rover.glb.gz'));
+          assert.equal(glb.toString('ascii', 0, 4), 'glTF');
+          assert.equal(glb.readUInt32LE(4), 2);
+          assert.equal(glb.readUInt32LE(8), glb.length);
+          console.log('Rover GLB verified');
+          NODE
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
