@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
-import {world,defaults,configureWorld,climate,mapDirection,mapUV,biomeColors} from './world.js?v=world-1';
-import {height,landing,surfaceNormal} from './terrain.js?v=world-1';
-export function createAtlas({onApply,onTravel}){
+import {world,environment,defaults,configureWorld,climate,mapDirection,mapUV,biomeColors} from './world.js?v=system-1';
+import {height,landing,surfaceNormal} from './terrain.js?v=system-1';
+export function createAtlas({onApply,onTravel,onReset}){
  const $=id=>document.getElementById(id),dialog=$('atlas'),canvas=$('biomeMap'),ctx=canvas.getContext('2d');
  let selected=landing.clone(),background;
  function selection(){const h=height(selected),c=climate(selected,h),safe=!c.ocean&&surfaceNormal(selected).dot(selected)>.94;
@@ -15,14 +15,14 @@ export function createAtlas({onApply,onTravel}){
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const n=new T.Vector3().copy(mapDirection((x+.5)/w,(y+.5)/h)),e=height(n),c=climate(n,e),color=biomeColors[c.biome],shade=.83+.17*Math.max(0,Math.min(1,(e+500)/1800));const i=(y*w+x)*4;for(let k=0;k<3;k++)img.data[i+k]=color[k]*shade;img.data[i+3]=255;}
   background=img;selection();
  }
- function fill(){for(const key of Object.keys(defaults))$('planet-'+key).value=world[key];}
+ function fill(){$('surfaceWater').checked=environment.waterEnabled;$('surfaceIce').checked=environment.iceEnabled;for(const key of Object.keys(defaults))$('planet-'+key).value=world[key];}
  $('openAtlas').onclick=()=>{fill();render();dialog.showModal();};$('closeAtlas').onclick=()=>dialog.close();
  canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect();selected.copy(mapDirection((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height));selection();});
  // Keyboard and touch users can select coordinates without precision pointing.
  $('pickCoordinates').onclick=()=>{const lat=Number($('siteLatitude').value),lon=Number($('siteLongitude').value);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;selected.copy(mapDirection((Math.max(-180,Math.min(180,lon))+180)/360,(90-Math.max(-90,Math.min(90,lat)))/180));selection();};
  $('defaultSite').onclick=()=>{selected.copy(landing);selection();};
- $('planetForm').onsubmit=e=>{e.preventDefault();const settings={};for(const key of Object.keys(defaults))settings[key]=$('planet-'+key).value;configureWorld(settings);fill();onApply();render();$('siteStatus').textContent+=' Planet regenerated; current flight returned to orbit.';};
- $('resetPlanet').onclick=()=>{configureWorld(defaults);fill();onApply();render();};
+ $('planetForm').onsubmit=e=>{e.preventDefault();const settings={};for(const key of Object.keys(defaults))settings[key]=$('planet-'+key).value;configureWorld(settings);environment.waterEnabled=$('surfaceWater').checked;environment.iceEnabled=$('surfaceIce').checked;fill();onApply();render();$('siteStatus').textContent+=' Planet regenerated; current flight returned to orbit.';};
+ $('resetPlanet').onclick=()=>{if(onReset)onReset();else configureWorld(defaults);fill();onApply();render();};
  $('visitSite').onclick=()=>{if(selection()){onTravel(selected.clone());dialog.close();}};
  return{isOpen:()=>dialog.open};
 }

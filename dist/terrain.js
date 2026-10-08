@@ -1,19 +1,19 @@
 import * as T from './vendor/three.module.js';
-import {world,climate,province} from './world.js?v=world-1';
+import {world,environment,climate,province} from './world.js?v=system-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
 function hash(x,y,z){return fract(Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453);}
 export function noise(x,y,z){let a=Math.floor(x),b=Math.floor(y),c=Math.floor(z);x-=a;y-=b;z-=c;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);return mix(mix(mix(hash(a,b,c),hash(a+1,b,c),x),mix(hash(a,b+1,c),hash(a+1,b+1,c),x),y),mix(mix(hash(a,b,c+1),hash(a+1,b,c+1),x),mix(hash(a,b+1,c+1),hash(a+1,b+1,c+1),x),y),z);}
 const craters=Array.from({length:24},(_,i)=>{let z=hash(i,8,2)*2-1,a=hash(i,2,9)*Math.PI*2;return{n:new T.Vector3(Math.sqrt(1-z*z)*Math.cos(a),z,Math.sqrt(1-z*z)*Math.sin(a)),r:.018+hash(i,4,1)*.075};});
-function baseHeight(n){const localDistance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let offset=(world.seed-6)*.173;let x=n.x+offset,y=n.y-offset*.7,z=n.z+offset*.3;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
- const d=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));
+function baseHeight(n){const localDistance=environment.basin?R*Math.sqrt(Math.max(0,2-2*n.dot(landing))):Infinity;if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let offset=(world.seed-6)*.173;let x=n.x+offset,y=n.y-offset*.7,z=n.z+offset*.3;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
+ const d=environment.basin?R*Math.sqrt(Math.max(0,2-2*n.dot(landing))):Infinity;
  if(d>6500)return h;
  const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);
  return mix(regional,h,T.MathUtils.smoothstep(d,4200,6500));}
 export function height(n){
  const h=baseHeight(n)*world.relief;
- const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing))),outside=T.MathUtils.smoothstep(distance,4200,6500);
+ const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing))),outside=environment.basin?T.MathUtils.smoothstep(distance,4200,6500):1;
  const c=climate(n,h),p=province(n);
  const dunes=Math.sin(n.x*R/55+n.z*R/95+noise(n.x*130,n.y*130,n.z*130)*5);
  return h+outside*(c.dunes*dunes*7+Math.pow(Math.max(0,p-.55),2)*world.activity*1500)*world.relief;
@@ -67,6 +67,7 @@ export function basinHeight(x,z){
  return floor+shoulders+resistant*bank*17-gullies+broken+talus+gravel;
 }
 export function surfaceGeology(d){
+ if(!environment.basin)return[0,0,0];
  const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
  if(regional===0)return[0,0,0];
  const {x,z}=basinCoordinates(d),p=basinProfile(x,z);

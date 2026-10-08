@@ -1,8 +1,10 @@
 // Shared deterministic world parameters. Climate is an artistic approximation.
 export const defaults=Object.freeze({seed:6,relief:1,temperature:18,water:-180,pressure:1,activity:.45});
 export const world={...defaults};
+export const environment={waterEnabled:true,iceEnabled:true,basin:true,gravity:1};
+export function configureEnvironment(input={}){Object.assign(environment,{waterEnabled:input.waterEnabled!==false,iceEnabled:input.iceEnabled!==false,basin:input.basin!==false,gravity:Number.isFinite(input.gravity)?Math.max(.1,Math.min(3,input.gravity)):1});}
 export function configureWorld(input={}){
- const ranges={seed:[0,999999],relief:[.25,3],temperature:[-60,60],water:[-1000,1000],pressure:[0,2],activity:[0,1]};
+ const ranges={seed:[0,999999],relief:[.25,3],temperature:[-240,450],water:[-1000,1000],pressure:[0,2],activity:[0,1]};
  for(const [key,[lo,hi]] of Object.entries(ranges)){const v=Number(input[key]??defaults[key]);world[key]=Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):defaults[key];}
  world.seed=Math.round(world.seed);return {...world};
 }
@@ -13,10 +15,10 @@ export function province(n){const s=world.seed*.137;return .7*field(n.x*4+s,n.y*
 export function climate(n,elevation){
  const moisture=smooth(.27,.72,province({x:n.z,y:n.x,z:n.y}));
  const temperature=world.temperature-58*n.y*n.y-Math.max(0,elevation-world.water)*.0065;
- const ice=1-smooth(-14,2,temperature);
+ const ice=environment.iceEnabled?1-smooth(-14,2,temperature):0;
  const volcanic=smooth(.57,.78,province(n))*world.activity*(1-ice);
  const dunes=smooth(3,24,temperature)*(1-moisture)*(1-ice)*(1-volcanic);
- const ocean=elevation<world.water;
+ const ocean=environment.waterEnabled&&elevation<world.water;
  const biome=ocean?(temperature< -4?'Frozen sea':'Ocean'):ice>.55?'Polar ice':volcanic>.23?'Volcanic uplands':dunes>.38?'Dune desert':elevation>350*world.relief?'Rocky highlands':'Sediment plains';
  return{temperature,moisture,ice,volcanic,dunes,ocean,biome};
 }
