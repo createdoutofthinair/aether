@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=lod-1';
+import {world,environment,climate,province} from './world.js?v=perf-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -100,7 +100,7 @@ export class PlanetTerrain{
  }
  const g=new T.BufferGeometry();g.setAttribute('biomeData',new T.Float32BufferAttribute(biomes,3));g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
  n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();n.originalBiomes=g.attributes.biomeData.array.slice();
- n.renderPositions=n.originalPositions.slice();n.renderNormals=n.originalNormals.slice();n.renderGeology=n.originalGeology.slice();n.renderBiomes=n.originalBiomes.slice();n.morph=1;n.morphTarget=1;n.open=false;
+ n.renderPositions=n.originalPositions.slice();n.renderNormals=n.originalNormals.slice();n.renderGeology=n.originalGeology.slice();n.renderBiomes=n.originalBiomes.slice();n.morph=1;n.morphTarget=1;n.open=false;n.revision=0;
  let mesh=new T.Mesh(g,this.material);mesh.position.copy(n.anchor);mesh.frustumCulled=true;mesh.visible=false;mesh.receiveShadow=true;n.mesh=mesh;this.root.add(mesh);
  }
  // New child geometry starts on the parent's existing triangles, including its lighting.
@@ -128,9 +128,9 @@ export class PlanetTerrain{
   const pos=g.attributes.position.array,coords=g.attributes.planetPosition.array;for(let i=0;i<n.surfaceCount*3;i++)coords[i]=pos[i]+n.anchor.getComponent(i%3);g.attributes.planetPosition.needsUpdate=true;
   g.computeBoundingSphere();
  }
- advance(dt){let changed=false;
-  for(const n of this.active){if(n.morph===n.morphTarget)continue;const step=Math.max(0,Math.min(dt,.05))/.48;n.morph+=T.MathUtils.clamp(n.morphTarget-n.morph,-step,step);if(Math.abs(n.morphTarget-n.morph)<1e-7)n.morph=n.morphTarget;this.applyMorph(n);changed=true;}
-  if(changed){this.stitchEdges();this.frame++;}return changed;
+ advance(dt){const changed=new Set();
+  for(const n of this.active){if(n.morph===n.morphTarget)continue;const step=Math.max(0,Math.min(dt,.05))/.48;n.morph+=T.MathUtils.clamp(n.morphTarget-n.morph,-step,step);if(Math.abs(n.morphTarget-n.morph)<1e-7)n.morph=n.morphTarget;this.applyMorph(n);changed.add(n);}
+  if(changed.size)this.stitchEdges(changed);return changed.size>0;
  }
  update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?13:12;
  const visit=(n,collapse=false)=>{n.stamp=this.frame;const dist=cam.distanceTo(n.center.clone().multiplyScalar(R+height(n.center))),horizon=camDir.dot(n.center);
@@ -152,12 +152,14 @@ export class PlanetTerrain{
  if(n.mesh)this.active.push(n);
  };
  for(const n of this.cache.values())if(n.mesh)n.mesh.visible=false;this.roots.forEach(n=>visit(n));this.active.forEach(n=>n.mesh.visible=true);this.stitchEdges();this.queue.sort((a,b)=>a.dist-b.dist);
- if(this.cache.size>1500)for(const n of this.cache.values()){if(n.l>3&&n.stamp<this.frame-120&&n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();n.mesh=null;n.morphFrom=null;}}
+ if(this.cache.size>1500)for(const n of this.cache.values()){if(n.l>3&&n.stamp<this.frame-12&&n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();n.mesh=null;n.morphFrom=null;}}
  }
- stitchEdges(){
+ stitchEdges(dirty=null){
   // Topology changes only on quadtree updates; reuse edge interpolation during animation.
-  if(this.stitchActive!==this.active){
-   this.stitchActive=this.active;const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;this.edgePlans=[];
+  let rebuild=false;
+  if(this.stitchActive!==this.active){const key=this.active.map(n=>n.key).sort().join('|');rebuild=key!==this.stitchKey;this.stitchKey=key;this.stitchActive=this.active;}
+  if(!rebuild&&!dirty)return;
+  if(rebuild){const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;this.edgePlans=[];
    for(const n of this.active){
     const plans=[];for(let k=0;k<n.edge.length;k++){
      const ix=n.edge[k],i=ix%(N+1),j=Math.floor(ix/(N+1)),u=n.u+n.size*i/N,v=n.v+n.size*j/N,e=n.size*1e-5;
@@ -176,7 +178,7 @@ export class PlanetTerrain{
    }
   }
   const values=new Float64Array(12);
-  for(const {n,plans}of this.edgePlans){const g=n.mesh.geometry,attrs=[g.attributes.position,g.attributes.normal,g.attributes.surfaceData,g.attributes.biomeData],wa=g.attributes.planetPosition.array;
+  for(const {n,plans}of this.edgePlans){if(!rebuild&&!dirty.has(n)&&!plans.some(p=>dirty.has(p.source)))continue;n.revision++;const g=n.mesh.geometry,attrs=[g.attributes.position,g.attributes.normal,g.attributes.surfaceData,g.attributes.biomeData],wa=g.attributes.planetPosition.array;
    for(const plan of plans){const {ix,k,source,ids,weights,arrays}=plan;values.fill(0);
     for(let channel=0;channel<4;channel++)for(let q=0;q<ids.length;q++)for(let c=0;c<3;c++)values[channel*3+c]+=arrays[channel][ids[q]*3+c]*weights[q];
     for(let c=0;c<3;c++)values[c]+=source.anchor.getComponent(c)-n.anchor.getComponent(c);
@@ -215,6 +217,10 @@ export class PlanetTerrain{
  }
 
  generate(){let t=performance.now(),count=0;while(this.queue.length&&count<4&&performance.now()-t<7){let {n}=this.queue.shift();if(!n.mesh){this.build(n);count++;}}return count;}
- reset(){for(const n of this.cache.values())if(n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();}this.cache.clear();this.queue=[];this.active=[];this.visibleNodes=new Map();this.frame++;this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
+ contactRevision(p,radius){
+  // Only patches intersecting the scatter footprint can move its foundations.
+  let signature='';for(const n of this.active){const b=n.mesh.geometry.boundingSphere,dx=n.anchor.x+b.center.x-p.x,dy=n.anchor.y+b.center.y-p.y,dz=n.anchor.z+b.center.z-p.z,reach=b.radius+radius;if(dx*dx+dy*dy+dz*dz<=reach*reach)signature+=n.key+':'+n.revision+';';}return signature;
+ }
+ reset(){this.stitchKey=null;this.stitchActive=null;for(const n of this.cache.values())if(n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();}this.cache.clear();this.queue=[];this.active=[];this.visibleNodes=new Map();this.frame++;this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  get count(){return this.active.length;}
 }

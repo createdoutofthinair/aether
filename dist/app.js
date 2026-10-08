@@ -1,11 +1,11 @@
-import {systemExplorer} from './system-ui.js?v=lod-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=lod-1';
-import {createAtlas} from './atlas.js?v=lod-1';
+import {systemExplorer} from './system-ui.js?v=perf-1';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=perf-1';
+import {createAtlas} from './atlas.js?v=perf-1';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=lod-1';
-import {RockField,wheelLift} from './grounding.js?v=lod-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=lod-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=perf-1';
+import {RockField,wheelLift} from './grounding.js?v=perf-1';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=perf-1';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;

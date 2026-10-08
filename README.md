@@ -61,3 +61,10 @@ Physical planet radii and masses are catalog properties. All explored bodies ret
 LOD changes now interpolate for 0.48 seconds, including lighting and material masks, rather than swapping immediately. Refinement starts slightly farther away, with the existing 18% hysteresis band retained. Nested splits wait for their parent transition; coarsening collapses descendants before restoring an ancestor. Shared edges and skirts follow the current morphed geometry, and terrain contact tolerates up to 2 mm of Float32 edge error.
 
 Coarse terrain normals use a wider height sampling footprint (up to 100 m), reducing tiny slopes being stretched across large distant triangles. Procedural grain and weathering fade toward their mean when their features become smaller than a pixel. The directional shadow map is local to rover mode; this change addresses distant terrain lighting rather than increasing shadow-map resolution. Browser visual confirmation still requires WebGL support.
+
+
+### LOD performance
+
+Morphed patches now mark only their own buffers and dependent stitched edges for upload. Unchanged quadtree selections reuse their edge plans without reuploading all visible geometry. Scatter tracks the revisions of patches intersecting its local footprint; distant morph animation no longer rebuilds every nearby rock's contact and instance matrices. Local geometry changes still refresh foundations. The fragment shader skips scans whose blend weight is exactly zero, preserving positive-weight contributions and explicit texture gradients.
+
+Run `node scripts/benchmark-lod.mjs` for a reproducible CPU-only fixture with 196 visible patches and four morphing patches. In the development container, median morph CPU time fell from 4.631 ms to 1.391 ms and attribute update counts fell from 30,000 to 2,250 over 30 frames. These measure this workload, not browser FPS or GPU frame time. Morphing remains on the CPU to keep the existing collision sampler aligned with the rendered triangles; this change does not introduce GPU-only displacement.

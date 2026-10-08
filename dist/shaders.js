@@ -65,11 +65,16 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 rockData=vec3(.86,1.,.5),sandData=vec3(.92,1.,.5),mudData=vec3(.95,1.,.5);
  vec3 base=vec3(.32,.255,.18);
  if(detailed>0.){
-  rockData=tri(rockSurface,rp,w,1./1.8).rgb;sandData=tri(sandSurface,sp,w,.5).rgb;mudData=tri(mudSurface,mp,w,1./1.5).rgb;
+  if(weights.x>0.)rockData=tri(rockSurface,rp,w,1./1.8).rgb;
+  if(weights.y>0.)sandData=tri(sandSurface,sp,w,.5).rgb;
+  if(weights.z>0.)mudData=tri(mudSurface,mp,w,1./1.5).rgb;
   // Scanned height resolves boundaries: sediment fills recesses below exposed rock.
   vec3 heights=vec3(rockData.b,sandData.b,mudData.b)*.28+weights;
   float peak=max(heights.x,max(heights.y,heights.z));weights=max(heights-peak+.20,0.)*weights;weights/=max(dot(weights,vec3(1.)),.0001);
-  base=tri(rockMap,rp,w,1./1.8).rgb*weights.x+tri(sandMap,sp,w,.5).rgb*weights.y+tri(mudMap,mp,w,1./1.5).rgb*weights.z;
+  base=vec3(0.);
+  if(weights.x>0.)base+=tri(rockMap,rp,w,1./1.8).rgb*weights.x;
+  if(weights.y>0.)base+=tri(sandMap,sp,w,.5).rgb*weights.y;
+  if(weights.z>0.)base+=tri(mudMap,mp,w,1./1.5).rgb*weights.z;
  }
  float strata=ns(vec3(elevation*.033+ns(vPlanet*.004)*1.5,province*3.,11.));
  float localVariation=mix(ns(vPlanet*.13),.5,smoothstep(.5,2.,footprint*.13));

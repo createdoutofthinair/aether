@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {generateSystem,stars,periodDays,equilibriumTemperature,orbitalPosition,surfaceProfile} from '../dist/solar.js';
-import {configureWorld,configureEnvironment,environment,world,climate,defaults} from '../dist/world.js?v=lod-1';
+import {configureWorld,configureEnvironment,environment,world,climate,defaults} from '../dist/world.js?v=perf-1';
 import {height,landing,surfaceGeology} from '../dist/terrain.js';
 assert.equal(periodDays(1,1),365.25);
 assert(Math.abs(equilibriumTemperature(1,1,.3)-254.57)<.2);
