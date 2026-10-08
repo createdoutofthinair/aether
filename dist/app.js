@@ -2,7 +2,7 @@ import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js';
 import {RockField,wheelLift} from './grounding.js';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=sediment-2';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loadText').textContent='WebGL could not start. Enable hardware acceleration in your browser and reload.';throw e;}
@@ -11,7 +11,7 @@ const scene=new T.Scene(),root=new T.Group();scene.add(root);const camera=new T.
 const hemi=new T.HemisphereLight(0xb8d4ed,0x31251c,.45);scene.add(hemi);
 const sun=new T.DirectionalLight(0xffebcf,3.4);sun.castShadow=false;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-40,right:40,top:40,bottom:-40,near:1,far:300});sun.shadow.normalBias=.04;sun.shadow.bias=-.0001;scene.add(sun,sun.target);
 const sunDir=new T.Vector3(),landBasis=basis(landing);function updateSun(){const angle=Number($('sun').value)*Math.PI/180;sunDir.copy(landBasis.east).multiplyScalar(Math.cos(angle)).addScaledVector(landing,Math.sin(angle)).normalize();$('sunValue').value=$('sun').value+'°';}updateSun();$('sun').oninput=updateSun;
-const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path,undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
+const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path+'?v=materials-2',undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
 const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_gravel_diff.jpg',true),rn:tex('./rock_boulder_dry_nor_gl.jpg'),sn:tex('./sandy_gravel_nor_gl.jpg'),rr:tex('./rock_boulder_dry_rough.jpg'),mud:tex('./mud_cracked_dry_03_diff.jpg',true),mn:tex('./mud_cracked_dry_03_nor_gl.jpg'),rs:tex('./rock_boulder_dry_surface.png'),ss:tex('./sandy_gravel_surface.png'),ms:tex('./mud_cracked_dry_03_surface.png')};
 const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
 // Linear offscreen scene with real depth, followed by atmosphere integration.

@@ -1,0 +1,27 @@
+[
+  {
+    "file": "rock_boulder_dry_surface.png",
+    "bytes": 1547632,
+    "sha256": "d35952012ca7b1cfd15b7d8a93bbc0976be6f886b506aba871d0ddf6d3417be5"
+  },
+  {
+    "file": "sandy_gravel_surface.png",
+    "bytes": 1874693,
+    "sha256": "7b94b9f88691a499f8610aa8f4f71a57623b009fddc96f94de0f0f613337d2ec"
+  },
+  {
+    "file": "mud_cracked_dry_03_surface.png",
+    "bytes": 1788533,
+    "sha256": "1b646e4fe4185f2d8bec712b59e6d1c80e06921763a3e5542f78520ae834dabd"
+  },
+  {
+    "file": "mud_cracked_dry_03_diff.jpg",
+    "bytes": 3910412,
+    "sha256": "5f711035ea182d94791259b22576eb4f54912e3f1d56786dcc391982f6f764b4"
+  },
+  {
+    "file": "mud_cracked_dry_03_nor_gl.jpg",
+    "bytes": 5026404,
+    "sha256": "cb3d9760fa63ff49406fd75d6494b7840e44ee9b75ba05a4d81e0b7300c12582"
+  }
+]
