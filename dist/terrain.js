@@ -1,15 +1,23 @@
 import * as T from './vendor/three.module.js';
+import {world,climate,province} from './world.js?v=world-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
 function hash(x,y,z){return fract(Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453);}
 export function noise(x,y,z){let a=Math.floor(x),b=Math.floor(y),c=Math.floor(z);x-=a;y-=b;z-=c;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);return mix(mix(mix(hash(a,b,c),hash(a+1,b,c),x),mix(hash(a,b+1,c),hash(a+1,b+1,c),x),y),mix(mix(hash(a,b,c+1),hash(a+1,b,c+1),x),mix(hash(a,b+1,c+1),hash(a+1,b+1,c+1),x),y),z);}
 const craters=Array.from({length:24},(_,i)=>{let z=hash(i,8,2)*2-1,a=hash(i,2,9)*Math.PI*2;return{n:new T.Vector3(Math.sqrt(1-z*z)*Math.cos(a),z,Math.sqrt(1-z*z)*Math.sin(a)),r:.018+hash(i,4,1)*.075};});
-export function height(n){const localDistance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let x=n.x,y=n.y,z=n.z;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
+function baseHeight(n){const localDistance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let offset=(world.seed-6)*.173;let x=n.x+offset,y=n.y-offset*.7,z=n.z+offset*.3;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
  const d=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));
  if(d>6500)return h;
  const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);
  return mix(regional,h,T.MathUtils.smoothstep(d,4200,6500));}
+export function height(n){
+ const h=baseHeight(n)*world.relief;
+ const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing))),outside=T.MathUtils.smoothstep(distance,4200,6500);
+ const c=climate(n,h),p=province(n);
+ const dunes=Math.sin(n.x*R/55+n.z*R/95+noise(n.x*130,n.y*130,n.z*130)*5);
+ return h+outside*(c.dunes*dunes*7+Math.pow(Math.max(0,p-.55),2)*world.activity*1500)*world.relief;
+}
 const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
 const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
 export function basinCoordinates(d){return{x:d.dot(landingEast)*R,z:d.dot(landingNorth)*R};}
@@ -78,24 +86,25 @@ const N=16;
 export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
- build(n){const positions=[],normals=[],coords=[],geology=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d);normals.push(sn.x,sn.y,sn.z);}
+ build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=climate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d);normals.push(sn.x,sn.y,sn.z);}
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=j*(N+1)+i,b=a+N+1;indices.push(a,a+1,b,a+1,b+1,b);}
  // Radial skirts close unequal-LOD edges and cube-face boundaries.
  let edge=[];for(let i=0;i<=N;i++)edge.push(i);for(let j=1;j<=N;j++)edge.push(j*(N+1)+N);for(let i=N-1;i>=0;i--)edge.push(N*(N+1)+i);for(let j=N-1;j>0;j--)edge.push(j*(N+1));
  // Skirts have separate vertices; their side faces never influence surface normals.
  n.edge=edge;n.skirt=Math.max(.4,n.size*R*.015);n.surfaceCount=positions.length/3;
  for(let k=0;k<edge.length;k++){const ix=edge[k],p=pts[ix],d=p.clone().normalize(),q=p.clone().addScaledVector(d,-n.skirt);
-  for(const v of [p,q]){geology.push(...geology.slice(ix*3,ix*3+3));positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
+  for(const v of [p,q]){biomes.push(...biomes.slice(ix*3,ix*3+3));geology.push(...geology.slice(ix*3,ix*3+3));positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
   const a=n.surfaceCount+k*2,b=n.surfaceCount+((k+1)%edge.length)*2;indices.push(a,a+1,b,b,a+1,b+1);
  }
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
+ const g=new T.BufferGeometry();g.setAttribute('biomeData',new T.Float32BufferAttribute(biomes,3));g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
  n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();
  let mesh=new T.Mesh(g,this.material);mesh.position.copy(n.anchor);mesh.frustumCulled=true;mesh.visible=false;mesh.receiveShadow=true;n.mesh=mesh;this.root.add(mesh);
  }
  update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?13:12;
  const visit=n=>{n.stamp=this.frame;const dist=cam.distanceTo(n.center.clone().multiplyScalar(R+height(n.center)));const horizon=camDir.dot(n.center);if(altitude<40000&&horizon<Math.min(.94,R/cam.length())-n.size*1.7-.04)return;
- const split=n.l<2||(n.l<maxLevel&&dist<n.size*R*(this.quality==='high'?2.4:1.8));
+ const threshold=n.size*R*(this.quality==='high'?2.4:1.8);
+ const split=n.l<2||(n.l<maxLevel&&dist<threshold*(n.wasSplit?1.18:1));n.wasSplit=split;
  if(split){if(!n.children)n.children=[this.node(n.f,n.l+1,n.x*2,n.y*2),this.node(n.f,n.l+1,n.x*2+1,n.y*2),this.node(n.f,n.l+1,n.x*2,n.y*2+1),this.node(n.f,n.l+1,n.x*2+1,n.y*2+1)];const ready=n.children.every(c=>c.mesh);if(ready){n.children.forEach(visit);return;}for(const c of n.children)if(!c.mesh)this.queue.push({n:c,dist});}
  if(n.mesh)this.active.push(n);
  };
@@ -148,5 +157,6 @@ export class PlanetTerrain{
  }
 
  generate(){let t=performance.now(),count=0;while(this.queue.length&&count<4&&performance.now()-t<7){let {n}=this.queue.shift();if(!n.mesh){this.build(n);count++;}}return count;}
+ reset(){for(const n of this.cache.values())if(n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();}this.cache.clear();this.queue=[];this.active=[];this.visibleNodes=new Map();this.frame++;this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  get count(){return this.active.length;}
 }

@@ -4,9 +4,9 @@ float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(h
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
  Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment});
- s.vertexShader='attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
- s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
- s.fragmentShader=`varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
+ s.vertexShader='attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
+ s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
+ s.fragmentShader=`varying vec3 vBiome;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
  uniform float sedimentCover;
  vec3 terrainDx,terrainDy;
@@ -57,6 +57,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float deposition=vSurfaceData.r*vSurfaceData.b,bedrock=vSurfaceData.g*vSurfaceData.b;
  float exposed=smoothstep(.035,.22,slope)+(province-.5)*.22+bedrock*.28-deposition*sedimentCover*.30+(1.-sedimentCover)*.5;
  float rockWeight=clamp(exposed,0.,1.);
+ rockWeight=mix(rockWeight,1.,vBiome.y);rockWeight*=1.-vBiome.z*.75;
  float mudWeight=(1.-rockWeight)*smoothstep(.30,.70,deposits)*mix(.3,.85,deposition)*(1.-smoothstep(.01,.08,slope));
  vec3 weights=vec3(rockWeight,1.-rockWeight-mudWeight,mudWeight);
  vec3 rp=vPlanet/1.8,sp=vPlanet/2.,mp=vPlanet/1.5;
@@ -74,6 +75,9 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),ns(vPlanet*.008));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
+ diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.40,.43,.47),clamp(vBiome.y*2.,0.,1.));
+ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.55,.39,.19)*(.85+.22*province),vBiome.z*.5);
+ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.68,.79,.84)*(.9+.1*grain),vBiome.x*(1.-smoothstep(.2,.65,slope)));
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
  roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);`);
@@ -85,7 +89,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w,1./1.5)*weights.z;
  }
  gradient-=gn*dot(gn,gradient);
- normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*detailed));
+ normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*detailed*(1.-vBiome.x*.8)));
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <aomap_fragment>',`#include <aomap_fragment>
  float scannedAO=dot(vec3(rockData.g,sandData.g,mudData.g),weights);
@@ -110,3 +114,5 @@ void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view
  color=color*exp(-(br*optical.x+bm*optical.y))+(sr*br*pr+sm*bm*pm)*17.;}
  color=tonemap(color*exposure);color=pow(color,vec3(1./2.2));float vignette=1.-.12*pow(length(vUv-.5)*1.4,2.);gl_FragColor=vec4(color*vignette,1.);}
 `;
+
+export function patchOcean(material,seaTemperature){material.onBeforeCompile=s=>{s.uniforms.seaTemperature=seaTemperature;s.vertexShader='varying float seaLatitude;\n'+s.vertexShader;s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nseaLatitude=normal.y;');s.fragmentShader='varying float seaLatitude;uniform float seaTemperature;\n'+s.fragmentShader;s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat frozen=1.-smoothstep(-8.,0.,seaTemperature-58.*seaLatitude*seaLatitude);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.67,.72),frozen);');};}

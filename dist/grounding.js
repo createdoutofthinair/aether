@@ -1,5 +1,6 @@
+import {world,climate} from './world.js?v=world-1';
 import * as T from './vendor/three.module.js';
-import {R,faces,direction,noise,landing,basinCoordinates,basinProfile} from './terrain.js?v=natural-3';
+import {R,faces,direction,noise,landing,basinCoordinates,basinProfile} from './terrain.js?v=world-1';
 const hash=(a,b,c)=>{const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);};
 // IDs and positions depend only on planet cells, not camera position or travel history.
 export function rockCandidates(p,radius=330,div=2048){
@@ -91,6 +92,7 @@ export class RockField{
   for(const r of this.items){
    const mesh=this.meshes[r.variant];if(mesh.count>=mesh.instanceMatrix.count)continue;
    const hit=this.terrain.sample(r.direction),size=r.size*(this.small?.14:1);
+   const region=climate(r.direction,hit.point.length()-R);if(region.ocean)continue;
    dummy.quaternion.setFromUnitVectors(up,hit.normal);dummy.rotateY(r.angle);
    let foundation=0;
    if(size>2){
@@ -101,7 +103,7 @@ export class RockField{
    }
    dummy.position.copy(hit.point).addScaledVector(hit.normal,foundation-size*(r.outcrop?.28:.16)).sub(this.center);
    dummy.scale.set(size*(1.05+.3*Math.sin(r.angle)),size*(r.outcrop?.65:.75),size);dummy.updateMatrix();
-   mesh.setMatrixAt(mesh.count,dummy.matrix);color.setRGB(r.tint,r.tint*.97,r.tint*.92);mesh.setColorAt(mesh.count,color);mesh.count++;
+   mesh.setMatrixAt(mesh.count,dummy.matrix);const shade=1-region.volcanic*.5;color.setRGB(r.tint*shade,r.tint*.97*shade,r.tint*.92*shade);color.lerp(new T.Color(.72,.80,.84),region.ice*.8);mesh.setColorAt(mesh.count,color);mesh.count++;
   }
   for(const mesh of this.meshes){mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();}
  }
