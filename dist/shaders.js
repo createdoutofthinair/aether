@@ -32,7 +32,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  }
  `+s.fragmentShader;
  s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
- vec3 radial=normalize(vPlanet),gn=normalize(vGeoNormal),w=max(pow(abs(gn),vec3(8.))-.025,0.);w/=max(dot(w,vec3(1.)),.0001);
+ vec3 radial=normalize(vPlanet),gn=normalize(vGeoNormal),w=pow(abs(gn),vec3(8.));w/=max(dot(w,vec3(1.)),.0001);w=max(w-.025,0.);w/=max(dot(w,vec3(1.)),.0001);
  float slope=1.-abs(dot(radial,gn)),elevation=length(vPlanet)-60000.;
  float dist=length(vViewPosition),detailed=1.-smoothstep(350.,2200.,dist);
  float province=ns(vPlanet*.002),deposits=ns(vPlanet*.018),grain=ns(vPlanet*.19);
