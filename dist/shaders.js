@@ -15,18 +15,21 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  // Triangular stochastic tiling: shared offsets/weights across every PBR channel.
  // Explicit gradients keep mip selection stable across random tile boundaries.
  vec4 tileSample(sampler2D tex,vec2 uv,vec2 cell,vec2 dx,vec2 dy,bool normalMap){
-  vec2 seed=tileHash(cell);float angle=floor(seed.x*4.)*1.570796327;
+  vec2 seed=tileHash(cell);float angle=seed.x*6.283185307;
+  float frequency=mix(.72,1.32,tileHash(cell+vec2(41.,17.)).y);
   float c=cos(angle),s=sin(angle);mat2 rotation=mat2(c,s,-s,c);
-  vec4 value=textureGrad(tex,rotation*uv+seed*17.,rotation*dx,rotation*dy);
-  if(normalMap){vec3 n=value.xyz*2.-1.;n.xy=transpose(rotation)*n.xy;value.xyz=n*.5+.5;}
+  // Re-anchor to the stochastic cell to avoid large-coordinate precision loss.
+  vec2 anchor=mat2(1.,0.,.5,.8660254)*cell/1.1;
+  vec4 value=textureGrad(tex,rotation*(uv-anchor)*frequency+seed*17.,rotation*dx*frequency,rotation*dy*frequency);
+  if(normalMap){vec3 n=value.xyz*2.-1.;n=normalize(vec3(transpose(rotation)*n.xy*frequency,n.z));value.xyz=n*.5+.5;}
   return value;
  }
  vec4 sampleTile(sampler2D tex,vec2 uv,vec2 dx,vec2 dy,bool normalMap){
-  vec2 grid=mat2(1.,0.,-.57735027,1.15470054)*uv*.32;
+  vec2 grid=mat2(1.,0.,-.57735027,1.15470054)*uv*1.1;
   vec2 cell=floor(grid),f=fract(grid);vec3 bw;vec2 b,c;
   if(f.x+f.y<1.){bw=vec3(1.-f.x-f.y,f.x,f.y);b=cell+vec2(1,0);c=cell+vec2(0,1);}
   else{bw=vec3(f.x+f.y-1.,1.-f.x,1.-f.y);cell+=vec2(1,1);b=cell-vec2(1,0);c=cell-vec2(0,1);}
-  bw=pow(bw,vec3(4.));bw/=dot(bw,vec3(1.));
+  bw=pow(bw,vec3(3.));bw/=dot(bw,vec3(1.));
   return tileSample(tex,uv,cell,dx,dy,normalMap)*bw.x+tileSample(tex,uv,b,dx,dy,normalMap)*bw.y+tileSample(tex,uv,c,dx,dy,normalMap)*bw.z;
  }
  vec4 tri(sampler2D tex,vec3 p,vec3 w,float scale){
@@ -67,9 +70,10 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   base=tri(rockMap,rp,w,1./1.8).rgb*weights.x+tri(sandMap,sp,w,.5).rgb*weights.y+tri(mudMap,mp,w,1./1.5).rgb*weights.z;
  }
  float strata=ns(vec3(elevation*.033+ns(vPlanet*.004)*1.5,province*3.,11.));
+ float localVariation=ns(vPlanet*.13);
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),ns(vPlanet*.008));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
- diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.95+.10*grain);
+ diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
  roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);`);
