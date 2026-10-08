@@ -4,6 +4,8 @@ import {RockField} from '../dist/grounding.js';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const out=process.argv[2]||'/tmp/aether-shaders';mkdirSync(out,{recursive:true});
 function expand(s){
+ // glslang 15 reserves average; rename Three's equivalent helper in validation output.
+ s=s.replace(/\baverage\b/g,'threeAverage');
  s=s.replace(/#include <(\w+)>/g,(_,n)=>expand(T.ShaderChunk[n]));
  const nums={NUM_SUN_LIGHTS:0,NUM_SUN_LIGHT_SHADOWS:0,NUM_DIR_LIGHTS:1,NUM_HEMI_LIGHTS:1,NUM_DIR_LIGHT_SHADOWS:1,NUM_POINT_LIGHTS:0,NUM_SPOT_LIGHTS:0,NUM_RECT_AREA_LIGHTS:0,NUM_POINT_LIGHT_SHADOWS:0,NUM_SPOT_LIGHT_SHADOWS:0,NUM_SPOT_LIGHT_COORDS:0,NUM_SPOT_LIGHT_MAPS:0,NUM_SPOT_LIGHT_SHADOWS_WITH_MAPS:0,NUM_CLIPPING_PLANES:0,UNION_CLIPPING_PLANES:0,NUM_LIGHT_PROBES:0,NUM_LIGHT_PROBE_GRIDS:0};
  for(const [k,v]of Object.entries(nums))s=s.replace(new RegExp('\\b'+k+'\\b','g'),String(v));
