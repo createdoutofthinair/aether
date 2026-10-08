@@ -13,24 +13,56 @@ export function height(n){const localDistance=R*Math.sqrt(Math.max(0,2-2*n.dot(l
 const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
 const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
 export function basinCoordinates(d){return{x:d.dot(landingEast)*R,z:d.dot(landingNorth)*R};}
+function channelCenter(z){return 180*(noise(z/850+7,3,11)-.5)+65*(noise(z/230+9,8,2)-.5);}
+// Sparse, fixed tributary graph; a spatial index keeps per-vertex queries local.
+const drainageCells=new Map();
+function addDrain(a,b,width){
+ const segment={a,b,width};
+ for(let x=Math.floor((Math.min(a.x,b.x)-width*3)/300);x<=Math.floor((Math.max(a.x,b.x)+width*3)/300);x++)
+ for(let z=Math.floor((Math.min(a.z,b.z)-width*3)/300);z<=Math.floor((Math.max(a.z,b.z)+width*3)/300);z++){
+  const key=x+','+z;if(!drainageCells.has(key))drainageCells.set(key,[]);drainageCells.get(key).push(segment);
+ }
+}
+for(let i=-7;i<=7;i++)for(const side of [-1,1]){
+ const join=i*440+hash(i,side,1)*240,origin={x:channelCenter(join),z:join};let last=origin;
+ for(let j=1;j<=4;j++){
+  const next={x:origin.x+side*j*(180+hash(i,side,3)*80),z:join-j*90+120*(hash(i,j,side+4)-.5)};
+  addDrain(last,next,12+(5-j)*5);
+  if(j>1){const tip={x:next.x+side*(120+hash(i,j,8)*130),z:next.z-170-hash(i,j,9)*170};addDrain(next,tip,10);}
+  last=next;
+ }
+}
 export function basinProfile(x,z){
- const channel=65*Math.sin(z/370)+20*Math.sin(z/93),distance=Math.abs(x-channel);
- const bank=T.MathUtils.smoothstep(distance,45,150);
- const warp=45*(noise(x/650+4,z/650+9,3)-.5);
- const mesa=T.MathUtils.smoothstep(noise((x+warp)/430+11,z/580+6,7),.48,.64);
- return{bank,mesa,distance};
+ const channel=channelCenter(z),distance=Math.abs(x-channel);
+ const width=45+45*noise(z/360+4,2,6),bank=T.MathUtils.smoothstep(distance,width,width+80+70*noise(x/310+4,z/270+8,1));
+ const wx=x+110*(noise(x/700+4,z/580+9,3)-.5),wz=z+90*(noise(x/510+7,z/620+4,5)-.5);
+ const mesa=T.MathUtils.smoothstep(noise(wx/440+11,wz/570+6,7),.46,.66);
+ let drainage=0;
+ for(const segment of drainageCells.get(Math.floor(x/300)+','+Math.floor(z/300))||[]){
+  const {a,b,width}=segment,dx=b.x-a.x,dz=b.z-a.z,t=T.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1);
+  const d=Math.hypot(x-a.x-dx*t,z-a.z-dz*t)/width;
+  drainage=Math.max(drainage,Math.exp(-d*d)*(1-T.MathUtils.smoothstep(d,2.4,3)));
+ }
+ return{bank,mesa,distance,drainage,wx,wz};
 }
 export function basinHeight(x,z){
- const {bank,mesa}=basinProfile(x,z);
- const uplift=32+65*noise(x/780+8,z/690+4,9);
- const gullies=Math.pow(1-Math.abs(noise(x/110+18,z/240+5,8)*2-1),7);
- const raw=bank*(uplift+mesa*100-gullies*13),layer=raw/14;
- const ledges=(Math.floor(layer)+T.MathUtils.smoothstep(layer-Math.floor(layer),.24,.68))*14;
- const terraces=mix(raw,ledges,.58*bank);
+ const {bank,mesa,drainage,wx,wz}=basinProfile(x,z);
+ const uplift=30+80*noise(wx/760+8,wz/690+4,9);
+ const shoulders=bank*(uplift+mesa*105);
+ // No periodic elevation steps: isolated resistant beds break up selected slopes.
+ const bed=noise(wx/190+12,wz/240+8,4),resistant=T.MathUtils.smoothstep(bed,.55,.73);
+ const broken=(noise(wx*.034+9,wz*.028+8,3)-.5)*4.5*bank;
+ const gullies=drainage*bank*(18+mesa*38);
+ const talus=(noise(x/55+3,z/68+5,7)-.5)*3.5*bank*(1-mesa);
  const floor=120+z*.008+1.4*(noise(x/95+2,z/140+3,2)-.5);
  const gravel=(noise(x*.12+7,z*.12+3,5)-.5)*.14;
- const broken=(noise(x*.032+9,z*.036+8,3)-.5)*2.8*bank;
- return floor+terraces+broken+gravel;
+ return floor+shoulders+resistant*bank*17-gullies+broken+talus+gravel;
+}
+export function surfaceGeology(d){
+ const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
+ if(regional===0)return[0,0,0];
+ const {x,z}=basinCoordinates(d),p=basinProfile(x,z);
+ return[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
 }
 
 export function surface(p){return R+height(p.clone().normalize());}
@@ -46,19 +78,19 @@ const N=16;
 export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
- build(n){const positions=[],normals=[],coords=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d);normals.push(sn.x,sn.y,sn.z);}
+ build(n){const positions=[],normals=[],coords=[],geology=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d);normals.push(sn.x,sn.y,sn.z);}
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=j*(N+1)+i,b=a+N+1;indices.push(a,a+1,b,a+1,b+1,b);}
  // Radial skirts close unequal-LOD edges and cube-face boundaries.
  let edge=[];for(let i=0;i<=N;i++)edge.push(i);for(let j=1;j<=N;j++)edge.push(j*(N+1)+N);for(let i=N-1;i>=0;i--)edge.push(N*(N+1)+i);for(let j=N-1;j>0;j--)edge.push(j*(N+1));
  // Skirts have separate vertices; their side faces never influence surface normals.
  n.edge=edge;n.skirt=Math.max(.4,n.size*R*.015);n.surfaceCount=positions.length/3;
  for(let k=0;k<edge.length;k++){const ix=edge[k],p=pts[ix],d=p.clone().normalize(),q=p.clone().addScaledVector(d,-n.skirt);
-  for(const v of [p,q]){positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
+  for(const v of [p,q]){geology.push(...geology.slice(ix*3,ix*3+3));positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
   const a=n.surfaceCount+k*2,b=n.surfaceCount+((k+1)%edge.length)*2;indices.push(a,a+1,b,b,a+1,b+1);
  }
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
- n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();
+ const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
+ n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();
  let mesh=new T.Mesh(g,this.material);mesh.position.copy(n.anchor);mesh.frustumCulled=true;mesh.visible=false;mesh.receiveShadow=true;n.mesh=mesh;this.root.add(mesh);
  }
  update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?13:12;
@@ -73,24 +105,24 @@ export class PlanetTerrain{
  }
  stitchEdges(){
   const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;
-  for(const n of this.active){const g=n.mesh.geometry,pa=g.attributes.position,na=g.attributes.normal,wa=g.attributes.planetPosition;
+  for(const n of this.active){const g=n.mesh.geometry,pa=g.attributes.position,na=g.attributes.normal,wa=g.attributes.planetPosition,ga=g.attributes.surfaceData;
    for(let k=0;k<n.edge.length;k++){const ix=n.edge[k],i=ix%(N+1),j=Math.floor(ix/(N+1)),u=n.u+n.size*i/N,v=n.v+n.size*j/N;
     // Probe across this edge, including cube-face transitions.
     const e=n.size*1e-5,probe=direction(n.f,u+(i===0?-e:i===N?e:0),v+(j===0?-e:j===N?e:0));
     let face=0,den=-Infinity;for(let f=0;f<6;f++){const z=probe.dot(faces[f][0]);if(z>den){den=z;face=f;}}
     const pu=probe.dot(faces[face][1])/den,pv=probe.dot(faces[face][2])/den;let neighbor=null;
     for(let l=n.l;l>=0;l--){const div=2**l,x=Math.min(div-1,Math.max(0,Math.floor((pu+1)*.5*div))),y=Math.min(div-1,Math.max(0,Math.floor((pv+1)*.5*div)));const found=visible.get([face,l,x,y].join('/'));if(found){neighbor=found;break;}}
-    let p=new T.Vector3().fromArray(n.originalPositions,ix*3).add(n.anchor),normal=new T.Vector3().fromArray(n.originalNormals,ix*3);
+    let p=new T.Vector3().fromArray(n.originalPositions,ix*3).add(n.anchor),normal=new T.Vector3().fromArray(n.originalNormals,ix*3),geo=new T.Vector3().fromArray(n.originalGeology,ix*3);
     if(neighbor&&neighbor!==n&&neighbor.l<n.l){const d=direction(n.f,u,v),f=neighbor.f,den=d.dot(faces[f][0]);
      const gx=T.MathUtils.clamp((d.dot(faces[f][1])/den-neighbor.u)/neighbor.size*N,0,N),gy=T.MathUtils.clamp((d.dot(faces[f][2])/den-neighbor.v)/neighbor.size*N,0,N),x=Math.min(N-1,Math.floor(gx)),y=Math.min(N-1,Math.floor(gy)),fx=gx-x,fy=gy-y;
      const ids=fx+fy<=1?[y*(N+1)+x,y*(N+1)+x+1,(y+1)*(N+1)+x]:[(y+1)*(N+1)+x+1,(y+1)*(N+1)+x,y*(N+1)+x+1];
-     const weights=fx+fy<=1?[1-fx-fy,fx,fy]:[fx+fy-1,1-fx,1-fy];p.set(0,0,0);normal.set(0,0,0);
-     for(let q=0;q<3;q++){p.addScaledVector(new T.Vector3().fromArray(neighbor.originalPositions,ids[q]*3).add(neighbor.anchor),weights[q]);normal.addScaledVector(new T.Vector3().fromArray(neighbor.originalNormals,ids[q]*3),weights[q]);}normal.normalize();
+     const weights=fx+fy<=1?[1-fx-fy,fx,fy]:[fx+fy-1,1-fx,1-fy];p.set(0,0,0);normal.set(0,0,0);geo.set(0,0,0);
+     for(let q=0;q<3;q++){geo.addScaledVector(new T.Vector3().fromArray(neighbor.originalGeology,ids[q]*3),weights[q]);p.addScaledVector(new T.Vector3().fromArray(neighbor.originalPositions,ids[q]*3).add(neighbor.anchor),weights[q]);normal.addScaledVector(new T.Vector3().fromArray(neighbor.originalNormals,ids[q]*3),weights[q]);}normal.normalize();
     }
     const local=p.clone().sub(n.anchor),bottom=p.clone().addScaledVector(p.clone().normalize(),-n.skirt).sub(n.anchor);
-    for(const [idx,vv]of [[ix,local],[n.surfaceCount+k*2,local],[n.surfaceCount+k*2+1,bottom]]){pa.setXYZ(idx,vv.x,vv.y,vv.z);na.setXYZ(idx,normal.x,normal.y,normal.z);wa.setXYZ(idx,vv.x+n.anchor.x,vv.y+n.anchor.y,vv.z+n.anchor.z);}
+    for(const [idx,vv]of [[ix,local],[n.surfaceCount+k*2,local],[n.surfaceCount+k*2+1,bottom]]){ga.setXYZ(idx,geo.x,geo.y,geo.z);pa.setXYZ(idx,vv.x,vv.y,vv.z);na.setXYZ(idx,normal.x,normal.y,normal.z);wa.setXYZ(idx,vv.x+n.anchor.x,vv.y+n.anchor.y,vv.z+n.anchor.z);}
    }
-   pa.needsUpdate=true;na.needsUpdate=true;wa.needsUpdate=true;
+   ga.needsUpdate=true;pa.needsUpdate=true;na.needsUpdate=true;wa.needsUpdate=true;
   }
  }
 

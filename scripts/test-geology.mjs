@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {R,landing,basis,height,basinHeight,surfaceNormal} from '../dist/terrain.js';
+import {R,landing,basis,height,basinHeight,surfaceNormal,surfaceGeology} from '../dist/terrain.js';
 import {rockCandidates} from '../dist/grounding.js';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -24,3 +24,13 @@ for(const asset of assetManifest){
 }
 
 console.log(`Regional relief ${(high-low).toFixed(1)} m; smooth planet transition, safe touchdown, persistent pebbles and PBR assets: pass`);
+
+for(let x=-1000;x<=1000;x+=50)for(let z=-1000;z<=1000;z+=50){
+ const data=surfaceGeology(at(x,z));assert(data.every(v=>Number.isFinite(v)&&v>=0&&v<=1));
+}
+// Crossing a drainage spatial-index cell must not create a discontinuity.
+for(let x=-900;x<=900;x+=300)for(let z=-900;z<=900;z+=37){
+ assert(Math.abs(basinHeight(x-.0001,z)-basinHeight(x+.0001,z))<.01);
+ assert(Math.abs(basinHeight(z,x-.0001)-basinHeight(z,x+.0001))<.01);
+}
+console.log('Geological material masks and tributary continuity: pass');

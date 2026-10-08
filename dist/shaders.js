@@ -4,53 +4,69 @@ float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(h
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
  Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment});
- s.vertexShader='attribute vec3 planetPosition;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
- s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvPlanet=planetPosition;vGeoNormal=normal;');
- s.fragmentShader=`varying vec3 vPlanet;varying vec3 vGeoNormal;
+ s.vertexShader='attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
+ s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
+ s.fragmentShader=`varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
  uniform float sedimentCover;
+ vec3 terrainDx,terrainDy;
  ${noiseGLSL}
  vec2 tileHash(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
  // Triangular stochastic tiling: shared offsets/weights across every PBR channel.
  // Explicit gradients keep mip selection stable across random tile boundaries.
- vec4 sampleTile(sampler2D tex,vec2 uv){
+ vec4 tileSample(sampler2D tex,vec2 uv,vec2 cell,vec2 dx,vec2 dy,bool normalMap){
+  vec2 seed=tileHash(cell);float angle=floor(seed.x*4.)*1.570796327;
+  float c=cos(angle),s=sin(angle);mat2 rotation=mat2(c,s,-s,c);
+  vec4 value=textureGrad(tex,rotation*uv+seed*17.,rotation*dx,rotation*dy);
+  if(normalMap){vec3 n=value.xyz*2.-1.;n.xy=transpose(rotation)*n.xy;value.xyz=n*.5+.5;}
+  return value;
+ }
+ vec4 sampleTile(sampler2D tex,vec2 uv,vec2 dx,vec2 dy,bool normalMap){
   vec2 grid=mat2(1.,0.,-.57735027,1.15470054)*uv*.32;
   vec2 cell=floor(grid),f=fract(grid);vec3 bw;vec2 b,c;
   if(f.x+f.y<1.){bw=vec3(1.-f.x-f.y,f.x,f.y);b=cell+vec2(1,0);c=cell+vec2(0,1);}
   else{bw=vec3(f.x+f.y-1.,1.-f.x,1.-f.y);cell+=vec2(1,1);b=cell-vec2(1,0);c=cell-vec2(0,1);}
-  bw=pow(bw,vec3(5.));bw/=dot(bw,vec3(1.));vec2 dx=dFdx(uv),dy=dFdy(uv);
-  return textureGrad(tex,uv+tileHash(cell)*17.,dx,dy)*bw.x+textureGrad(tex,uv+tileHash(b)*17.,dx,dy)*bw.y+textureGrad(tex,uv+tileHash(c)*17.,dx,dy)*bw.z;
+  bw=pow(bw,vec3(4.));bw/=dot(bw,vec3(1.));
+  return tileSample(tex,uv,cell,dx,dy,normalMap)*bw.x+tileSample(tex,uv,b,dx,dy,normalMap)*bw.y+tileSample(tex,uv,c,dx,dy,normalMap)*bw.z;
  }
- vec4 tri(sampler2D tex,vec3 p,vec3 w){
-  vec4 result=vec4(0.);if(w.x>0.)result+=sampleTile(tex,p.yz)*w.x;if(w.y>0.)result+=sampleTile(tex,p.zx)*w.y;if(w.z>0.)result+=sampleTile(tex,p.xy)*w.z;return result;
+ vec4 tri(sampler2D tex,vec3 p,vec3 w,float scale){
+  vec4 result=vec4(0.);
+  if(w.x>0.)result+=sampleTile(tex,p.yz,terrainDx.yz*scale,terrainDy.yz*scale,false)*w.x;
+  if(w.y>0.)result+=sampleTile(tex,p.zx,terrainDx.zx*scale,terrainDy.zx*scale,false)*w.y;
+  if(w.z>0.)result+=sampleTile(tex,p.xy,terrainDx.xy*scale,terrainDy.xy*scale,false)*w.z;
+  return result;
  }
- vec2 normalSlope(sampler2D tex,vec2 uv){vec3 n=sampleTile(tex,uv).xyz*2.-1.;return n.xy/max(n.z,.3);}
- vec3 triGradient(sampler2D tex,vec3 p,vec3 w){
-  vec3 g=vec3(0.);if(w.x>0.){vec2 n=normalSlope(tex,p.yz);g+=vec3(0.,n.x,n.y)*w.x;}
-  if(w.y>0.){vec2 n=normalSlope(tex,p.zx);g+=vec3(n.y,0.,n.x)*w.y;}
-  if(w.z>0.){vec2 n=normalSlope(tex,p.xy);g+=vec3(n.x,n.y,0.)*w.z;}return g;
+ vec2 normalSlope(sampler2D tex,vec2 uv,vec2 dx,vec2 dy){vec3 n=sampleTile(tex,uv,dx,dy,true).xyz*2.-1.;return n.xy/max(n.z,.3);}
+ vec3 triGradient(sampler2D tex,vec3 p,vec3 w,float scale){
+  vec3 g=vec3(0.);
+  if(w.x>0.){vec2 n=normalSlope(tex,p.yz,terrainDx.yz*scale,terrainDy.yz*scale);g+=vec3(0.,n.x,n.y)*w.x;}
+  if(w.y>0.){vec2 n=normalSlope(tex,p.zx,terrainDx.zx*scale,terrainDy.zx*scale);g+=vec3(n.y,0.,n.x)*w.y;}
+  if(w.z>0.){vec2 n=normalSlope(tex,p.xy,terrainDx.xy*scale,terrainDy.xy*scale);g+=vec3(n.x,n.y,0.)*w.z;}return g;
  }
+
  `+s.fragmentShader;
  s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+ terrainDx=dFdx(vPlanet);terrainDy=dFdy(vPlanet);
  vec3 radial=normalize(vPlanet),gn=normalize(vGeoNormal),w=pow(abs(gn),vec3(8.));w/=max(dot(w,vec3(1.)),.0001);w=max(w-.025,0.);w/=max(dot(w,vec3(1.)),.0001);
  float slope=1.-abs(dot(radial,gn)),elevation=length(vPlanet)-60000.;
  float dist=length(vViewPosition),detailed=1.-smoothstep(350.,2200.,dist);
  float province=ns(vPlanet*.002),deposits=ns(vPlanet*.018),grain=ns(vPlanet*.19);
- float exposed=smoothstep(.035,.22,slope)+(province-.5)*.35+(1.-sedimentCover)*.5;
+ float deposition=vSurfaceData.r*vSurfaceData.b,bedrock=vSurfaceData.g*vSurfaceData.b;
+ float exposed=smoothstep(.035,.22,slope)+(province-.5)*.22+bedrock*.28-deposition*sedimentCover*.30+(1.-sedimentCover)*.5;
  float rockWeight=clamp(exposed,0.,1.);
- float mudWeight=(1.-rockWeight)*smoothstep(.40,.65,deposits)*(1.-smoothstep(.01,.08,slope))*.8;
+ float mudWeight=(1.-rockWeight)*smoothstep(.30,.70,deposits)*mix(.3,.85,deposition)*(1.-smoothstep(.01,.08,slope));
  vec3 weights=vec3(rockWeight,1.-rockWeight-mudWeight,mudWeight);
  vec3 rp=vPlanet/1.8,sp=vPlanet/2.,mp=vPlanet/1.5;
  vec3 rockData=vec3(.86,1.,.5),sandData=vec3(.92,1.,.5),mudData=vec3(.95,1.,.5);
  vec3 base=vec3(.32,.255,.18);
  if(detailed>0.){
-  rockData=tri(rockSurface,rp,w).rgb;sandData=tri(sandSurface,sp,w).rgb;mudData=tri(mudSurface,mp,w).rgb;
+  rockData=tri(rockSurface,rp,w,1./1.8).rgb;sandData=tri(sandSurface,sp,w,.5).rgb;mudData=tri(mudSurface,mp,w,1./1.5).rgb;
   // Scanned height resolves boundaries: sediment fills recesses below exposed rock.
   vec3 heights=vec3(rockData.b,sandData.b,mudData.b)*.28+weights;
   float peak=max(heights.x,max(heights.y,heights.z));weights=max(heights-peak+.20,0.)*weights;weights/=max(dot(weights,vec3(1.)),.0001);
-  base=tri(rockMap,rp,w).rgb*weights.x+tri(sandMap,sp,w).rgb*weights.y+tri(mudMap,mp,w).rgb*weights.z;
+  base=tri(rockMap,rp,w,1./1.8).rgb*weights.x+tri(sandMap,sp,w,.5).rgb*weights.y+tri(mudMap,mp,w,1./1.5).rgb*weights.z;
  }
- float strata=ns(vec3(elevation*.10+ns(vPlanet*.008)*.7,province*2.,11.));
+ float strata=ns(vec3(elevation*.033+ns(vPlanet*.004)*1.5,province*3.,11.));
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),ns(vPlanet*.008));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.95+.10*grain);
@@ -60,9 +76,9 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
  vec3 gradient=vec3(0.);
  if(detailed>0.){
-  if(weights.x>.01)gradient+=triGradient(rockNormal,rp,w)*weights.x;
-  if(weights.y>.01)gradient+=triGradient(sandNormal,sp,w)*weights.y;
-  if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w)*weights.z;
+  if(weights.x>.01)gradient+=triGradient(rockNormal,rp,w,1./1.8)*weights.x;
+  if(weights.y>.01)gradient+=triGradient(sandNormal,sp,w,.5)*weights.y;
+  if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w,1./1.5)*weights.z;
  }
  gradient-=gn*dot(gn,gradient);
  normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*detailed));

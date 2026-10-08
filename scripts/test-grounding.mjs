@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
 import {PlanetTerrain,R,landing,direction} from '../dist/terrain.js';
-import {rockCandidates,wheelLift,tyreSupport,RockField} from '../dist/grounding.js';
+import {rockCandidates,wheelLift,tyreSupport,RockField,createRockGeometry} from '../dist/grounding.js';
 const terrain=new PlanetTerrain(new T.Group(),new T.MeshStandardMaterial());
 // Independent triangle raycast must agree with the contact query at coarse and fine LODs.
 for(const level of [5,10,13]){
@@ -23,7 +23,7 @@ for(const level of [5,10,13]){
 for(const d of [landing,new T.Vector3(1,.2,1).normalize(),new T.Vector3(1,1,1).normalize()]){
  const p=d.clone().multiplyScalar(R),a=rockCandidates(p),b=rockCandidates(p.clone().add(new T.Vector3(27,0,-19))),byId=new Map(b.map(r=>[r.id,r]));let shared=0;
  assert(a.length>0&&a.length<4096);assert.equal(new Set(a.map(r=>r.id)).size,a.length);
- for(const r of a){const other=byId.get(r.id);if(!other)continue;shared++;assert.equal(r.direction.distanceTo(other.direction),0);assert.equal(r.size,other.size);assert.equal(r.angle,other.angle);}
+ for(const r of a){const other=byId.get(r.id);if(!other)continue;shared++;assert.equal(r.direction.distanceTo(other.direction),0);assert.equal(r.size,other.size);assert.equal(r.angle,other.angle);assert.equal(r.variant,other.variant);assert.equal(r.tint,other.tint);}
  assert(shared>a.length*.65,'Nearby views must retain their rock field');
 }
 // Both visible rocks and their shadows receive the same distance-fade shader.
@@ -35,3 +35,15 @@ for(const [material,shader]of [[field.mesh.material,T.ShaderLib.standard],[field
 const pebbles=new RockField(new T.Group(),{rock:null,rn:null,rr:null},terrain,true);
 assert.notEqual(field.mesh.material.customProgramCacheKey(),pebbles.mesh.material.customProgramCacheKey(),'Different fade distances need separate shader programs');
 console.log('Ground contact, tyre clearance, persistent rock cells and shadow fading: pass');
+
+const silhouettes=new Set();
+for(let variant=0;variant<8;variant++){
+ const geometry=createRockGeometry(variant),size=geometry.boundingBox.getSize(new T.Vector3());
+ silhouettes.add(size.toArray().map(v=>v.toFixed(3)).join(','));
+ for(const name of ['position','normal'])for(const value of geometry.attributes[name].array)assert(Number.isFinite(value),'Rock geometry must stay finite');
+ assert(size.x>0&&size.y>0&&size.z>0);geometry.dispose();
+}
+assert.equal(silhouettes.size,8,'All eight rock families must have distinct silhouettes');
+const retained=rockCandidates(landing.clone().multiplyScalar(R));
+assert(retained.every(r=>Number.isInteger(r.variant)&&r.variant>=0&&r.variant<8));
+console.log('Eight distinct rock silhouettes and stable variant assignment: pass');

@@ -1,8 +1,8 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js';
-import {RockField,wheelLift} from './grounding.js';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=sediment-2';
+import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=natural-3';
+import {RockField,wheelLift} from './grounding.js?v=natural-3';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=natural-3';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loadText').textContent='WebGL could not start. Enable hardware acceleration in your browser and reload.';throw e;}
