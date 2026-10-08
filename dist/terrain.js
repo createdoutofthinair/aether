@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=system-1';
+import {world,environment,climate,province} from './world.js?v=lod-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -77,7 +77,7 @@ export function surfaceGeology(d){
 export function surface(p){return R+height(p.clone().normalize());}
 export function basis(up){let east=new T.Vector3(0,1,0).cross(up);if(east.lengthSq()<.001)east.set(1,0,0);east.normalize();let north=new T.Vector3().crossVectors(up,east).normalize();return{east,north};}
 // Sample the continuous height field, independent of patch boundaries or LOD.
-export function surfaceNormal(d){const {east,north}=basis(d),eps=.75,at=R+height(d);
+export function surfaceNormal(d,eps=.75){const {east,north}=basis(d),at=R+height(d);
  const dhE=(height(d.clone().addScaledVector(east,eps/R).normalize())-height(d.clone().addScaledVector(east,-eps/R).normalize()))/(2*eps);
  const dhN=(height(d.clone().addScaledVector(north,eps/R).normalize())-height(d.clone().addScaledVector(north,-eps/R).normalize()))/(2*eps);
  return d.clone().addScaledVector(east,-dhE*R/at).addScaledVector(north,-dhN*R/at).normalize();}
@@ -88,7 +88,7 @@ export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
  build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=climate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d);normals.push(sn.x,sn.y,sn.z);}
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=climate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,Math.min(100,n.size*R/N*.25)));normals.push(sn.x,sn.y,sn.z);}
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=j*(N+1)+i,b=a+N+1;indices.push(a,a+1,b,a+1,b+1,b);}
  // Radial skirts close unequal-LOD edges and cube-face boundaries.
  let edge=[];for(let i=0;i<=N;i++)edge.push(i);for(let j=1;j<=N;j++)edge.push(j*(N+1)+N);for(let i=N-1;i>=0;i--)edge.push(N*(N+1)+i);for(let j=N-1;j>0;j--)edge.push(j*(N+1));
@@ -99,40 +99,95 @@ export class PlanetTerrain{
   const a=n.surfaceCount+k*2,b=n.surfaceCount+((k+1)%edge.length)*2;indices.push(a,a+1,b,b,a+1,b+1);
  }
  const g=new T.BufferGeometry();g.setAttribute('biomeData',new T.Float32BufferAttribute(biomes,3));g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
- n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();
+ n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();n.originalBiomes=g.attributes.biomeData.array.slice();
+ n.renderPositions=n.originalPositions.slice();n.renderNormals=n.originalNormals.slice();n.renderGeology=n.originalGeology.slice();n.renderBiomes=n.originalBiomes.slice();n.morph=1;n.morphTarget=1;n.open=false;
  let mesh=new T.Mesh(g,this.material);mesh.position.copy(n.anchor);mesh.frustumCulled=true;mesh.visible=false;mesh.receiveShadow=true;n.mesh=mesh;this.root.add(mesh);
  }
+ // New child geometry starts on the parent's existing triangles, including its lighting.
+ prepareMorph(n,parent){
+  const keys=['position','normal','surfaceData','biomeData'];n.morphFrom={};
+  for(const key of keys)n.morphFrom[key]=n.mesh.geometry.attributes[key].array.slice();
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){
+   const gx=((n.u+n.size*i/N)-parent.u)/parent.size*N,gy=((n.v+n.size*j/N)-parent.v)/parent.size*N;
+   const x=Math.min(N-1,Math.floor(gx)),y=Math.min(N-1,Math.floor(gy)),fx=gx-x,fy=gy-y;
+   const ids=fx+fy<=1?[y*(N+1)+x,y*(N+1)+x+1,(y+1)*(N+1)+x]:[(y+1)*(N+1)+x+1,(y+1)*(N+1)+x,y*(N+1)+x+1];
+   const weights=fx+fy<=1?[1-fx-fy,fx,fy]:[fx+fy-1,1-fx,1-fy],index=(j*(N+1)+i)*3;
+   for(const key of keys){const src=parent.mesh.geometry.attributes[key].array,out=n.morphFrom[key];for(let c=0;c<3;c++){out[index+c]=ids.reduce((sum,id,q)=>sum+src[id*3+c]*weights[q],0);if(key==='position')out[index+c]+=parent.anchor.getComponent(c)-n.anchor.getComponent(c);}}
+  }
+  n.open=false;n.morph=0;n.morphTarget=1;this.applyMorph(n);
+ }
+ applyMorph(n){
+  const g=n.mesh.geometry,t=n.morph*n.morph*(3-2*n.morph),keys=['position','normal','surfaceData','biomeData'];
+  const targets=[n.originalPositions,n.originalNormals,n.originalGeology,n.originalBiomes],renders=[n.renderPositions,n.renderNormals,n.renderGeology,n.renderBiomes];
+  for(let k=0;k<keys.length;k++){
+   const out=renders[k],target=targets[k],from=n.morphFrom?.[keys[k]]||target;
+   for(let i=0;i<n.surfaceCount*3;i++)out[i]=from[i]+(target[i]-from[i])*t;
+   if(k===1)for(let i=0;i<n.surfaceCount*3;i+=3){const length=Math.hypot(out[i],out[i+1],out[i+2]);for(let c=0;c<3;c++)out[i+c]/=length||1;}
+   g.attributes[keys[k]].array.set(out);g.attributes[keys[k]].needsUpdate=true;
+  }
+  const pos=g.attributes.position.array,coords=g.attributes.planetPosition.array;for(let i=0;i<n.surfaceCount*3;i++)coords[i]=pos[i]+n.anchor.getComponent(i%3);g.attributes.planetPosition.needsUpdate=true;
+  g.computeBoundingSphere();
+ }
+ advance(dt){let changed=false;
+  for(const n of this.active){if(n.morph===n.morphTarget)continue;const step=Math.max(0,Math.min(dt,.05))/.48;n.morph+=T.MathUtils.clamp(n.morphTarget-n.morph,-step,step);if(Math.abs(n.morphTarget-n.morph)<1e-7)n.morph=n.morphTarget;this.applyMorph(n);changed=true;}
+  if(changed){this.stitchEdges();this.frame++;}return changed;
+ }
  update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?13:12;
- const visit=n=>{n.stamp=this.frame;const dist=cam.distanceTo(n.center.clone().multiplyScalar(R+height(n.center)));const horizon=camDir.dot(n.center);if(altitude<40000&&horizon<Math.min(.94,R/cam.length())-n.size*1.7-.04)return;
- const threshold=n.size*R*(this.quality==='high'?2.4:1.8);
- const split=n.l<2||(n.l<maxLevel&&dist<threshold*(n.wasSplit?1.18:1));n.wasSplit=split;
- if(split){if(!n.children)n.children=[this.node(n.f,n.l+1,n.x*2,n.y*2),this.node(n.f,n.l+1,n.x*2+1,n.y*2),this.node(n.f,n.l+1,n.x*2,n.y*2+1),this.node(n.f,n.l+1,n.x*2+1,n.y*2+1)];const ready=n.children.every(c=>c.mesh);if(ready){n.children.forEach(visit);return;}for(const c of n.children)if(!c.mesh)this.queue.push({n:c,dist});}
+ const visit=(n,collapse=false)=>{n.stamp=this.frame;const dist=cam.distanceTo(n.center.clone().multiplyScalar(R+height(n.center))),horizon=camDir.dot(n.center);
+ if(!collapse&&altitude<40000&&horizon<Math.min(.94,R/cam.length())-n.size*1.7-.04)return;
+ const threshold=n.size*R*(this.quality==='high'?2.7:2.1);
+ const split=!collapse&&(n.l<2||(n.l<maxLevel&&dist<threshold*(n.wasSplit?1.18:1)));n.wasSplit=split;
+ if(n.open&&!n.children.every(c=>c.mesh))n.open=false;
+ if(n.open){
+  const start=this.active.length;n.children.forEach(c=>visit(c,!split));
+  if(!split&&n.children.every(c=>!c.open&&c.morph===0)){this.active.length=start;n.open=false;n.morphTarget=collapse?0:1;this.active.push(n);}
+  return;
+ }
+ n.morphTarget=collapse?0:1;
+ if(split&&n.morph===1){
+  if(!n.children)n.children=[this.node(n.f,n.l+1,n.x*2,n.y*2),this.node(n.f,n.l+1,n.x*2+1,n.y*2),this.node(n.f,n.l+1,n.x*2,n.y*2+1),this.node(n.f,n.l+1,n.x*2+1,n.y*2+1)];
+  if(n.children.every(c=>c.mesh)){n.open=true;for(const c of n.children){this.prepareMorph(c,n);c.stamp=this.frame;this.active.push(c);}return;}
+  for(const c of n.children)if(!c.mesh)this.queue.push({n:c,dist});
+ }
  if(n.mesh)this.active.push(n);
  };
- for(const n of this.cache.values())if(n.mesh)n.mesh.visible=false;this.roots.forEach(visit);this.active.forEach(n=>n.mesh.visible=true);this.stitchEdges();this.queue.sort((a,b)=>a.dist-b.dist);
- // Keep coarse ancestors; evict unused detail under a fixed memory budget.
- if(this.cache.size>1500)for(const [k,n]of this.cache){if(n.l>3&&n.stamp<this.frame-12&&n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();n.mesh=null;}}
+ for(const n of this.cache.values())if(n.mesh)n.mesh.visible=false;this.roots.forEach(n=>visit(n));this.active.forEach(n=>n.mesh.visible=true);this.stitchEdges();this.queue.sort((a,b)=>a.dist-b.dist);
+ if(this.cache.size>1500)for(const n of this.cache.values()){if(n.l>3&&n.stamp<this.frame-120&&n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();n.mesh=null;n.morphFrom=null;}}
  }
  stitchEdges(){
-  const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;
-  for(const n of this.active){const g=n.mesh.geometry,pa=g.attributes.position,na=g.attributes.normal,wa=g.attributes.planetPosition,ga=g.attributes.surfaceData;
-   for(let k=0;k<n.edge.length;k++){const ix=n.edge[k],i=ix%(N+1),j=Math.floor(ix/(N+1)),u=n.u+n.size*i/N,v=n.v+n.size*j/N;
-    // Probe across this edge, including cube-face transitions.
-    const e=n.size*1e-5,probe=direction(n.f,u+(i===0?-e:i===N?e:0),v+(j===0?-e:j===N?e:0));
-    let face=0,den=-Infinity;for(let f=0;f<6;f++){const z=probe.dot(faces[f][0]);if(z>den){den=z;face=f;}}
-    const pu=probe.dot(faces[face][1])/den,pv=probe.dot(faces[face][2])/den;let neighbor=null;
-    for(let l=n.l;l>=0;l--){const div=2**l,x=Math.min(div-1,Math.max(0,Math.floor((pu+1)*.5*div))),y=Math.min(div-1,Math.max(0,Math.floor((pv+1)*.5*div)));const found=visible.get([face,l,x,y].join('/'));if(found){neighbor=found;break;}}
-    let p=new T.Vector3().fromArray(n.originalPositions,ix*3).add(n.anchor),normal=new T.Vector3().fromArray(n.originalNormals,ix*3),geo=new T.Vector3().fromArray(n.originalGeology,ix*3);
-    if(neighbor&&neighbor!==n&&neighbor.l<n.l){const d=direction(n.f,u,v),f=neighbor.f,den=d.dot(faces[f][0]);
-     const gx=T.MathUtils.clamp((d.dot(faces[f][1])/den-neighbor.u)/neighbor.size*N,0,N),gy=T.MathUtils.clamp((d.dot(faces[f][2])/den-neighbor.v)/neighbor.size*N,0,N),x=Math.min(N-1,Math.floor(gx)),y=Math.min(N-1,Math.floor(gy)),fx=gx-x,fy=gy-y;
-     const ids=fx+fy<=1?[y*(N+1)+x,y*(N+1)+x+1,(y+1)*(N+1)+x]:[(y+1)*(N+1)+x+1,(y+1)*(N+1)+x,y*(N+1)+x+1];
-     const weights=fx+fy<=1?[1-fx-fy,fx,fy]:[fx+fy-1,1-fx,1-fy];p.set(0,0,0);normal.set(0,0,0);geo.set(0,0,0);
-     for(let q=0;q<3;q++){geo.addScaledVector(new T.Vector3().fromArray(neighbor.originalGeology,ids[q]*3),weights[q]);p.addScaledVector(new T.Vector3().fromArray(neighbor.originalPositions,ids[q]*3).add(neighbor.anchor),weights[q]);normal.addScaledVector(new T.Vector3().fromArray(neighbor.originalNormals,ids[q]*3),weights[q]);}normal.normalize();
-    }
-    const local=p.clone().sub(n.anchor),bottom=p.clone().addScaledVector(p.clone().normalize(),-n.skirt).sub(n.anchor);
-    for(const [idx,vv]of [[ix,local],[n.surfaceCount+k*2,local],[n.surfaceCount+k*2+1,bottom]]){ga.setXYZ(idx,geo.x,geo.y,geo.z);pa.setXYZ(idx,vv.x,vv.y,vv.z);na.setXYZ(idx,normal.x,normal.y,normal.z);wa.setXYZ(idx,vv.x+n.anchor.x,vv.y+n.anchor.y,vv.z+n.anchor.z);}
+  // Topology changes only on quadtree updates; reuse edge interpolation during animation.
+  if(this.stitchActive!==this.active){
+   this.stitchActive=this.active;const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;this.edgePlans=[];
+   for(const n of this.active){
+    const plans=[];for(let k=0;k<n.edge.length;k++){
+     const ix=n.edge[k],i=ix%(N+1),j=Math.floor(ix/(N+1)),u=n.u+n.size*i/N,v=n.v+n.size*j/N,e=n.size*1e-5;
+     const probe=direction(n.f,u+(i===0?-e:i===N?e:0),v+(j===0?-e:j===N?e:0));let face=0,den=-Infinity;
+     for(let f=0;f<6;f++){const z=probe.dot(faces[f][0]);if(z>den){den=z;face=f;}}
+     const pu=probe.dot(faces[face][1])/den,pv=probe.dot(faces[face][2])/den;let neighbor=null;
+     for(let l=n.l;l>=0;l--){const div=2**l,x=Math.min(div-1,Math.max(0,Math.floor((pu+1)*.5*div))),y=Math.min(div-1,Math.max(0,Math.floor((pv+1)*.5*div))),found=visible.get([face,l,x,y].join('/'));if(found){neighbor=found;break;}}
+     let source=n,ids=[ix],weights=[1];
+     if(neighbor&&neighbor!==n&&(neighbor.l<n.l||(neighbor.l===n.l&&neighbor.key.localeCompare(n.key)<0))){
+      source=neighbor;const d=direction(n.f,u,v),f=source.f,den=d.dot(faces[f][0]);
+      const gx=T.MathUtils.clamp((d.dot(faces[f][1])/den-source.u)/source.size*N,0,N),gy=T.MathUtils.clamp((d.dot(faces[f][2])/den-source.v)/source.size*N,0,N),x=Math.min(N-1,Math.floor(gx)),y=Math.min(N-1,Math.floor(gy)),fx=gx-x,fy=gy-y;
+      ids=fx+fy<=1?[y*(N+1)+x,y*(N+1)+x+1,(y+1)*(N+1)+x]:[(y+1)*(N+1)+x+1,(y+1)*(N+1)+x,y*(N+1)+x+1];weights=fx+fy<=1?[1-fx-fy,fx,fy]:[fx+fy-1,1-fx,1-fy];
+     }
+     plans.push({ix,k,source,ids,weights,arrays:[source.renderPositions,source.renderNormals,source.renderGeology,source.renderBiomes]});
+    }this.edgePlans.push({n,plans});
    }
-   ga.needsUpdate=true;pa.needsUpdate=true;na.needsUpdate=true;wa.needsUpdate=true;
+  }
+  const values=new Float64Array(12);
+  for(const {n,plans}of this.edgePlans){const g=n.mesh.geometry,attrs=[g.attributes.position,g.attributes.normal,g.attributes.surfaceData,g.attributes.biomeData],wa=g.attributes.planetPosition.array;
+   for(const plan of plans){const {ix,k,source,ids,weights,arrays}=plan;values.fill(0);
+    for(let channel=0;channel<4;channel++)for(let q=0;q<ids.length;q++)for(let c=0;c<3;c++)values[channel*3+c]+=arrays[channel][ids[q]*3+c]*weights[q];
+    for(let c=0;c<3;c++)values[c]+=source.anchor.getComponent(c)-n.anchor.getComponent(c);
+    const norm=Math.hypot(values[3],values[4],values[5]);for(let c=3;c<6;c++)values[c]/=norm||1;
+    const px=values[0]+n.anchor.x,py=values[1]+n.anchor.y,pz=values[2]+n.anchor.z,radial=Math.hypot(px,py,pz);
+    for(let slot=0;slot<3;slot++){const index=(slot===0?ix:n.surfaceCount+k*2+slot-1)*3;
+     for(let channel=0;channel<4;channel++)for(let c=0;c<3;c++)attrs[channel].array[index+c]=values[channel*3+c];
+     if(slot===2){attrs[0].array[index]-=px/radial*n.skirt;attrs[0].array[index+1]-=py/radial*n.skirt;attrs[0].array[index+2]-=pz/radial*n.skirt;}
+     for(let c=0;c<3;c++)wa[index+c]=attrs[0].array[index+c]+n.anchor.getComponent(c);
+    }
+   }for(const attr of attrs)attr.needsUpdate=true;g.attributes.planetPosition.needsUpdate=true;
   }
  }
 
@@ -149,7 +204,9 @@ export class PlanetTerrain{
    for(const dy of [0,-1,1])for(const dx of [0,-1,1]){
     const xx=x+dx,yy=y+dy;if(xx<0||xx>=N||yy<0||yy>=N)continue;const a=yy*(N+1)+xx,b=a+N+1;
    for(const ids of [[a,a+1,b],[a+1,b+1,b]]){
-    const vs=ids.map(i=>new T.Vector3().fromBufferAttribute(pa,i)),hit=ray.intersectTriangle(...vs,false,new T.Vector3());
+    const vs=ids.map(i=>new T.Vector3().fromBufferAttribute(pa,i));let hit=ray.intersectTriangle(...vs,false,new T.Vector3());
+    // Float32 edges can leave sub-millimetre ray misses at exact patch boundaries.
+    if(!hit){const tri=new T.Triangle(...vs),candidate=ray.intersectPlane(tri.getPlane(new T.Plane()),new T.Vector3());if(candidate){const bary=tri.getBarycoord(candidate,new T.Vector3()),tolerance=.002/Math.max(vs[0].distanceTo(vs[1]),vs[1].distanceTo(vs[2]),vs[2].distanceTo(vs[0]),.001);if(bary&&Math.min(bary.x,bary.y,bary.z)>=-tolerance)hit=candidate;}}
     if(hit){const normal=new T.Triangle(...vs).getNormal(new T.Vector3());if(normal.dot(d)<0)normal.negate();return{point:hit.add(n.anchor),normal};}
    }
    }

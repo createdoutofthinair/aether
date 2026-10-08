@@ -1,11 +1,11 @@
-import {systemExplorer} from './system-ui.js?v=system-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=system-1';
-import {createAtlas} from './atlas.js?v=system-1';
+import {systemExplorer} from './system-ui.js?v=lod-1';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=lod-1';
+import {createAtlas} from './atlas.js?v=lod-1';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=system-1';
-import {RockField,wheelLift} from './grounding.js?v=system-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=system-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=lod-1';
+import {RockField,wheelLift} from './grounding.js?v=lod-1';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=lod-1';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -103,7 +103,7 @@ manager.onLoad=()=>{$('loadText').textContent='Preparing orbital view…';ready=
 manager.onError=url=>console.warn('Texture unavailable:',url);
 let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
  root.position.copy(camPos).negate();camera.near=clamp((camPos.length()-surface(camPos))*.0005,.15,80);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){sun.position.copy(roverPos).sub(camPos).addScaledVector(sunDir,150);sun.target.position.copy(roverPos).sub(camPos);}hemi.position.copy(camPos).normalize();
- const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
+ const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}
  hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');document.querySelector('.world small').textContent=climate(p,height(p)).biome.toUpperCase();$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}

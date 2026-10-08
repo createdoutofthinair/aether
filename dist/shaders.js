@@ -53,7 +53,8 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 radial=normalize(vPlanet),gn=normalize(vGeoNormal),w=pow(abs(gn),vec3(8.));w/=max(dot(w,vec3(1.)),.0001);w=max(w-.025,0.);w/=max(dot(w,vec3(1.)),.0001);
  float slope=1.-abs(dot(radial,gn)),elevation=length(vPlanet)-60000.;
  float dist=length(vViewPosition),detailed=1.-smoothstep(350.,2200.,dist);
- float province=ns(vPlanet*.002),deposits=ns(vPlanet*.018),grain=ns(vPlanet*.19);
+ float footprint=max(length(terrainDx),length(terrainDy));
+ float province=mix(ns(vPlanet*.002),.5,smoothstep(.5,2.,footprint*.002)),deposits=mix(ns(vPlanet*.018),.5,smoothstep(.5,2.,footprint*.018)),grain=mix(ns(vPlanet*.19),.5,smoothstep(.5,2.,footprint*.19));
  float deposition=vSurfaceData.r*vSurfaceData.b,bedrock=vSurfaceData.g*vSurfaceData.b;
  float exposed=smoothstep(.035,.22,slope)+(province-.5)*.22+bedrock*.28-deposition*sedimentCover*.30+(1.-sedimentCover)*.5;
  float rockWeight=clamp(exposed,0.,1.);
@@ -71,8 +72,8 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   base=tri(rockMap,rp,w,1./1.8).rgb*weights.x+tri(sandMap,sp,w,.5).rgb*weights.y+tri(mudMap,mp,w,1./1.5).rgb*weights.z;
  }
  float strata=ns(vec3(elevation*.033+ns(vPlanet*.004)*1.5,province*3.,11.));
- float localVariation=ns(vPlanet*.13);
- vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),ns(vPlanet*.008));
+ float localVariation=mix(ns(vPlanet*.13),.5,smoothstep(.5,2.,footprint*.13));
+ vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),mix(ns(vPlanet*.008),.5,smoothstep(.5,2.,footprint*.008)));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
  diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.40,.43,.47),clamp(vBiome.y*2.,0.,1.));

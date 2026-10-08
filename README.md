@@ -39,7 +39,7 @@ Open **Planet atlas** to inspect connected climate regions and select a dry, gen
 
 Session controls include deterministic world seed, relief (0.25–3×), equatorial temperature (−60–60 °C), sea level (−1000–1000 m), relative atmosphere density (0–2×), and volcanic activity (0–1). Nacre Basin remains a stable authored starting region. The rest of the planet changes with the seed. Latitude and elevation drive an approximate temperature field; a continuous regional moisture field, temperature, and activity blend ice, desert, volcanic and sediment/rock materials. Sea level controls an opaque ocean shell; ocean landing is blocked and the rover stops at shorelines. This is an artistic climate model, not a physical habitability or ocean simulation.
 
-Terrain LOD uses an 18% split/merge hysteresis band to reduce repeated switching near thresholds; child groups replace parents only once all four are ready. Full vertex geomorphing remains future work. Existing scanned PBR textures provide detail, with biome tint and normal-strength blends; this does not yet include dedicated scanned snow or basalt assets.
+Terrain LOD uses an 18% split/merge hysteresis band to reduce repeated switching near thresholds; child groups replace parents only once all four are ready. CPU vertex geomorphing now blends positions, normals, geology and biome data over 0.48 seconds in both directions. Child groups start on parent triangles; parents return only after their children collapse onto them. Ground contacts use the morphed surface. Existing scanned PBR textures provide detail, with biome tint and normal-strength blends; this does not yet include dedicated scanned snow or basalt assets.
 
 `npm test` also checks world repeatability, map coordinate round trips, climate ranges, biome coverage, sea level classification, and mesh disposal during regeneration.
 
@@ -54,3 +54,10 @@ The star presets and planet populations are illustrative, not a statistical plan
 Physics context: [NASA: habitable zones](https://science.nasa.gov/exoplanets/habitable-zone/) and [NASA: orbital motion and Kepler's laws](https://science.nasa.gov/solar-system/orbits-and-keplers-laws/). Being inside the reference band does not establish habitability.
 
 Physical planet radii and masses are catalog properties. All explored bodies retain the existing compact 60 km geometry and simplified atmosphere; stellar lighting is artistically scaled. Interplanetary travel is an explicit scene transfer, not continuous AU-scale flight. The solar-system map remains usable without WebGL, with surface exploration disabled. Tests cover closed and nonintersecting generated orbits, reference Earth calculations, deterministic systems, solid-body travel guards and climate/profile isolation.
+
+
+### Continuous terrain detail
+
+LOD changes now interpolate for 0.48 seconds, including lighting and material masks, rather than swapping immediately. Refinement starts slightly farther away, with the existing 18% hysteresis band retained. Nested splits wait for their parent transition; coarsening collapses descendants before restoring an ancestor. Shared edges and skirts follow the current morphed geometry, and terrain contact tolerates up to 2 mm of Float32 edge error.
+
+Coarse terrain normals use a wider height sampling footprint (up to 100 m), reducing tiny slopes being stretched across large distant triangles. Procedural grain and weathering fade toward their mean when their features become smaller than a pixel. The directional shadow map is local to rover mode; this change addresses distant terrain lighting rather than increasing shadow-map resolution. Browser visual confirmation still requires WebGL support.
