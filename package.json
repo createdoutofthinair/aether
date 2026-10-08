@@ -1,0 +1,13 @@
+{
+  "name": "aether-planet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node node_modules/vite/bin/vite.js dist --config vite.config.js",
+    "check": "node --check dist/app.js && node --check dist/terrain.js && node --check dist/shaders.js",
+    "test": "node scripts/test-terrain.mjs"
+  },
+  "devDependencies": {
+    "vite": "8.0.13"
+  }
+}
