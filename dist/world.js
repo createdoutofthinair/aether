@@ -10,7 +10,7 @@ export function configureWorld(input={}){
 }
 const smooth=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const hash=(x,y,z)=>{const v=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453;return v-Math.floor(v);};
-function field(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);x-=ix;y-=iy;z-=iz;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);let result=0;for(let k=0;k<2;k++)for(let j=0;j<2;j++)for(let i=0;i<2;i++)result+=hash(ix+i,iy+j,iz+k)*(i?x:1-x)*(j?y:1-y)*(k?z:1-z);return result;}
+export function field(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);x-=ix;y-=iy;z-=iz;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);let result=0;for(let k=0;k<2;k++)for(let j=0;j<2;j++)for(let i=0;i<2;i++)result+=hash(ix+i,iy+j,iz+k)*(i?x:1-x)*(j?y:1-y)*(k?z:1-z);return result;}
 export function province(n){const s=world.seed*.137;return .7*field(n.x*4+s,n.y*4+17,n.z*4-s*.7)+.3*field(n.x*11+7,n.y*11+s*.3,n.z*11+31);}
 export function climate(n,elevation){
  const moisture=smooth(.27,.72,province({x:n.z,y:n.x,z:n.y}));

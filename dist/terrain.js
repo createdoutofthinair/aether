@@ -1,5 +1,6 @@
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=regions-1';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=perf-1';
+import {world,environment,climate,province} from './world.js?v=regions-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -12,11 +13,13 @@ function baseHeight(n){const localDistance=environment.basin?R*Math.sqrt(Math.ma
  const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);
  return mix(regional,h,T.MathUtils.smoothstep(d,4200,6500));}
 export function height(n){
+ const region=regionAt(n);if(region?.weight===1)return regionHeight(region)*world.relief;
  const h=baseHeight(n)*world.relief;
  const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing))),outside=environment.basin?T.MathUtils.smoothstep(distance,4200,6500):1;
  const c=climate(n,h),p=province(n);
  const dunes=Math.sin(n.x*R/55+n.z*R/95+noise(n.x*130,n.y*130,n.z*130)*5);
- return h+outside*(c.dunes*dunes*7+Math.pow(Math.max(0,p-.55),2)*world.activity*1500)*world.relief;
+ const original=h+outside*(c.dunes*dunes*7+Math.pow(Math.max(0,p-.55),2)*world.activity*1500)*world.relief;
+ return region?mix(original,regionHeight(region)*world.relief,region.weight):original;
 }
 const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
 const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
@@ -67,6 +70,7 @@ export function basinHeight(x,z){
  return floor+shoulders+resistant*bank*17-gullies+broken+talus+gravel;
 }
 export function surfaceGeology(d){
+ const region=regionAt(d);if(region?.id==='badlands'){const h=regionHeight(region),deposition=1-T.MathUtils.smoothstep(h,190,550);return[deposition,1-deposition,region.weight];}
  if(!environment.basin)return[0,0,0];
  const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
  if(regional===0)return[0,0,0];
@@ -74,6 +78,13 @@ export function surfaceGeology(d){
  return[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
 }
 
+export function surfaceClimate(d,elevation){const c=climate(d,elevation),r=regionAt(d);if(!r||c.ocean)return c;const cover=r.weight*(1-c.ice);if(r.id==='volcanic'){c.volcanic=mix(c.volcanic,.92,cover);c.dunes*=1-cover;}else if(r.id==='dunes'){c.dunes=mix(c.dunes,.98,cover);c.volcanic*=1-cover;}else{c.volcanic*=1-cover;c.dunes*=1-cover;}if(r.weight>.5&&c.ice<.55)c.biome=r.name;return c;}
+export function regionLanding(region){
+ let best=null,score=Infinity;for(let ring=0;ring<5;ring++)for(let i=0;i<(ring?8:1);i++){
+  const angle=i*Math.PI/4,d=new T.Vector3().copy(regionDirection(region,region.site[0]+Math.cos(angle)*ring*110,region.site[1]+Math.sin(angle)*ring*110)),h=height(d);if(climate(d,h).ocean)continue;
+  const slope=1-surfaceNormal(d).dot(d),cost=slope+ring*.0003;if(slope<.04&&cost<score){best=d;score=cost;}
+ }return best;
+}
 export function surface(p){return R+height(p.clone().normalize());}
 export function basis(up){let east=new T.Vector3(0,1,0).cross(up);if(east.lengthSq()<.001)east.set(1,0,0);east.normalize();let north=new T.Vector3().crossVectors(up,east).normalize();return{east,north};}
 // Sample the continuous height field, independent of patch boundaries or LOD.
@@ -88,7 +99,7 @@ export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
  build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=climate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,Math.min(100,n.size*R/N*.25)));normals.push(sn.x,sn.y,sn.z);}
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,Math.min(100,n.size*R/N*.25)));normals.push(sn.x,sn.y,sn.z);}
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=j*(N+1)+i,b=a+N+1;indices.push(a,a+1,b,a+1,b+1,b);}
  // Radial skirts close unequal-LOD edges and cube-face boundaries.
  let edge=[];for(let i=0;i<=N;i++)edge.push(i);for(let j=1;j<=N;j++)edge.push(j*(N+1)+N);for(let i=N-1;i>=0;i--)edge.push(N*(N+1)+i);for(let j=N-1;j>0;j--)edge.push(j*(N+1));

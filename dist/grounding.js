@@ -1,6 +1,7 @@
-import {world,climate} from './world.js?v=perf-1';
+import {regionAt} from './regions.js?v=regions-1';
+import {world,environment,climate} from './world.js?v=regions-1';
 import * as T from './vendor/three.module.js';
-import {R,faces,direction,noise,landing,basinCoordinates,basinProfile} from './terrain.js?v=perf-1';
+import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate} from './terrain.js?v=regions-1';
 const hash=(a,b,c)=>{const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);};
 // IDs and positions depend only on planet cells, not camera position or travel history.
 export function rockCandidates(p,radius=330,div=2048){
@@ -13,10 +14,11 @@ export function rockCandidates(p,radius=330,div=2048){
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)for(let k=0;k<2;k++){
    const seed=f*2+k,d=direction(f,-1+(x+hash(x,y,seed+1))*step,-1+(y+hash(x,y,seed+17))*step);
    if(d.distanceTo(up)*R>radius)continue;
-   const local=basinCoordinates(d),nearBasin=d.distanceTo(landing)*R<4200,bank=nearBasin?basinProfile(local.x,local.z).bank:.5;
-   if(hash(x,y,seed+71)>.25+.7*bank)continue;
-   const outcrop=div===2048&&bank>.6&&hash(x,y,seed+81)>.86;
-   result.push({variant:Math.floor(hash(x,y,seed+101)*8),tint:.80+hash(x,y,seed+111)*.28,outcrop,id:`${f}/${x}/${y}/${k}`,direction:d,size:outcrop?3+hash(x,y,seed+31)*5:.15+hash(x,y,seed+31)**3*2.7,angle:hash(x,y,seed+57)*Math.PI*2});
+   const local=basinCoordinates(d),nearBasin=environment.basin&&d.distanceTo(landing)*R<4200,bank=nearBasin?basinProfile(local.x,local.z).bank:.5;
+   const region=regionAt(d),sand=region?.id==='dunes'?region.weight:0;
+   if(hash(x,y,seed+71)>(.25+.7*bank)*(1-sand*.94))continue;
+   const outcrop=sand<.5&&div===2048&&bank>.6&&hash(x,y,seed+81)>.86;
+   result.push({variant:region?.id==='volcanic'?[1,3,5,6][Math.floor(hash(x,y,seed+101)*4)]:region?.id==='badlands'?[2,4,6,7][Math.floor(hash(x,y,seed+101)*4)]:Math.floor(hash(x,y,seed+101)*8),tint:.80+hash(x,y,seed+111)*.28,outcrop,id:`${f}/${x}/${y}/${k}`,direction:d,size:(outcrop?3+hash(x,y,seed+31)*5:.15+hash(x,y,seed+31)**3*2.7)*(1-sand*.6),angle:hash(x,y,seed+57)*Math.PI*2});
   }
  }
  return result;
@@ -93,7 +95,7 @@ export class RockField{
   for(const r of this.items){
    const mesh=this.meshes[r.variant];if(mesh.count>=mesh.instanceMatrix.count)continue;
    const hit=this.terrain.sample(r.direction),size=r.size*(this.small?.14:1);
-   const region=climate(r.direction,hit.point.length()-R);if(region.ocean)continue;
+   const region=surfaceClimate(r.direction,hit.point.length()-R);if(region.ocean)continue;
    dummy.quaternion.setFromUnitVectors(up,hit.normal);dummy.rotateY(r.angle);
    let foundation=0;
    if(size>2){

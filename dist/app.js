@@ -1,11 +1,11 @@
-import {systemExplorer} from './system-ui.js?v=perf-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=perf-1';
-import {createAtlas} from './atlas.js?v=perf-1';
+import {systemExplorer} from './system-ui.js?v=regions-1';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=regions-1';
+import {createAtlas} from './atlas.js?v=regions-1';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js?v=perf-1';
-import {RockField,wheelLift} from './grounding.js?v=perf-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=perf-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=regions-1';
+import {RockField,wheelLift} from './grounding.js?v=regions-1';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=regions-1';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -106,7 +106,7 @@ let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((
  const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}
- hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');document.querySelector('.world small').textContent=climate(p,height(p)).biome.toUpperCase();$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}
+ hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');document.querySelector('.world small').textContent=surfaceClimate(p,height(p)).biome.toUpperCase();$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}
 }label();orient(landing,yaw,pitch);requestAnimationFrame(frame);
 window.planetExplorer={getState:()=>({mode,altitude:camPos.length()-surface(camPos),patches:terrain.count,roverReady,paused}),land:startDescent,orbit:startAscent,freeFlight};
 if(document.modelContext?.registerTool){const lifecycle=new AbortController();for(const [name,fn,desc]of [['land_on_planet',startDescent,'Start a seamless guided descent and enter rover mode.'],['return_to_orbit',startAscent,'Start a seamless ascent to orbit.'],['enter_free_flight',freeFlight,'Switch to free flight at the current position.']]){try{Promise.resolve(document.modelContext.registerTool({name,description:desc,inputSchema:{type:'object',properties:{},additionalProperties:false},execute:input=>{if(input&&Object.keys(input).length)throw Error('No arguments expected');return fn();}},{signal:lifecycle.signal})).catch(console.warn);}catch(e){console.warn(e);}}addEventListener('pagehide',()=>lifecycle.abort(),{once:true});}

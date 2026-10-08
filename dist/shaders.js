@@ -56,6 +56,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float footprint=max(length(terrainDx),length(terrainDy));
  float province=mix(ns(vPlanet*.002),.5,smoothstep(.5,2.,footprint*.002)),deposits=mix(ns(vPlanet*.018),.5,smoothstep(.5,2.,footprint*.018)),grain=mix(ns(vPlanet*.19),.5,smoothstep(.5,2.,footprint*.19));
  float deposition=vSurfaceData.r*vSurfaceData.b,bedrock=vSurfaceData.g*vSurfaceData.b;
+ float badlands=vSurfaceData.b*(1.-vBiome.y)*(1.-vBiome.z)*(1.-vBiome.x);
  float exposed=smoothstep(.035,.22,slope)+(province-.5)*.22+bedrock*.28-deposition*sedimentCover*.30+(1.-sedimentCover)*.5;
  float rockWeight=clamp(exposed,0.,1.);
  rockWeight=mix(rockWeight,1.,vBiome.y);rockWeight*=1.-vBiome.z*.75;
@@ -81,12 +82,20 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),mix(ns(vPlanet*.008),.5,smoothstep(.5,2.,footprint*.008)));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
- diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.40,.43,.47),clamp(vBiome.y*2.,0.,1.));
- diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.55,.39,.19)*(.85+.22*province),vBiome.z*.5);
+ // Macro mineral colours survive the detail fade; scanned luminance supplies close texture.
+ float surfaceLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+ float beds=ns(vec3(elevation*.012+province*1.5,11.,7.));
+ vec3 sandstone=mix(vec3(.28,.105,.045),vec3(.62,.43,.25),beds);
+ sandstone=mix(sandstone,vec3(.53,.44,.31),deposition*.8);
+ diffuseColor.rgb=mix(diffuseColor.rgb,sandstone*(.72+clamp(surfaceLuma,0.,.7)),badlands*.86);
+ vec3 basalt=mix(vec3(.095,.11,.13),vec3(.19,.14,.10),smoothstep(.55,.82,province));
+ diffuseColor.rgb=mix(diffuseColor.rgb,basalt*(.75+clamp(surfaceLuma,0.,.7)),clamp(vBiome.y*1.12,0.,1.));
+ vec3 fineSand=mix(vec3(.46,.29,.105),vec3(.64,.47,.24),province);
+ diffuseColor.rgb=mix(diffuseColor.rgb,fineSand*(.90+clamp(surfaceLuma,0.,.7)*.32),vBiome.z*.93);
  diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.68,.79,.84)*(.9+.1*grain),vBiome.x*(1.-smoothstep(.2,.65,slope)));
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
- roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);`);
+ roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);`);
  s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
  vec3 gradient=vec3(0.);
  if(detailed>0.){
@@ -94,6 +103,11 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   if(weights.y>.01)gradient+=triGradient(sandNormal,sp,w,.5)*weights.y;
   if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w,1./1.5)*weights.z;
  }
+ gradient*=1.-vBiome.z*.88;
+ vec3 wind=normalize(vec3(.88,.12,.47));
+ float ripplePhase=dot(vPlanet,wind)*18.+ns(vPlanet*.06)*2.;
+ wind-=gn*dot(wind,gn);
+ gradient+=wind*cos(ripplePhase)*.09*vBiome.z*(1.-smoothstep(.03,.18,footprint));
  gradient-=gn*dot(gn,gradient);
  normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*detailed*(1.-vBiome.x*.8)));
  `);
