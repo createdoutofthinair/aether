@@ -14,8 +14,8 @@ export function surfaceNormal(d){const {east,north}=basis(d),eps=.75,at=R+height
  const dhE=(height(d.clone().addScaledVector(east,eps/R).normalize())-height(d.clone().addScaledVector(east,-eps/R).normalize()))/(2*eps);
  const dhN=(height(d.clone().addScaledVector(north,eps/R).normalize())-height(d.clone().addScaledVector(north,-eps/R).normalize()))/(2*eps);
  return d.clone().addScaledVector(east,-dhE*R/at).addScaledVector(north,-dhN*R/at).normalize();}
-const faces=[[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]]].map(f=>f.map(v=>new T.Vector3(...v)));
-function direction(face,u,v){return faces[face][0].clone().addScaledVector(faces[face][1],u).addScaledVector(faces[face][2],v).normalize();}
+export const faces=[[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]]].map(f=>f.map(v=>new T.Vector3(...v)));
+export function direction(face,u,v){return faces[face][0].clone().addScaledVector(faces[face][1],u).addScaledVector(faces[face][2],v).normalize();}
 const N=16;
 export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
@@ -46,7 +46,7 @@ export class PlanetTerrain{
  if(this.cache.size>1500)for(const [k,n]of this.cache){if(n.l>3&&n.stamp<this.frame-12&&n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();n.mesh=null;}}
  }
  stitchEdges(){
-  const visible=new Map(this.active.map(n=>[n.key,n]));
+  const visible=new Map(this.active.map(n=>[n.key,n]));this.visibleNodes=visible;
   for(const n of this.active){const g=n.mesh.geometry,pa=g.attributes.position,na=g.attributes.normal,wa=g.attributes.planetPosition;
    for(let k=0;k<n.edge.length;k++){const ix=n.edge[k],i=ix%(N+1),j=Math.floor(ix/(N+1)),u=n.u+n.size*i/N,v=n.v+n.size*j/N;
     // Probe across this edge, including cube-face transitions.
@@ -66,6 +66,27 @@ export class PlanetTerrain{
    }
    pa.needsUpdate=true;na.needsUpdate=true;wa.needsUpdate=true;
   }
+ }
+
+ // Contact is evaluated against the actual stitched triangles, never skirts.
+ sample(p){
+  const d=p.clone().normalize();let f=0,den=-Infinity;
+  for(let i=0;i<6;i++){const dot=d.dot(faces[i][0]);if(dot>den){den=dot;f=i;}}
+  const u=d.dot(faces[f][1])/den,v=d.dot(faces[f][2])/den;
+  let n;
+  for(let l=13;l>=0;l--){const div=2**l,x=T.MathUtils.clamp(Math.floor((u+1)*.5*div),0,div-1),y=T.MathUtils.clamp(Math.floor((v+1)*.5*div),0,div-1);n=this.visibleNodes?.get([f,l,x,y].join('/'));if(n)break;}
+  if(n){
+   const x=T.MathUtils.clamp(Math.floor((u-n.u)/n.size*N),0,N-1),y=T.MathUtils.clamp(Math.floor((v-n.v)/n.size*N),0,N-1);
+   const ray=new T.Ray(d.clone().multiplyScalar(R+10000).sub(n.anchor),d.clone().negate()),pa=n.mesh.geometry.attributes.position;
+   for(const dy of [0,-1,1])for(const dx of [0,-1,1]){
+    const xx=x+dx,yy=y+dy;if(xx<0||xx>=N||yy<0||yy>=N)continue;const a=yy*(N+1)+xx,b=a+N+1;
+   for(const ids of [[a,a+1,b],[a+1,b+1,b]]){
+    const vs=ids.map(i=>new T.Vector3().fromBufferAttribute(pa,i)),hit=ray.intersectTriangle(...vs,false,new T.Vector3());
+    if(hit){const normal=new T.Triangle(...vs).getNormal(new T.Vector3());if(normal.dot(d)<0)normal.negate();return{point:hit.add(n.anchor),normal};}
+   }
+   }
+  }
+  return{point:d.clone().multiplyScalar(R+height(d)),normal:surfaceNormal(d)};
  }
 
  generate(){let t=performance.now(),count=0;while(this.queue.length&&count<4&&performance.now()-t<7){let {n}=this.queue.shift();if(!n.mesh){this.build(n);count++;}}return count;}

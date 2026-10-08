@@ -1,6 +1,7 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {R,landing,height,surface,basis,PlanetTerrain,noise} from './terrain.js';
+import {RockField,wheelLift} from './grounding.js';
 import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 let renderer;
@@ -30,10 +31,21 @@ function loadRover(onLoad,onProgress,onError){
   new GLTFLoader().parse(bytes,'./',onLoad,onError);
  }).catch(onError);
 }
-loadRover(g=>{g.scene.rotation.y=-Math.PI/2;g.scene.updateMatrixWorld(true);const box=new T.Box3().setFromObject(g.scene);g.scene.position.y=-box.min.y-.95;rover.add(g.scene);g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}if(/^Wheel_[LR][0-2]$/.test(o.name))wheels.push({node:o,base:o.quaternion.clone()});});roverReady=true;},undefined,e=>{console.error(e);$('message').textContent='Rover asset unavailable. Free flight still works.';});
-// Instanced local debris: rebuilt only after travelling 100 m.
-const rockGeo=new T.IcosahedronGeometry(1,1),rockMat=new T.MeshStandardMaterial({map:textures.rock,normalMap:textures.rn,roughnessMap:textures.rr,color:0xb3a393,roughness:.9});const rocks=new T.InstancedMesh(rockGeo,rockMat,420);rocks.castShadow=true;rocks.receiveShadow=true;rocks.visible=false;root.add(rocks);let rockCentre=new T.Vector3(1e9,0,0);const dummy=new T.Object3D();
-function updateRocks(p){if(p.distanceTo(rockCentre)<100)return;rockCentre.copy(p);const up=p.clone().normalize(),{east,north}=basis(up);const cellX=Math.round(p.x/100),cellY=Math.round(p.y/100),cellZ=Math.round(p.z/100);for(let i=0;i<420;i++){let a=noise(i*5.27,cellX,cellZ)*Math.PI*2,dist=18+noise(i*2.31,cellY,cellX)*280;let d=p.clone().addScaledVector(east,Math.cos(a)*dist).addScaledVector(north,Math.sin(a)*dist).normalize();let s=.15+Math.pow(noise(i*7.17,cellZ,cellY),3)*2.7;dummy.position.copy(d).multiplyScalar(R+height(d)+s*.1).sub(rockCentre);dummy.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d);dummy.rotateY(a);dummy.scale.set(s*1.2,s*.65,s);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);}rocks.position.copy(rockCentre);rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();}
+loadRover(g=>{
+ g.scene.rotation.y=-Math.PI/2;g.scene.updateMatrixWorld(true);
+ const box=new T.Box3().setFromObject(g.scene);g.scene.position.y=-box.min.y-.95;rover.add(g.scene);rover.updateMatrixWorld(true);
+ const inverse=rover.matrixWorld.clone().invert();
+ g.scene.traverse(o=>{
+  if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}
+  if(!/^Wheel_[LR][0-2]$/.test(o.name))return;
+  const local=new T.Matrix4().multiplyMatrices(inverse,o.matrixWorld),invWheel=o.matrixWorld.clone().invert();let radius=0,halfWidth=0;
+  o.traverse(part=>{if(!part.isMesh)return;const m=new T.Matrix4().multiplyMatrices(invWheel,part.matrixWorld),a=part.geometry.attributes.position;
+   for(let i=0;i<a.count;i++){const v=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(m);radius=Math.max(radius,Math.hypot(v.x,v.y));halfWidth=Math.max(halfWidth,Math.abs(v.z));}
+  });
+  wheels.push({node:o,base:o.quaternion.clone(),basePosition:o.position.clone(),center:new T.Vector3().setFromMatrixPosition(local),axle:new T.Vector3(0,0,1).transformDirection(local),radius,halfWidth});
+ });roverReady=true;
+},undefined,e=>{console.error(e);$('message').textContent='Rover asset unavailable. Free flight still works.';});
+const rocks=new RockField(root,textures,terrain);
 const keys=new Set();let dragging=false,prevPointer=null;const canvas=renderer.domElement;
 canvas.addEventListener('pointerdown',e=>{dragging=true;prevPointer=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-prevPointer[0],dy=e.clientY-prevPointer[1];prevPointer=[e.clientX,e.clientY];if(mode==='rover'){roverAngle-=dx*.005;roverPitch=clamp(roverPitch+dy*.004,.08,1.2);}else if(!transition){yaw-=dx*.004;pitch=clamp(pitch-dy*.004,-1.55,1.55);}});for(const ev of ['pointerup','pointercancel'])canvas.addEventListener(ev,()=>dragging=false);canvas.addEventListener('wheel',e=>{e.preventDefault();if(mode==='rover')roverZoom=clamp(roverZoom+e.deltaY*.01,5,35);else flightMultiplier=clamp(flightMultiplier*Math.exp(-e.deltaY*.001),.1,8);},{passive:false});
 function togglePause(){paused=!paused;keys.clear();$('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?'Resume simulation':'Pause simulation');$('message').textContent=paused?'Paused · Press P to resume':mode==='rover'?'Arrow keys to drive · Space to brake · Drag to orbit the camera':'Drag to look · Scroll adjusts flight speed';return{paused};}
@@ -51,10 +63,26 @@ function transitionStep(dt){const tr=transition;tr.time+=dt;let t=clamp(tr.time/
 function drive(dt){let up=roverPos.clone().normalize(),{east,north}=basis(up);const throttle=(key('KeyW','ArrowUp')?1:0)-(key('KeyS','ArrowDown')?1:0),steer=(key('KeyA','ArrowLeft')?1:0)-(key('KeyD','ArrowRight')?1:0);let forward=north.clone().multiplyScalar(Math.cos(roverHeading)).addScaledVector(east,Math.sin(roverHeading));let ahead=roverPos.clone().addScaledVector(forward,2).normalize(),behind=roverPos.clone().addScaledVector(forward,-2).normalize(),slope=(height(ahead)-height(behind))/4;
  roverSpeed+=((throttle*5.5)-slope*3.7-roverSpeed*.10)*dt;roverSpeed*=Math.exp(-dt*(keys.has('Space')?8:throttle?0:.8));roverSpeed=clamp(roverSpeed,-7,19);roverHeading-=steer*clamp(Math.abs(roverSpeed)/5,0,1.1)*dt*Math.sign(roverSpeed||1);roverPos.addScaledVector(forward,roverSpeed*dt);up=roverPos.clone().normalize();
  // Stable spring-damper vertical contact, integrated at 120 Hz by caller.
- const desired=height(up)+1.05;roverVertical+=((desired-roverHeight)*100-roverVertical*18)*dt;roverHeight+=roverVertical*dt;if(roverHeight<desired-.35){roverHeight=desired-.35;roverVertical=Math.max(roverVertical,0);}roverPos.copy(up).multiplyScalar(R+roverHeight);
+ const supportHeights=wheels.map(w=>{
+  const offset=w.center.clone().applyQuaternion(rover.quaternion),center=up.clone().multiplyScalar(R+roverHeight).add(offset),axle=w.axle.clone().applyQuaternion(rover.quaternion);
+  return roverHeight+wheelLift(center,up,axle,w.radius,w.halfWidth,terrain);
+ });
+ const desired=supportHeights.length?supportHeights.reduce((a,b)=>a+b,0)/supportHeights.length:height(up)+1.05;roverVertical+=((desired-roverHeight)*100-roverVertical*18)*dt;roverHeight+=roverVertical*dt;if(roverHeight<desired-.35){roverHeight=desired-.35;roverVertical=Math.max(roverVertical,0);}roverPos.copy(up).multiplyScalar(R+roverHeight);
  const b=basis(up);forward=b.north.multiplyScalar(Math.cos(roverHeading)).addScaledVector(b.east,Math.sin(roverHeading));let right=new T.Vector3().crossVectors(forward,up).normalize(),df=(height(roverPos.clone().addScaledVector(forward,2).normalize())-height(roverPos.clone().addScaledVector(forward,-2).normalize()))/4,dr=(height(roverPos.clone().addScaledVector(right,1.2).normalize())-height(roverPos.clone().addScaledVector(right,-1.2).normalize()))/2.4;let groundUp=up.clone().addScaledVector(forward,-df).addScaledVector(right,-dr).normalize();forward.addScaledVector(groundUp,-forward.dot(groundUp)).normalize();right.crossVectors(forward,groundUp).normalize();let mat=new T.Matrix4().makeBasis(right,groundUp,forward.clone().negate()),q=new T.Quaternion().setFromRotationMatrix(mat);rover.quaternion.slerp(q,1-Math.exp(-dt*9));rover.position.copy(roverPos);
- wheelSpin+=roverSpeed*dt/.65;for(const w of wheels){w.node.quaternion.copy(w.base);w.node.rotateZ(wheelSpin);}
+ wheelSpin+=roverSpeed*dt;
+ groundWheels();
  speed=Math.abs(roverSpeed);
+}
+function groundWheels(){
+ const up=new T.Vector3(0,1,0).applyQuaternion(rover.quaternion);
+ for(const w of wheels){
+  const center=w.center.clone().applyQuaternion(rover.quaternion).add(roverPos),axle=w.axle.clone().applyQuaternion(rover.quaternion);
+  let lift=wheelLift(center,up,axle,w.radius,w.halfWidth,terrain);
+  // Re-sample after lateral movement on a slope, including newly stitched LODs.
+  lift+=wheelLift(center.clone().addScaledVector(up,lift),up,axle,w.radius,w.halfWidth,terrain);
+  w.node.position.copy(w.basePosition);w.node.position.y+=lift;
+  w.node.quaternion.copy(w.base);w.node.rotateZ(wheelSpin/w.radius);
+ }
 }
 function roverCamera(dt){const up=roverPos.clone().normalize(),b=basis(up),heading=roverHeading+roverAngle,back=b.north.multiplyScalar(-Math.cos(heading)).addScaledVector(b.east,-Math.sin(heading));let desired=roverPos.clone().addScaledVector(back,roverZoom*Math.cos(roverPitch)).addScaledVector(up,2+roverZoom*Math.sin(roverPitch));desired.setLength(Math.max(desired.length(),surface(desired)+2));camPos.lerp(desired,1-Math.exp(-dt*4));camPos.setLength(Math.max(camPos.length(),surface(camPos)+1.5));camera.up.copy(up);camera.position.set(0,0,0);camera.lookAt(roverPos.clone().addScaledVector(up,1).sub(camPos));camera.updateMatrixWorld();}
 let last=performance.now(),lodTimer=1,hudTimer=0,accumulator=0,frames=0,fps=60,ready=false;
@@ -62,7 +90,7 @@ manager.onLoad=()=>{$('loadText').textContent='Preparing orbital view…';ready=
 manager.onError=url=>console.warn('Texture unavailable:',url);
 let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
  root.position.copy(camPos).negate();camera.near=clamp((camPos.length()-surface(camPos))*.0005,.15,80);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){sun.position.copy(roverPos).sub(camPos).addScaledVector(sunDir,150);sun.target.position.copy(roverPos).sub(camPos);}hemi.position.copy(camPos).normalize();
- const altitude=camPos.length()-surface(camPos);rocks.visible=altitude<500;if(rocks.visible)updateRocks(mode==='rover'?roverPos:camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();
+ const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();rocks.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}
  hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}
