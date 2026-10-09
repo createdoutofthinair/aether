@@ -6,7 +6,7 @@ const app=await readFile(new URL('../dist/app.js',import.meta.url),'utf8');
 const ocean=shader.slice(shader.indexOf('export function patchOcean'));
 
 assert.match(ocean,/seaTemperature,seaRadius,seaTime/,'ocean shader declares its animated surface uniforms');
-assert.match(ocean,/seaDisc<0\)discard/,'ocean still rejects rays that miss the analytic sphere');
+assert.match(ocean,/seaDisc<0\.\)discard/,'ocean still rejects rays that miss the analytic sphere');
 assert.match(ocean,/gl_FragDepth=seaClip\.z\/seaClip\.w\*\.5\+\.5/,'ocean writes depth from the analytic sphere hit');
 assert.match(ocean,/fresnel=pow\(/,'ocean has view-angle reflection response');
 assert.match(ocean,/phaseA=.*seaTime/,'ocean wave phase animates over time');
