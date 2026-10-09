@@ -137,7 +137,7 @@ void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view
 
 export function patchOcean(material,seaTemperature,oceanState){material.onBeforeCompile=s=>{
  Object.assign(s.uniforms,{seaTemperature,...oceanState});
- s.fragmentShader=`uniform float seaTemperature,seaRadius;uniform vec3 seaCamera;uniform mat4 seaProjection;
+ s.fragmentShader=`uniform float seaTemperature,seaRadius,seaTime;uniform vec3 seaCamera,seaSunDir;uniform mat4 seaProjection;
 `+s.fragmentShader;
  s.fragmentShader=s.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
  // Intersect the actual sphere, not the planar triangles of its draw mesh.
@@ -156,9 +156,33 @@ export function patchOcean(material,seaTemperature,oceanState){material.onBefore
  s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
  float seaLatitude=normalize(seaPoint).y;
  float frozen=1.-smoothstep(-8.,0.,seaTemperature-58.*seaLatitude*seaLatitude);
- diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.67,.72),frozen);
+ vec3 seaNormal=normalize(seaPoint);
+ vec3 viewDir=normalize(-vViewPosition);
+ vec3 normalView=normalize(mat3(viewMatrix)*seaNormal);
+ float fresnel=pow(1.-clamp(dot(normalView,viewDir),0.,1.),5.);
+ vec3 waveA=normalize(vec3(.82,0.,.57)),waveB=normalize(vec3(-.31,.88,.35));
+ vec3 tangentA=normalize(waveA-seaNormal*dot(waveA,seaNormal));
+ vec3 tangentB=normalize(waveB-seaNormal*dot(waveB,seaNormal));
+ float phaseA=dot(seaPoint,waveA)*.035+seaTime*.72;
+ float phaseB=dot(seaPoint,waveB)*.082-seaTime*.48;
+ vec3 waveGradient=tangentA*cos(phaseA)*.055+tangentB*cos(phaseB)*.025;
+ vec3 wavyNormal=normalize(seaNormal-waveGradient);
+ vec3 wavyView=normalize(mat3(viewMatrix)*wavyNormal);
+ vec3 sunView=normalize(mat3(viewMatrix)*seaSunDir);
+ float sunGlint=pow(max(dot(reflect(-viewDir,wavyView),sunView),0.),220.);
+ vec3 oceanReflection=mix(vec3(.025,.13,.20),vec3(.34,.56,.62),fresnel*.82);
+ diffuseColor.rgb=mix(diffuseColor.rgb,oceanReflection,1.-frozen);
+ diffuseColor.rgb+=vec3(1.,.88,.68)*sunGlint*.9*(1.-frozen);
+ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.60,.73,.78),frozen);
+ `);
+ s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+ roughnessFactor=mix(.16,.58,frozen);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
- normal=normalize(mat3(viewMatrix)*normalize(seaPoint));
+ vec3 seaN=normalize(seaPoint),viewDir=normalize(-vViewPosition);
+ vec3 waveA=normalize(vec3(.82,0.,.57)),waveB=normalize(vec3(-.31,.88,.35));
+ vec3 tangentA=normalize(waveA-seaN*dot(waveA,seaN)),tangentB=normalize(waveB-seaN*dot(waveB,seaN));
+ float phaseA=dot(seaPoint,waveA)*.035+seaTime*.72,phaseB=dot(seaPoint,waveB)*.082-seaTime*.48;
+ normal=normalize(mat3(viewMatrix)*normalize(seaN-tangentA*cos(phaseA)*.055-tangentB*cos(phaseB)*.025));
  `);
 };}
