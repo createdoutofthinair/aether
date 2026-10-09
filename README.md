@@ -80,3 +80,7 @@ These regions change geometry, distant colour, roughness, fine surface normals a
 ### Stable local shadows
 
 The rover shadow map uses a 48 m footprint at 2048² resolution and radius-2 PCF filtering. Its light-space grid is snapped in planet coordinates before applying the floating origin, reducing camera-induced shimmer. This retains the existing map memory budget. Shadows remain local to rover mode; distant terrain dark areas are surface lighting, not this shadow map. `scripts/test-shadows.mjs` checks camera invariance and polar light directions.
+
+### Water edge stability
+
+Ocean fragments intersect an analytic sea-level sphere and write its projected depth, eliminating planar ocean-triangle depth errors at shorelines. Surface normals and ice latitude use that same sphere. Approach cameras use a tighter near plane for depth precision; balanced quality retains 2× MSAA where supported (high uses 4×). Terrain geomorphing still changes the shoreline as terrain detail resolves; this is not temporal antialiasing.

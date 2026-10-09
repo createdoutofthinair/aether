@@ -1,6 +1,6 @@
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=shadows-1';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=water-1';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=shadows-1';
+import {world,environment,climate,province} from './world.js?v=water-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;

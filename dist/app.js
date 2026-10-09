@@ -1,12 +1,12 @@
-import {positionSunShadow} from './shadows.js?v=shadows-1';
-import {systemExplorer} from './system-ui.js?v=shadows-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=shadows-1';
-import {createAtlas} from './atlas.js?v=shadows-1';
+import {positionSunShadow} from './shadows.js?v=water-1';
+import {systemExplorer} from './system-ui.js?v=water-1';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=water-1';
+import {createAtlas} from './atlas.js?v=water-1';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=shadows-1';
-import {RockField,wheelLift} from './grounding.js?v=shadows-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=shadows-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=water-1';
+import {RockField,wheelLift} from './grounding.js?v=water-1';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=water-1';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -21,14 +21,15 @@ const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_g
 const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
 const ocean=new T.Mesh(new T.SphereGeometry(1,512,256),new T.MeshStandardMaterial({color:0x194456,roughness:.28,metalness:.08}));ocean.scale.setScalar(R+world.water);root.add(ocean);
 const seaTemperature={value:world.temperature};
-patchOcean(ocean.material,seaTemperature);
+const oceanState={seaRadius:{value:R+world.water},seaCamera:{value:camPos},seaProjection:{value:camera.projectionMatrix}};
+patchOcean(ocean.material,seaTemperature,oceanState);
 // Linear offscreen scene with real depth, followed by atmosphere integration.
 const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});target.samples=Math.min(4,renderer.capabilities.maxSamples);target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
 const uniforms={sceneColor:{value:target.texture},sceneDepth:{value:target.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},origin:{value:camPos},sunDir:{value:sunDir},cameraNear:{value:camera.near},cameraFar:{value:camera.far},air:{value:1},exposure:{value:1.1},quality:{value:1}};
 const postScene=new T.Scene(),postCamera=new T.OrthographicCamera(-1,1,1,-1,0,1),postMaterial=new T.ShaderMaterial({uniforms,vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment,depthTest:false,depthWrite:false});postScene.add(new T.Mesh(new T.PlaneGeometry(2,2),postMaterial));
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();const size=renderer.getDrawingBufferSize(new T.Vector2());target.setSize(size.x,size.y);}resize();addEventListener('resize',resize);
 $('sediment').oninput=()=>{surfaceControls.sediment.value=+$('sediment').value/100;$('sedimentValue').value=$('sediment').value+'%';};
-$('air').oninput=()=>{uniforms.air.value=+$('air').value/100;world.pressure=uniforms.air.value;$('airValue').value=uniforms.air.value.toFixed(1)+'×';};$('exposure').oninput=()=>{uniforms.exposure.value=+$('exposure').value/100;$('exposureValue').value=uniforms.exposure.value.toFixed(1)+'×';};$('quality').onchange=()=>{terrain.quality=$('quality').value;uniforms.quality.value=terrain.quality==='high'?1:0;renderer.setPixelRatio(Math.min(devicePixelRatio,terrain.quality==='high'?1.5:1));target.samples=terrain.quality==='high'?Math.min(4,renderer.capabilities.maxSamples):0;target.dispose();resize();};
+$('air').oninput=()=>{uniforms.air.value=+$('air').value/100;world.pressure=uniforms.air.value;$('airValue').value=uniforms.air.value.toFixed(1)+'×';};$('exposure').oninput=()=>{uniforms.exposure.value=+$('exposure').value/100;$('exposureValue').value=uniforms.exposure.value.toFixed(1)+'×';};$('quality').onchange=()=>{terrain.quality=$('quality').value;uniforms.quality.value=terrain.quality==='high'?1:0;renderer.setPixelRatio(Math.min(devicePixelRatio,terrain.quality==='high'?1.5:1));target.samples=Math.min(terrain.quality==='high'?4:2,renderer.capabilities.maxSamples);target.dispose();resize();};
 let mode='orbit',paused=false,transition=null,yaw=.12,pitch=-1.4,flightMultiplier=1,roverYaw=0,roverSpeed=0,roverHeight=0,roverVertical=0,roverReady=false,roverAngle=.5,roverPitch=.26,roverZoom=13,roverHeading=0;
 const roverPos=landing.clone().multiplyScalar(R+height(landing)+1.05),rover=new T.Group();root.add(rover);rover.visible=false;const wheels=[];let wheelSpin=0;
 // Lossless compression keeps the original rover geometry and embedded textures intact.
@@ -57,7 +58,7 @@ loadRover(g=>{
 const rocks=new RockField(root,textures,terrain),pebbles=new RockField(root,textures,terrain,true);
 let selectedSite=landing.clone();
 function orbitSite(site){selectedSite.copy(site);transition=null;mode='orbit';rover.visible=false;roverSpeed=0;roverVertical=0;camPos.copy(site).multiplyScalar(R+75000);yaw=0;pitch=-1.4;lightAnchor.copy(site);updateSun();label();$('message').textContent='Orbit above selected site · Choose Land & explore';}
-function applyWorld(remember=true){terrain.reset();seaTemperature.value=world.temperature;ocean.visible=environment.waterEnabled;ocean.scale.setScalar(R+world.water);uniforms.air.value=world.pressure;$('air').value=world.pressure*100;$('airValue').value=world.pressure.toFixed(1)+'×';orbitSite(selectedSite);if(remember)systemExplorer.remember({config:{...world},environment:{...environment}});}
+function applyWorld(remember=true){terrain.reset();seaTemperature.value=world.temperature;oceanState.seaRadius.value=R+world.water;ocean.visible=environment.waterEnabled;ocean.scale.setScalar(R+world.water);uniforms.air.value=world.pressure;$('air').value=world.pressure*100;$('airValue').value=world.pressure.toFixed(1)+'×';orbitSite(selectedSite);if(remember)systemExplorer.remember({config:{...world},environment:{...environment}});}
 createAtlas({onTravel:orbitSite,onApply:()=>applyWorld(),onReset:()=>{const p=systemExplorer.getDefault();configureWorld(p.config);configureEnvironment(p.environment);}});
 systemExplorer.setVisit((planet,profile,star)=>{if(planet.id===systemExplorer.getActive().id){orbitSite(selectedSite);return;}systemExplorer.remember({config:{...world},environment:{...environment}});configureWorld(profile.config);configureEnvironment(profile.environment);selectedSite.copy(landing);applyWorld(false);sun.color.set(star.color);sun.intensity=3.4*clamp(Math.sqrt(planet.flux),.3,2.5);$('atlasTitle').textContent=planet.name+' · World atlas';$('message').textContent=planet.name+' · Open Planet atlas to choose dry terrain, or Land & explore';});
 const keys=new Set();let dragging=false,prevPointer=null;const canvas=renderer.domElement;
@@ -103,7 +104,7 @@ let last=performance.now(),lodTimer=1,hudTimer=0,accumulator=0,frames=0,fps=60,r
 manager.onLoad=()=>{$('loadText').textContent='Preparing orbital view…';ready=true;};
 manager.onError=url=>console.warn('Texture unavailable:',url);
 let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
- root.position.copy(camPos).negate();camera.near=clamp((camPos.length()-surface(camPos))*.0005,.15,80);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){positionSunShadow(sun,sunDir,roverPos,camPos);}hemi.position.copy(camPos).normalize();
+ root.position.copy(camPos).negate();camera.near=mode==='rover'?.15:clamp((camPos.length()-Math.max(surface(camPos),environment.waterEnabled?R+world.water:0))*.02,.15,500);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){positionSunShadow(sun,sunDir,roverPos,camPos);}hemi.position.copy(camPos).normalize();
  const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}

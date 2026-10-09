@@ -135,4 +135,30 @@ void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view
  color=tonemap(color*exposure);color=pow(color,vec3(1./2.2));float vignette=1.-.12*pow(length(vUv-.5)*1.4,2.);gl_FragColor=vec4(color*vignette,1.);}
 `;
 
-export function patchOcean(material,seaTemperature){material.onBeforeCompile=s=>{s.uniforms.seaTemperature=seaTemperature;s.vertexShader='varying float seaLatitude;\n'+s.vertexShader;s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nseaLatitude=normal.y;');s.fragmentShader='varying float seaLatitude;uniform float seaTemperature;\n'+s.fragmentShader;s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat frozen=1.-smoothstep(-8.,0.,seaTemperature-58.*seaLatitude*seaLatitude);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.67,.72),frozen);');};}
+export function patchOcean(material,seaTemperature,oceanState){material.onBeforeCompile=s=>{
+ Object.assign(s.uniforms,{seaTemperature,...oceanState});
+ s.fragmentShader=`uniform float seaTemperature,seaRadius;uniform vec3 seaCamera;uniform mat4 seaProjection;
+`+s.fragmentShader;
+ s.fragmentShader=s.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+ // Intersect the actual sphere, not the planar triangles of its draw mesh.
+ vec3 seaRay=transpose(mat3(viewMatrix))*normalize(-vViewPosition);
+ float seaB=dot(seaCamera,seaRay);
+ float seaC=(length(seaCamera)-seaRadius)*(length(seaCamera)+seaRadius);
+ float seaDisc=seaB*seaB-seaC;
+ if(seaDisc<0.)discard;
+ float seaDenom=-seaB+sqrt(max(0.,seaDisc));
+ float seaT=seaC/max(seaDenom,.000001);
+ if(seaT<=0.)discard;
+ vec3 seaPoint=seaCamera+seaRay*seaT;
+ vec4 seaClip=seaProjection*vec4(mat3(viewMatrix)*(seaRay*seaT),1.);
+ gl_FragDepth=seaClip.z/seaClip.w*.5+.5;
+ `);
+ s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+ float seaLatitude=normalize(seaPoint).y;
+ float frozen=1.-smoothstep(-8.,0.,seaTemperature-58.*seaLatitude*seaLatitude);
+ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.67,.72),frozen);
+ `);
+ s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+ normal=normalize(mat3(viewMatrix)*normalize(seaPoint));
+ `);
+};}

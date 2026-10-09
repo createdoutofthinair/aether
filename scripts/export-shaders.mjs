@@ -18,8 +18,8 @@ function emit(name,s,defines=''){
  const fs=common+defines+'#define varying in\n#define gl_FragColor pc_fragColor\nlayout(location=0) out vec4 pc_fragColor;\n'+uniforms+T.ShaderChunk.colorspace_pars_fragment+'\nvec4 linearToOutputTexel(vec4 v){return v;}\nfloat luminance(vec3 rgb){return dot(rgb,vec3(.2126,.7152,.0722));}\n'+expand(s.fragmentShader);
  writeFileSync(`${out}/${name}.vert`,vs);writeFileSync(`${out}/${name}.frag`,fs);
 }
-const shader=()=>({vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader,uniforms:{}}),m=new T.MeshStandardMaterial();patchTerrain(m,{});let s=shader();m.onBeforeCompile(s);emit('terrain',s,'#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF_SOFT\n');
-const field=new RockField(new T.Group(),{rock:null,rn:null,rr:null},{});s=shader();field.mesh.material.onBeforeCompile(s);emit('rocks',s,'#define USE_INSTANCING\n#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF_SOFT\n');
+const shader=()=>({vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader,uniforms:{}}),m=new T.MeshStandardMaterial();patchTerrain(m,{});let s=shader();m.onBeforeCompile(s);emit('terrain',s,'#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
+const field=new RockField(new T.Group(),{rock:null,rn:null,rr:null},{});s=shader();field.mesh.material.onBeforeCompile(s);emit('rocks',s,'#define USE_INSTANCING\n#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
 s={...T.ShaderLib.depth};field.mesh.customDepthMaterial.onBeforeCompile(s);emit('rock-depth',s,'#define USE_INSTANCING\n#define DEPTH_PACKING 3201\n');
 const sea=new T.MeshStandardMaterial();patchOcean(sea,{value:18});s=shader();sea.onBeforeCompile(s);emit('ocean',s);
 emit('atmosphere',{vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment});
