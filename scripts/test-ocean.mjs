@@ -12,7 +12,7 @@ assert.match(ocean,/fresnel=pow\(/,'ocean has view-angle reflection response');
 assert.match(ocean,/phaseA=.*seaTime/,'ocean wave phase animates over time');
 assert.match(ocean,/sunGlint=pow\(/,'ocean includes a tight solar reflection highlight');
 assert.match(ocean,/roughnessFactor=mix\(\.16,\.58,frozen\)/,'water and ice use distinct roughness');
-assert.match(ocean,/seaN-tangentA/,'water normal uses two low-amplitude wave bands');
+assert.match(ocean,/wavyNormal/,'water normal uses two low-amplitude wave bands');
 assert.match(app,/seaSunDir:\{value:sunDir\}/,'app connects the current sunlight direction');
 assert.match(app,/oceanState\.seaTime\.value=now\*\.001/,'app advances the ocean shader clock');
 
