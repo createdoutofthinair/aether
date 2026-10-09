@@ -3,12 +3,12 @@ float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
- Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment});
+ Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0}});
  s.vertexShader='attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
  s.fragmentShader=`varying vec3 vBiome;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
- uniform float sedimentCover;
+ uniform float sedimentCover,seaLevel,surfaceWater;
  vec3 terrainDx,terrainDy;
  ${noiseGLSL}
  vec2 tileHash(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
@@ -93,9 +93,11 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 fineSand=mix(vec3(.46,.29,.105),vec3(.64,.47,.24),province);
  diffuseColor.rgb=mix(diffuseColor.rgb,fineSand*(.90+clamp(surfaceLuma,0.,.7)*.32),vBiome.z*.93);
  diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.68,.79,.84)*(.9+.1*grain),vBiome.x*(1.-smoothstep(.2,.65,slope)));
+ float wetShore=surfaceWater*(1.-smoothstep(0.,2.2,elevation-seaLevel))*(1.-vBiome.x);
+ diffuseColor.rgb*=mix(1.,.52,wetShore);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
- roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);`);
+ roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.26,wetShore);`);
  s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
  vec3 gradient=vec3(0.);
  if(detailed>0.){
@@ -118,13 +120,32 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  };}
 export const atmosphereVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
 export const atmosphereFragment=`precision highp float;
-varying vec2 vUv;uniform sampler2D sceneColor,sceneDepth;uniform mat4 invProjection,camWorld;uniform vec3 origin,sunDir;uniform float cameraNear,cameraFar,air,exposure;uniform int quality;
+varying vec2 vUv;uniform sampler2D sceneColor,sceneDepth;uniform mat4 invProjection,camWorld;uniform vec3 origin,sunDir;uniform float cameraNear,cameraFar,air,exposure;uniform vec2 resolution;uniform int quality;
 vec2 sphere(vec3 o,vec3 d,float r){float b=dot(o,d),c=dot(o,o)-r*r,h=b*b-c;if(h<0.)return vec2(1e9,-1e9);return vec2(-b-sqrt(h),-b+sqrt(h));}
 vec2 density(vec3 p){float h=max(0.,length(p)-60.);return vec2(exp(-h/1.25),exp(-h/.42))*air;}
 vec3 tonemap(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view.xyz/view.w),ray=normalize(mat3(camWorld)*vr);vec3 o=origin*.001;
  float z=texture2D(sceneDepth,vUv).x;float viewZ=(cameraNear*cameraFar)/((cameraFar-cameraNear)*z-cameraFar);float limit=z<.999999?-viewZ/max(-vr.z,.00001)*.001:1e8;
  vec3 color=texture2D(sceneColor,vUv).rgb;
+ // Short-range contact occlusion, reconstructed from the final surface depth.
+ // Distant terrain and sky skip it; neither mesh detail nor water is displaced.
+ vec3 viewPoint=vr*(-viewZ/max(-vr.z,.00001));
+ if(quality==1&&z<.999999&&-viewZ<800.){
+  vec3 contactNormal=normalize(cross(dFdx(viewPoint),dFdy(viewPoint)));
+  if(dot(contactNormal,viewPoint)>0.)contactNormal=-contactNormal;
+  float radiusPixels=clamp(resolution.y*2.2/max(-viewZ,1.),2.,26.),occlusion=0.;
+  for(int ao=0;ao<8;ao++){
+   float angle=float(ao)*2.39996323;
+   vec2 sampleUV=clamp(vUv+vec2(cos(angle),sin(angle))*radiusPixels*(.4+float(ao)*.075)/resolution,vec2(.001),vec2(.999));
+   float sampleZ=texture2D(sceneDepth,sampleUV).r;
+   float sampleViewZ=(cameraNear*cameraFar)/((cameraFar-cameraNear)*sampleZ-cameraFar);
+   vec4 sampleRay=invProjection*vec4(sampleUV*2.-1.,1.,1.);vec3 rd=normalize(sampleRay.xyz/sampleRay.w);
+   vec3 delta=rd*(-sampleViewZ/max(-rd.z,.00001))-viewPoint;float separation=length(delta);
+   if(sampleZ<.999999&&separation>.01)occlusion+=max(0.,dot(contactNormal,delta/separation)-.07)*(1.-smoothstep(.35,3.,separation));
+  }
+  color*=1.-clamp(occlusion/8.*1.5,0.,.28);
+ }
+
  // Sparse procedural stars remain behind the atmosphere and planet.
  if(z>=.999999){vec3 cell=floor(ray*1600.);float seed=fract(sin(dot(cell,vec3(12.9898,78.233,39.425)))*43758.5453);color+=vec3(.55,.66,.82)*pow(seed,950.)*.7;float solar=dot(ray,sunDir);color+=vec3(12.,10.,7.)*smoothstep(.999974,.999987,solar);}
  vec2 hit=sphere(o,ray,66.);float a=max(0.,hit.x),b=min(hit.y,limit);
@@ -134,31 +155,3 @@ void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view
  color=color*exp(-(br*optical.x+bm*optical.y))+(sr*br*pr+sm*bm*pm)*17.;}
  color=tonemap(color*exposure);color=pow(color,vec3(1./2.2));float vignette=1.-.12*pow(length(vUv-.5)*1.4,2.);gl_FragColor=vec4(color*vignette,1.);}
 `;
-
-export function patchOcean(material,seaTemperature,oceanState){material.onBeforeCompile=s=>{
- Object.assign(s.uniforms,{seaTemperature,...oceanState});
- s.fragmentShader=`uniform float seaTemperature,seaRadius;uniform vec3 seaCamera;uniform mat4 seaProjection;
-`+s.fragmentShader;
- s.fragmentShader=s.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
- // Intersect the actual sphere, not the planar triangles of its draw mesh.
- vec3 seaRay=transpose(mat3(viewMatrix))*normalize(-vViewPosition);
- float seaB=dot(seaCamera,seaRay);
- float seaC=(length(seaCamera)-seaRadius)*(length(seaCamera)+seaRadius);
- float seaDisc=seaB*seaB-seaC;
- if(seaDisc<0.)discard;
- float seaDenom=-seaB+sqrt(max(0.,seaDisc));
- float seaT=seaC/max(seaDenom,.000001);
- if(seaT<=0.)discard;
- vec3 seaPoint=seaCamera+seaRay*seaT;
- vec4 seaClip=seaProjection*vec4(mat3(viewMatrix)*(seaRay*seaT),1.);
- gl_FragDepth=seaClip.z/seaClip.w*.5+.5;
- `);
- s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
- float seaLatitude=normalize(seaPoint).y;
- float frozen=1.-smoothstep(-8.,0.,seaTemperature-58.*seaLatitude*seaLatitude);
- diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.67,.72),frozen);
- `);
- s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
- normal=normalize(mat3(viewMatrix)*normalize(seaPoint));
- `);
-};}

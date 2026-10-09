@@ -3,7 +3,7 @@
 Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, e.g. `python -m http.server 8000 --directory dist`.
 
 - Continuous spherical planet, 60 km radius, deterministic ridges and impact craters. Nacre Basin adds an irregular dry channel, a spatially indexed branching tributary network, isolated resistant beds, mesas and small geometric surface relief across the landing region, blending into the planet over 4.2–6.5 km.
-- Six cube-face quadtrees, 16×16 patches, up to level 13, stitched coarse/fine edges, isolated radial skirts, shared height-field normals, incremental generation and mesh eviction.
+- Six cube-face quadtrees, 16×16 patches, up to level 14, stitched coarse/fine edges, isolated radial skirts, shared height-field normals, incremental generation and mesh eviction.
 - Camera-relative render origin; metre-based CPU coordinates.
 - Depth-aware single-scattering atmospheric integration with Rayleigh and Mie terms and planetary sunlight occlusion. This version ray marches directly; it does not yet precompute scattering lookup tables.
 - Three local Poly Haven scanned material families: bedrock, sandy gravel and cracked dry sediment. Stochastic triplanar mapping randomizes scan orientation as well as tile offsets, with matching normal reorientation; scanned height controls material transitions. Interpolated deposition and bedrock masks follow the same geology as the mesh and are stitched across LOD boundaries. Packed surface textures store roughness in R, ambient occlusion in G and height in B. Colour and normal maps are 2K, packed data maps 1K. Colour is sRGB; data maps remain linear. Triplanar normals are reoriented into planet space before blending, then transformed into view space. UV variation is consistent across PBR channels.
@@ -22,7 +22,7 @@ Poly Haven assets are CC0: https://polyhaven.com/license
 - https://polyhaven.com/a/mud_cracked_dry_03 — Dario Barresi, Dimitrios Savva
 Textures are bundled locally, not hotlinked. Original scan height maps are used for material blending, not exaggerated mesh displacement. The small geometric relief is deterministic and shared by rendering and contact. Larger outcrops and near-field pebbles use stable planet-cell IDs and distance fading, with eight separately generated rock silhouettes, per-instance mineral tints and multi-point foundations for large formations.
 
-Material scan scale: rock 1.8 m, gravel 2 m, cracked mud 1.5 m. A sediment-cover slider changes exposed bedrock. MSAA and 2048-pixel local shadows improve edge and contact quality; there is no screen-space ambient occlusion or global illumination yet.
+Material scan scale: rock 1.8 m, gravel 2 m, cracked mud 1.5 m. A sediment-cover slider changes exposed bedrock. MSAA and 2048-pixel local shadows improve edge and contact quality; short-range screen-space contact occlusion supplements local shadows; there is no global illumination.
 Three.js MIT licence in dist/vendor/THREE-LICENSE.txt.
 The Rover R06 asset comes from the user's prior project.
 
@@ -37,7 +37,7 @@ The rover is bundled as losslessly compressed `dist/rover.glb.gz` and decompress
 
 Open **Planet atlas** to inspect connected climate regions and select a dry, gently sloping landing site. **Orbit selected site** relocates the orbital camera; **Land & explore** then performs the continuous local descent. Latitude/longitude fields support keyboard selection. Regeneration returns the camera to orbit and clears terrain meshes and pending work.
 
-Session controls include deterministic world seed, relief (0.25–3×), equatorial temperature (−60–60 °C), sea level (−1000–1000 m), relative atmosphere density (0–2×), and volcanic activity (0–1). Nacre Basin remains a stable authored starting region. The rest of the planet changes with the seed. Latitude and elevation drive an approximate temperature field; a continuous regional moisture field, temperature, and activity blend ice, desert, volcanic and sediment/rock materials. Sea level controls an opaque ocean shell; ocean landing is blocked and the rover stops at shorelines. This is an artistic climate model, not a physical habitability or ocean simulation.
+Session controls include deterministic world seed, relief (0.25–3×), equatorial temperature (−60–60 °C), sea level (−1000–1000 m), relative atmosphere density (0–2×), and volcanic activity (0–1). Nacre Basin remains a stable authored starting region. The rest of the planet changes with the seed. Latitude and elevation drive an approximate temperature field; a continuous regional moisture field, temperature, and activity blend ice, desert, volcanic and sediment/rock materials. Sea level controls a depth-composited ocean; ocean landing is blocked and the rover stops at shorelines. This is an artistic climate model, not a physical habitability or ocean simulation.
 
 Terrain LOD uses an 18% split/merge hysteresis band to reduce repeated switching near thresholds; child groups replace parents only once all four are ready. CPU vertex geomorphing now blends positions, normals, geology and biome data over 0.48 seconds in both directions. Child groups start on parent triangles; parents return only after their children collapse onto them. Ground contacts use the morphed surface. Existing scanned PBR textures provide detail, with biome tint and normal-strength blends; this does not yet include dedicated scanned snow or basalt assets.
 
@@ -84,3 +84,19 @@ The rover shadow map uses a 48 m footprint at 2048² resolution and radius-2 PCF
 ### Water edge stability
 
 Ocean fragments intersect an analytic sea-level sphere and write its projected depth, eliminating planar ocean-triangle depth errors at shorelines. Surface normals and ice latitude use that same sphere. Approach cameras use a tighter near plane for depth precision; balanced quality retains 2× MSAA where supported (high uses 4×). Terrain geomorphing still changes the shoreline as terrain detail resolves; this is not temporal antialiasing.
+
+
+### Ocean surface response and close-range terrain
+
+The analytic sea-level sphere retains its depth-correct shoreline intersection. Open water now uses a restrained view-angle reflection tint, two low-amplitude animated wave-normal bands and a narrow solar glint; polar ice remains rougher than liquid water. These effects change shading normals only, so wave animation cannot move the sea-level collision or shoreline. This is a lightweight procedural reflection approximation, not screen-space or ray-traced reflection.
+
+High quality terrain refines one additional quadtree level near the camera (level 14; approximately 0.46 m base grid spacing on this 60 km body) to reduce close-range faceting. Balanced quality remains capped at level 12. The finer level is local to the camera and increases geometry work in the nearest patches.
+
+
+### Cinematic coast and terrain inspection
+
+Open `?view=coast` for an immediate coastal flight view, or `?view=terrain` for a close view of the reference basin. The Coast and Terrain buttons also switch views during exploration. Coast finds a real sea-level crossing of the current height field and respects dry worlds; it does not change the seed or sea level.
+
+The rendering pipeline now resolves opaque terrain first, composites a fullscreen analytic sea into a separate colour/depth target, then integrates atmosphere using the resulting surface depth. Water includes depth absorption and shallow bottom visibility, guarded screen-space refraction, four filtered wind-wave normal bands, Fresnel sky reflection, bounded terrain screen-space reflection in High quality, GGX sunlight and a broken shallow-water foam band. Screen-space reflections fall back to the procedural sky outside available scene information. Waves currently change normals, not physical sea displacement.
+
+Terrain adds a wet shoreline material response and screen-space geometric-error refinement to the existing distance and hysteresis rules. Local shadows also work in low-altitude free flight, and High quality includes short-range depth-based contact occlusion. Module release versions are consistent throughout the graph so the atmosphere, atlas, terrain, rocks and water share world settings. Balanced quality skips terrain screen-space reflections and contact occlusion. These changes are a visual development stage; they do not constitute the full rendering, asset and simulation stack of a commercial AAA game.

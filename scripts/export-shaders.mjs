@@ -1,5 +1,6 @@
 import * as T from '../dist/vendor/three.module.js';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from '../dist/shaders.js';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from '../dist/shaders.js';
+import {waterVertex,waterFragment} from '../dist/water.js';
 import {RockField} from '../dist/grounding.js';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const out=process.argv[2]||'/tmp/aether-shaders';mkdirSync(out,{recursive:true});
@@ -21,6 +22,6 @@ function emit(name,s,defines=''){
 const shader=()=>({vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader,uniforms:{}}),m=new T.MeshStandardMaterial();patchTerrain(m,{});let s=shader();m.onBeforeCompile(s);emit('terrain',s,'#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
 const field=new RockField(new T.Group(),{rock:null,rn:null,rr:null},{});s=shader();field.mesh.material.onBeforeCompile(s);emit('rocks',s,'#define USE_INSTANCING\n#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
 s={...T.ShaderLib.depth};field.mesh.customDepthMaterial.onBeforeCompile(s);emit('rock-depth',s,'#define USE_INSTANCING\n#define DEPTH_PACKING 3201\n');
-const sea=new T.MeshStandardMaterial();patchOcean(sea,{value:18});s=shader();sea.onBeforeCompile(s);emit('ocean',s);
+emit('water',{vertexShader:waterVertex,fragmentShader:waterFragment});
 emit('atmosphere',{vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment});
 console.log('Exported terrain, rock, shadow and atmosphere shaders');

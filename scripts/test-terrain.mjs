@@ -15,3 +15,9 @@ for(const [fineArgs,coarseArgs,fineColumn,coarseColumn]of [[[4,2,2,2],[4,1,0,1],
 const landNormal=surfaceNormal(landing);assert(landNormal.dot(landing)>.99,'Landing area must not inherit skirt normals');
 for(const n of [a,b]){const g=n.mesh.geometry;for(const index of g.index.array.slice(16*16*6))assert(index>=n.surfaceCount,'Skirt triangles must not share top-surface vertices');for(const v of g.attributes.normal.array)assert(Number.isFinite(v));}
 console.log(JSON.stringify({sameLevelNormalError:maxNormalDelta,sameLevelPositionErrorMetres:maxPositionDelta,coarseFineEdges:'pass',cubeFaceEdges:'pass',isolatedSkirts:'pass'}));
+// The finest level must participate in rendered-surface contact, not fall back
+// to the continuous height field while the rover rides the triangle mesh.
+const finest=make(4,14,9000,11000);t.active=[finest];t.stitchEdges();
+const centre=pointAt(finest,8*17+8),contact=t.sample(centre);
+assert(contact.point.distanceTo(centre)<.003,'Level 14 contact follows the rendered surface');
+assert(Number.isFinite(finest.geometricError)&&finest.geometricError>=0,'LOD error estimate is finite');

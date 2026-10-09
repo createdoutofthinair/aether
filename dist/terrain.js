@@ -1,6 +1,6 @@
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=water-1';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=cinematic-1';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=water-1';
+import {world,environment,climate,province} from './world.js?v=cinematic-1';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -100,6 +100,14 @@ export class PlanetTerrain{
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
  build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,Math.min(100,n.size*R/N*.25)));normals.push(sn.x,sn.y,sn.z);}
+ // Measure omitted geometry at cell centres, including spherical curvature.
+ // This catches narrow crater rims and coastlines that proximity alone misses.
+ n.geometricError=R*(n.size/N)**2*.25;
+ for(const j of [2,8,13])for(const i of [2,8,13]){
+  const d=direction(n.f,n.u+n.size*(i+.5)/N,n.v+n.size*(j+.5)/N),actual=d.multiplyScalar(R+height(d));
+  const interpolated=pts[j*(N+1)+i+1].clone().lerp(pts[(j+1)*(N+1)+i],.5);
+  n.geometricError=Math.max(n.geometricError,actual.distanceTo(interpolated));
+ }
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){let a=j*(N+1)+i,b=a+N+1;indices.push(a,a+1,b,a+1,b+1,b);}
  // Radial skirts close unequal-LOD edges and cube-face boundaries.
  let edge=[];for(let i=0;i<=N;i++)edge.push(i);for(let j=1;j<=N;j++)edge.push(j*(N+1)+N);for(let i=N-1;i>=0;i--)edge.push(N*(N+1)+i);for(let j=N-1;j>0;j--)edge.push(j*(N+1));
@@ -143,11 +151,13 @@ export class PlanetTerrain{
   for(const n of this.active){if(n.morph===n.morphTarget)continue;const step=Math.max(0,Math.min(dt,.05))/.48;n.morph+=T.MathUtils.clamp(n.morphTarget-n.morph,-step,step);if(Math.abs(n.morphTarget-n.morph)<1e-7)n.morph=n.morphTarget;this.applyMorph(n);changed.add(n);}
   if(changed.size)this.stitchEdges(changed);return changed.size>0;
  }
- update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?13:12;
+ update(cam){this.frame++;this.queue=[];this.active=[];const altitude=Math.max(1,cam.length()-R),camDir=cam.clone().normalize(),maxLevel=this.quality==='high'?14:12;
  const visit=(n,collapse=false)=>{n.stamp=this.frame;const dist=cam.distanceTo(n.center.clone().multiplyScalar(R+height(n.center))),horizon=camDir.dot(n.center);
  if(!collapse&&altitude<40000&&horizon<Math.min(.94,R/cam.length())-n.size*1.7-.04)return;
  const threshold=n.size*R*(this.quality==='high'?2.7:2.1);
- const split=!collapse&&(n.l<2||(n.l<maxLevel&&dist<threshold*(n.wasSplit?1.18:1)));n.wasSplit=split;
+ const projectedError=(n.geometricError||0)*(this.focalPixels||700)/Math.max(dist-n.size*R*.45,n.size*R*.2,1);
+ const errorLimit=(this.quality==='high'?2.5:5)*(n.wasSplit?.82:1);
+ const split=!collapse&&(n.l<2||(n.l<maxLevel&&(dist<threshold*(n.wasSplit?1.18:1)||projectedError>errorLimit)));n.wasSplit=split;
  if(n.open&&!n.children.every(c=>c.mesh))n.open=false;
  if(n.open){
   const start=this.active.length;n.children.forEach(c=>visit(c,!split));
@@ -210,7 +220,7 @@ export class PlanetTerrain{
   for(let i=0;i<6;i++){const dot=d.dot(faces[i][0]);if(dot>den){den=dot;f=i;}}
   const u=d.dot(faces[f][1])/den,v=d.dot(faces[f][2])/den;
   let n;
-  for(let l=13;l>=0;l--){const div=2**l,x=T.MathUtils.clamp(Math.floor((u+1)*.5*div),0,div-1),y=T.MathUtils.clamp(Math.floor((v+1)*.5*div),0,div-1);n=this.visibleNodes?.get([f,l,x,y].join('/'));if(n)break;}
+  for(let l=14;l>=0;l--){const div=2**l,x=T.MathUtils.clamp(Math.floor((u+1)*.5*div),0,div-1),y=T.MathUtils.clamp(Math.floor((v+1)*.5*div),0,div-1);n=this.visibleNodes?.get([f,l,x,y].join('/'));if(n)break;}
   if(n){
    const x=T.MathUtils.clamp(Math.floor((u-n.u)/n.size*N),0,N-1),y=T.MathUtils.clamp(Math.floor((v-n.v)/n.size*N),0,N-1);
    const ray=new T.Ray(d.clone().multiplyScalar(R+10000).sub(n.anchor),d.clone().negate()),pa=n.mesh.geometry.attributes.position;
