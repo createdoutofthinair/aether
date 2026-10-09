@@ -1,19 +1,20 @@
-import {systemExplorer} from './system-ui.js?v=regions-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=regions-1';
-import {createAtlas} from './atlas.js?v=regions-1';
+import {positionSunShadow} from './shadows.js?v=shadows-1';
+import {systemExplorer} from './system-ui.js?v=shadows-1';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=shadows-1';
+import {createAtlas} from './atlas.js?v=shadows-1';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=regions-1';
-import {RockField,wheelLift} from './grounding.js?v=regions-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=regions-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=shadows-1';
+import {RockField,wheelLift} from './grounding.js?v=shadows-1';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=shadows-1';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loadText').textContent='WebGL could not start. Enable hardware acceleration in your browser and reload.';throw e;}
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.LinearSRGBColorSpace;renderer.toneMapping=T.NoToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('viewport').appendChild(renderer.domElement);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.LinearSRGBColorSpace;renderer.toneMapping=T.NoToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;$('viewport').appendChild(renderer.domElement);
 const scene=new T.Scene(),root=new T.Group();scene.add(root);const camera=new T.PerspectiveCamera(55,innerWidth/innerHeight,.3,500000);const camPos=landing.clone().multiplyScalar(R+75000);
 const hemi=new T.HemisphereLight(0xb8d4ed,0x31251c,.45);scene.add(hemi);
-const sun=new T.DirectionalLight(0xffebcf,3.4);sun.castShadow=false;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-40,right:40,top:40,bottom:-40,near:1,far:300});sun.shadow.normalBias=.04;sun.shadow.bias=-.0001;scene.add(sun,sun.target);
+const sun=new T.DirectionalLight(0xffebcf,3.4);sun.castShadow=false;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-24,right:24,top:24,bottom:-24,near:1,far:300});sun.shadow.radius=2;sun.shadow.normalBias=.025;sun.shadow.bias=-.0001;scene.add(sun,sun.target);
 const sunDir=new T.Vector3(),lightAnchor=landing.clone();function updateSun(){const angle=Number($('sun').value)*Math.PI/180;sunDir.copy(basis(lightAnchor).east).multiplyScalar(Math.cos(angle)).addScaledVector(lightAnchor,Math.sin(angle)).normalize();$('sunValue').value=$('sun').value+'°';}updateSun();$('sun').oninput=updateSun;
 const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path+'?v=materials-2',undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
 const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_gravel_diff.jpg',true),rn:tex('./rock_boulder_dry_nor_gl.jpg'),sn:tex('./sandy_gravel_nor_gl.jpg'),rr:tex('./rock_boulder_dry_rough.jpg'),mud:tex('./mud_cracked_dry_03_diff.jpg',true),mn:tex('./mud_cracked_dry_03_nor_gl.jpg'),rs:tex('./rock_boulder_dry_surface.png'),ss:tex('./sandy_gravel_surface.png'),ms:tex('./mud_cracked_dry_03_surface.png')};
@@ -102,7 +103,7 @@ let last=performance.now(),lodTimer=1,hudTimer=0,accumulator=0,frames=0,fps=60,r
 manager.onLoad=()=>{$('loadText').textContent='Preparing orbital view…';ready=true;};
 manager.onError=url=>console.warn('Texture unavailable:',url);
 let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
- root.position.copy(camPos).negate();camera.near=clamp((camPos.length()-surface(camPos))*.0005,.15,80);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){sun.position.copy(roverPos).sub(camPos).addScaledVector(sunDir,150);sun.target.position.copy(roverPos).sub(camPos);}hemi.position.copy(camPos).normalize();
+ root.position.copy(camPos).negate();camera.near=clamp((camPos.length()-surface(camPos))*.0005,.15,80);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){positionSunShadow(sun,sunDir,roverPos,camPos);}hemi.position.copy(camPos).normalize();
  const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}

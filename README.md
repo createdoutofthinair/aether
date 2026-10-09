@@ -76,3 +76,7 @@ Open **Planet atlas**, choose a **Featured region**, then **Orbit selected site*
 These regions change geometry, distant colour, roughness, fine surface normals and rock distribution. They reuse the existing three scanned PBR families; dedicated basalt and dune scans are not included. Region boundaries blend continuously into the global terrain. Seed changes rotate their locations and change their detail; the original Nacre starting basin remains intact. Ice and oceans still follow planet settings. Region templates are artistic landforms, not an erosion simulation.
 
 `npm test` checks distinct landform profiles, continuous region boundaries, deterministic regeneration, landing safety and reduced dune scatter. `scripts/region-baseline.json` records the previous terrain at the same default locations, and `scripts/region-metrics.mjs` measures comparable 10 km areas. Existing selective LOD buffer uploads and local scatter invalidation are retained; no additional terrain texture samplers or vertex attributes are introduced.
+
+### Stable local shadows
+
+The rover shadow map uses a 48 m footprint at 2048² resolution and radius-2 PCF filtering. Its light-space grid is snapped in planet coordinates before applying the floating origin, reducing camera-induced shimmer. This retains the existing map memory budget. Shadows remain local to rover mode; distant terrain dark areas are surface lighting, not this shadow map. `scripts/test-shadows.mjs` checks camera invariance and polar light directions.
