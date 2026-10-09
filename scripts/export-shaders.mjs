@@ -11,7 +11,7 @@ function expand(s){
  for(const [k,v]of Object.entries(nums))s=s.replace(new RegExp('\\b'+k+'\\b','g'),String(v));
  return s.replace(/#pragma unroll_loop_start\s+for\s*\(\s*int i\s*=\s*(\d+)\s*;\s*i\s*<\s*(\d+)\s*;\s*i\s*\+\+\s*\)\s*{([\s\S]+?)}\s+#pragma unroll_loop_end/g,(_,a,b,body)=>Array.from({length:b-a},(_,j)=>body.replace(/\[\s*i\s*\]/g,`[ ${+a+j} ]`).replace(/UNROLLED_LOOP_INDEX/g,String(+a+j))).join(''));
 }
-const common='#version 300 es\nprecision highp float;\nprecision highp int;\n#define HIGH_PRECISION\n#define SHADER_TYPE MeshStandardMaterial\n#define SHADER_NAME validation\n#define texture2D texture\n#define textureCube texture\n#define texture2DCompare texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define textureCubeLodEXT textureLod\n';
+const common='#version 300 es\nprecision highp float;\nprecision highp int;\nprecision highp sampler2DShadow;\n#define HIGH_PRECISION\n#define SHADER_TYPE MeshStandardMaterial\n#define SHADER_NAME validation\n#define texture2D texture\n#define textureCube texture\n#define texture2DCompare texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define textureCubeLodEXT textureLod\n';
 const uniforms='uniform mat4 viewMatrix;uniform vec3 cameraPosition;uniform bool isOrthographic;\n';
 function emit(name,s,defines=''){
  const vs=common+defines+'#define attribute in\n#define varying out\n'+uniforms+'uniform mat4 modelMatrix,modelViewMatrix,projectionMatrix;uniform mat3 normalMatrix;in vec3 position,normal;in vec2 uv;\n#ifdef USE_INSTANCING\nin mat4 instanceMatrix;\n#endif\n'+expand(s.vertexShader);
