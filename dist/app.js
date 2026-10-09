@@ -1,12 +1,12 @@
-import {positionSunShadow} from './shadows.js?v=water-1';
-import {systemExplorer} from './system-ui.js?v=water-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=water-1';
-import {createAtlas} from './atlas.js?v=water-1';
+import {positionSunShadow} from './shadows.js?v=water-2';
+import {systemExplorer} from './system-ui.js?v=water-2';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=water-2';
+import {createAtlas} from './atlas.js?v=water-2';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=water-1';
-import {RockField,wheelLift} from './grounding.js?v=water-1';
-import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=water-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=water-2';
+import {RockField,wheelLift} from './grounding.js?v=water-2';
+import {patchOcean,patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=water-2';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -21,7 +21,7 @@ const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_g
 const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
 const ocean=new T.Mesh(new T.SphereGeometry(1,512,256),new T.MeshStandardMaterial({color:0x194456,roughness:.28,metalness:.08}));ocean.scale.setScalar(R+world.water);root.add(ocean);
 const seaTemperature={value:world.temperature};
-const oceanState={seaRadius:{value:R+world.water},seaCamera:{value:camPos},seaProjection:{value:camera.projectionMatrix}};
+const oceanState={seaRadius:{value:R+world.water},seaCamera:{value:camPos},seaProjection:{value:camera.projectionMatrix},seaSunDir:{value:sunDir},seaTime:{value:0}};
 patchOcean(ocean.material,seaTemperature,oceanState);
 // Linear offscreen scene with real depth, followed by atmosphere integration.
 const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});target.samples=Math.min(4,renderer.capabilities.maxSamples);target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
@@ -103,7 +103,7 @@ function roverCamera(dt){const up=roverPos.clone().normalize(),b=basis(up),headi
 let last=performance.now(),lodTimer=1,hudTimer=0,accumulator=0,frames=0,fps=60,ready=false;
 manager.onLoad=()=>{$('loadText').textContent='Preparing orbital view…';ready=true;};
 manager.onError=url=>console.warn('Texture unavailable:',url);
-let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
+let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;oceanState.seaTime.value=now*.001;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
  root.position.copy(camPos).negate();camera.near=mode==='rover'?.15:clamp((camPos.length()-Math.max(surface(camPos),environment.waterEnabled?R+world.water:0))*.02,.15,500);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover';if(mode==='rover'){positionSunShadow(sun,sunDir,roverPos,camPos);}hemi.position.copy(camPos).normalize();
  const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
