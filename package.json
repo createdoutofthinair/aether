@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node node_modules/vite/bin/vite.js dist --config vite.config.js",
     "check": "node --check dist/app.js && node --check dist/terrain.js && node --check dist/shaders.js && node --check dist/grounding.js && node --check dist/world.js && node --check dist/atlas.js && node --check dist/solar.js && node --check dist/system-ui.js && node --check dist/entry.js && node --check dist/regions.js && node --check dist/shadows.js",
-    "test": "node scripts/test-terrain.mjs && node scripts/test-grounding.mjs && node scripts/test-geology.mjs && node scripts/test-world.mjs && node scripts/test-solar.mjs && node scripts/test-morph.mjs && node scripts/test-regions.mjs && node scripts/test-shadows.mjs"
+    "test": "node scripts/test-terrain.mjs && node scripts/test-grounding.mjs && node scripts/test-geology.mjs && node scripts/test-world.mjs && node scripts/test-solar.mjs && node scripts/test-morph.mjs && node scripts/test-regions.mjs && node scripts/test-shadows.mjs && node scripts/test-ocean.mjs"
   },
   "devDependencies": {
     "vite": "8.0.13"
