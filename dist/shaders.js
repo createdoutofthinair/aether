@@ -178,8 +178,7 @@ export function patchOcean(material,seaTemperature,oceanState){material.onBefore
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
  roughnessFactor=mix(.16,.58,frozen);
  `);
- s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
- vec3 seaN=normalize(seaPoint),viewDir=normalize(-vViewPosition);
+ s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>\n normal=normalize(mat3(viewMatrix)*wavyNormal);\n `);
  vec3 waveA=normalize(vec3(.82,0.,.57)),waveB=normalize(vec3(-.31,.88,.35));
  vec3 tangentA=normalize(waveA-seaN*dot(waveA,seaN)),tangentB=normalize(waveB-seaN*dot(waveB,seaN));
  float phaseA=dot(seaPoint,waveA)*.035+seaTime*.72,phaseB=dot(seaPoint,waveB)*.082-seaTime*.48;
