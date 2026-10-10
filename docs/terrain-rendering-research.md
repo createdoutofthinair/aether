@@ -255,3 +255,11 @@ This is an artistic procedural surface approximation, not exact fluid mathematic
 The worker now composes linear albedo and packed roughness/occlusion/blend-height alongside geology masks. All channels share world coordinates and one-pixel halos, and the same bounded 32-slot residency table. The combined atlas occupies 8656960 bytes; no additional fragment sampler is required. Parent shading evaluates the same regional substrate rules to avoid a residency-dependent material change. Climate blankets and scanned close-up detail remain shader-evaluated. Height is stored for future regional blending, not geometric displacement.
 
 This is regional substrate composition, not complete scanned PBR/decal baking: cached normals, decal inventories, detailed erosion across all planetary profiles, advanced surf, and browser GPU/visual acceptance remain open.
+
+### Repeatable visual/GPU validation harness
+
+Implemented a fixed-seed five-profile validation harness with ground-to-orbit-to-ground, close terrain movement, and liquid-water coastline routes. Camera movement is scripted; terrain-drive does **not** validate rover wheel physics. Checkpoints stop simulation time before canvas capture. Asynchronous worker completion can still differ across machines; inspect loading/cache state in each report.
+
+GitHub Actions uploads PNGs, per-profile JSON measurements and the Playwright report as commit-labelled artifacts retained for 30 days. CI explicitly uses SwiftShader and is a rendering smoke test, not real-device GPU acceptance. Automated pixel-baseline comparisons are not enabled until reference images have been reviewed. Visual acceptance remains open.
+
+See `docs/visual-validation.md` for local hardware runs and review criteria.
