@@ -1,14 +1,15 @@
-import {positionSunShadow} from './shadows.js?v=cinematic-1';
-import {systemExplorer} from './system-ui.js?v=cinematic-1';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=cinematic-1';
-import {createAtlas} from './atlas.js?v=cinematic-1';
+import {createOceanSpectrum} from './ocean-spectrum.js?v=spectral-2';
+import {positionSunShadow} from './shadows.js?v=spectral-2';
+import {systemExplorer} from './system-ui.js?v=spectral-2';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=spectral-2';
+import {createAtlas} from './atlas.js?v=spectral-2';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=cinematic-1';
-import {RockField,wheelLift} from './grounding.js?v=cinematic-1';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=cinematic-1';
-import {waterVertex,waterFragment} from './water.js?v=cinematic-1';
-import {findCoast} from './inspection.js?v=cinematic-1';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=spectral-2';
+import {RockField,wheelLift} from './grounding.js?v=spectral-2';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=spectral-2';
+import {waterVertex,waterFragment} from './water.js?v=spectral-2';
+import {findCoast} from './inspection.js?v=spectral-2';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -24,7 +25,8 @@ const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness
 // Linear offscreen scene with real depth, followed by atmosphere integration.
 const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});target.samples=Math.min(4,renderer.capabilities.maxSamples);target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
 const waterTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});waterTarget.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
-const oceanState={sceneColor:{value:target.texture},sceneDepth:{value:target.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},seaView:{value:camera.matrixWorldInverse},seaProjection:{value:camera.projectionMatrix},origin:{value:camPos},sunDir:{value:sunDir},sunColor:{value:sun.color},resolution:{value:new T.Vector2(1,1)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},seaRadius:{value:R+world.water},seaTemperature:{value:world.temperature},time:{value:0},air:{value:world.pressure},sunIntensity:{value:sun.intensity},quality:{value:1},waterEnabled:{value:environment.waterEnabled},iceEnabled:{value:environment.iceEnabled}};
+const spectralOcean=createOceanSpectrum(T);spectralOcean.update(0);
+const oceanState={...spectralOcean.uniforms,sceneColor:{value:target.texture},sceneDepth:{value:target.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},seaView:{value:camera.matrixWorldInverse},seaProjection:{value:camera.projectionMatrix},origin:{value:camPos},sunDir:{value:sunDir},sunColor:{value:sun.color},resolution:{value:new T.Vector2(1,1)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},seaRadius:{value:R+world.water},seaTemperature:{value:world.temperature},time:{value:0},air:{value:world.pressure},sunIntensity:{value:sun.intensity},quality:{value:1},waterEnabled:{value:environment.waterEnabled},iceEnabled:{value:environment.iceEnabled}};
 const waterScene=new T.Scene(),waterMaterial=new T.ShaderMaterial({uniforms:oceanState,vertexShader:waterVertex,fragmentShader:waterFragment,depthTest:true,depthFunc:T.AlwaysDepth,depthWrite:true});waterScene.add(new T.Mesh(new T.PlaneGeometry(2,2),waterMaterial));
 const uniforms={sceneColor:{value:waterTarget.texture},sceneDepth:{value:waterTarget.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},origin:{value:camPos},sunDir:{value:sunDir},cameraNear:{value:camera.near},cameraFar:{value:camera.far},resolution:{value:oceanState.resolution.value},air:{value:1},exposure:{value:1.1},quality:{value:1}};
 const postScene=new T.Scene(),postCamera=new T.OrthographicCamera(-1,1,1,-1,0,1),postMaterial=new T.ShaderMaterial({uniforms,vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment,depthTest:false,depthWrite:false});postScene.add(new T.Mesh(new T.PlaneGeometry(2,2),postMaterial));
@@ -120,6 +122,7 @@ manager.onError=url=>console.warn('Texture unavailable:',url);
 let opening=0;function frame(now){requestAnimationFrame(frame);let dt=Math.min((now-last)/1000,.05);last=now;if(!paused)oceanState.time.value+=dt;if(!paused&&!$('atlas').open&&!$('solarSystem').open){if(transition)transitionStep(dt);else if(mode==='rover'){accumulator+=dt;while(accumulator>=1/120){drive(1/120);accumulator-=1/120;}roverCamera(dt);}else flight(dt);}
  root.position.copy(camPos).negate();camera.near=mode==='rover'?.15:clamp((camPos.length()-Math.max(surface(camPos),environment.waterEnabled?R+world.water:0))*.02,.15,500);camera.updateProjectionMatrix();uniforms.cameraNear.value=camera.near;oceanState.cameraNear.value=camera.near;oceanState.air.value=uniforms.air.value;oceanState.sunIntensity.value=sun.intensity;camera.updateMatrixWorld();sun.position.copy(sunDir).multiplyScalar(150);sun.target.position.set(0,0,0);sun.castShadow=mode==='rover'||camPos.length()-surface(camPos)<80;if(sun.castShadow){const extent=mode==='rover'?24:80;if(sun.shadow.camera.right!==extent){Object.assign(sun.shadow.camera,{left:-extent,right:extent,top:extent,bottom:-extent});sun.shadow.camera.updateProjectionMatrix();}const focus=mode==='rover'?roverPos:camPos.clone().setLength(surface(camPos));positionSunShadow(sun,sunDir,focus,camPos);}hemi.position.copy(camPos).normalize();
  const altitude=camPos.length()-surface(camPos);lodTimer+=dt;if(lodTimer>.18){terrain.update(camPos);lodTimer=0;}terrain.generate();terrain.advance(dt);rocks.update(camPos);pebbles.update(camPos);if(mode==='rover')groundWheels();
+ if(environment.waterEnabled)spectralOcean.update(oceanState.time.value);
  renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(waterTarget);renderer.clear();renderer.render(waterScene,postCamera);renderer.setRenderTarget(null);renderer.render(postScene,postCamera);
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}
  hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');document.querySelector('.world small').textContent=surfaceClimate(p,height(p)).biome.toUpperCase();$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}

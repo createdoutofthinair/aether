@@ -1,10 +1,12 @@
+import {skyGLSL} from './sky-light.js?v=spectral-2';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
 
 export const waterFragment=`precision highp float;
 varying vec2 vUv;
-uniform sampler2D sceneColor,sceneDepth;
+uniform sampler2D sceneColor,sceneDepth,wave0,wave1,wave2,waveNext0,waveNext1,waveNext2;
+uniform float waveMix;
 uniform mat4 invProjection,camWorld,seaView,seaProjection;
 uniform vec3 origin,sunDir,sunColor;
 uniform vec2 resolution;
@@ -22,30 +24,16 @@ float seaHit(vec3 o,vec3 d){
  float nearHit=abs(den)>.00001?c/den:-b-root;
  return nearHit>0.?nearHit:(-b+root>0.?-b+root:-1.);
 }
-vec3 waveSlope(vec3 p,vec3 up,float footprint){
- vec3 slope=vec3(0.);
- for(int i=0;i<4;i++){
-  float k=i==0?.070:i==1?.203:i==2?.73:2.4;
-  float strength=i==0?.10:i==1?.065:i==2?.028:.012;
-  vec3 axis=i==0?vec3(.82,.13,.57):i==1?vec3(-.31,.88,.35):i==2?vec3(.41,-.27,.87):vec3(.72,.64,-.28);
-  axis=normalize(axis);
-  // Unresolved ripples converge to the mean normal instead of shimmering.
-  float filtered=1.-smoothstep(.5,2.4,footprint*k);
-  float phase=dot(p,axis)*k+time*sqrt(9.81*k)*(i==1?-1.:1.);
-  slope+=(axis-up*dot(axis,up))*cos(phase)*strength*filtered;
- }
- return slope;
+vec4 band(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
+ vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
+ vec4 x=mix(texture2D(a,p.yz/scale),texture2D(b,p.yz/scale),waveMix);
+ vec4 y=mix(texture2D(a,p.xz/scale),texture2D(b,p.xz/scale),waveMix);
+ vec4 z=mix(texture2D(a,p.xy/scale),texture2D(b,p.xy/scale),waveMix);
+ vec3 slope=vec3(0.,x.y,x.z)*w.x+vec3(y.y,0.,y.z)*w.y+vec3(z.y,z.z,0.)*w.z;
+ return vec4(slope,x.x*w.x+y.x*w.y+z.x*w.z);
 }
-vec3 skyRadiance(vec3 direction,vec3 up){
- float elevation=clamp(dot(direction,up),0.,1.),sunHeight=dot(sunDir,up);
- float daylight=smoothstep(-.16,.12,sunHeight);
- vec3 zenith=vec3(.065,.15,.31),horizon=vec3(.32,.43,.53);
- vec3 sky=mix(horizon,zenith,pow(elevation,.45));
- float forward=pow(max(dot(direction,sunDir),0.),18.);
- sky+=sunColor*forward*.12;
- sky*=daylight*clamp(air,0.,1.5);
- return sky+vec3(.0015,.002,.003);
-}
+vec4 seaField(vec3 p,vec3 up){return band(wave0,waveNext0,p,up,768.)+band(wave1,waveNext1,p,up,137.)+band(wave2,waveNext2,p,up,23.);}
+${skyGLSL}
 // Screen-space reflection of the opaque terrain, with sky fallback when a ray
 // leaves the screen. It deliberately does not sample the water output itself.
 vec4 terrainReflection(vec3 start,vec3 reflected){
@@ -73,6 +61,14 @@ void main(){
  vec4 v=invProjection*vec4(vUv*2.-1.,1.,1.);
  vec3 viewRay=normalize(v.xyz/v.w),ray=normalize(mat3(camWorld)*viewRay);
  float waterT=seaHit(origin,ray);if(waterT<=0.)return;
+ // Radial displacement converges only away from grazing rays and shores.
+ float baseT=waterT;vec3 basePoint=origin+ray*baseT,baseUp=normalize(basePoint);
+ float baseOpaqueT=opaqueZ<.999999?linearDepth(opaqueZ)/max(-viewRay.z,.00001):1e9;
+ float shoreFade=smoothstep(0.,12.,(baseOpaqueT-baseT)*max(.08,abs(dot(baseUp,ray))));
+ float incidence=dot(baseUp,ray),displace=shoreFade*smoothstep(.12,.35,-incidence)*(1.-smoothstep(1500.,9000.,baseT));
+ float baseFrozen=iceEnabled?1.-smoothstep(-8.,0.,seaTemperature-58.*baseUp.y*baseUp.y):0.;displace*=1.-baseFrozen;
+ for(int j=0;j<2;j++){vec3 q=origin+ray*waterT;float residual=length(q)-seaRadius-seaField(q,normalize(q)).w*displace;waterT-=residual/min(-.12,incidence);}
+
  float opaqueT=opaqueZ<.999999?linearDepth(opaqueZ)/max(-viewRay.z,.00001):1e9;
  float difference=opaqueT-waterT;
  float edgeWidth=max(.012,min(1.5,fwidth(difference)*.6));
@@ -80,7 +76,9 @@ void main(){
  vec3 p=origin+ray*waterT,up=normalize(p),view=-ray;
  float footprint=max(length(dFdx(p)),length(dFdy(p)));
  float frozen=iceEnabled?1.-smoothstep(-8.,0.,seaTemperature-58.*up.y*up.y):0.;
- vec3 normal=normalize(up-waveSlope(p,up,footprint)*(1.-frozen));
+ vec4 waves=seaField(p,up);
+ vec3 slope=waves.xyz-up*dot(waves.xyz,up);
+ vec3 normal=normalize(up-slope*(1.-frozen));
  float ndv=max(.001,dot(normal,view)),ndl=max(0.,dot(normal,sunDir));
  float thickness=opaqueZ<.999999?max(0.,difference)*max(.08,dot(up,view)):120.;
  vec3 absorption=vec3(.22,.070,.032),transmission=exp(-absorption*min(thickness,180.));
@@ -90,13 +88,14 @@ void main(){
  vec4 seaClip=seaProjection*vec4(mat3(seaView)*(ray*waterT),1.);
  float waterZ=seaClip.z/seaClip.w*.5+.5;
  vec3 bottom=refractedZ>waterZ?texture2D(sceneColor,refractedUV).rgb:opaque;
- vec3 scatter=vec3(.008,.095,.105)*(.35+.65*max(0.,dot(up,sunDir)));
+ vec3 scatter=vec3(.004,.033,.065)*(.35+.65*max(0.,dot(up,sunDir)));
  vec3 body=bottom*transmission+scatter*(1.-transmission);
- vec3 reflected=reflect(ray,normal),reflection=skyRadiance(reflected,up);
+ vec3 reflected=reflect(ray,normal),reflection=reflectedSky(p+up*.1,reflected);
  if(waterT<6000.&&frozen<.5){vec4 ssr=terrainReflection(ray*waterT+normal*.15,reflected);reflection=mix(reflection,ssr.rgb,ssr.a);}
  float fresnel=.0204+.9796*pow(1.-ndv,5.);
  vec3 halfVector=normalize(view+sunDir);float ndh=max(0.,dot(normal,halfVector)),vdh=max(0.,dot(view,halfVector));
- float roughness=.15+.11*smoothstep(.15,4.,footprint),a=roughness*roughness,a2=a*a;
+ // Unresolved wave energy becomes reflection roughness rather than vanishing.
+ float roughness=sqrt(.055*.055+.12*.12*smoothstep(.3,12.,footprint)+.20*.20*smoothstep(12.,180.,footprint)),a=roughness*roughness,a2=a*a;
  float denom=ndh*ndh*(a2-1.)+1.,D=a2/max(PI*denom*denom,.000001);
  float k=roughness*roughness*.5,Gv=ndv/(ndv*(1.-k)+k),Gl=ndl/(ndl*(1.-k)+k);
  float F=.0204+.9796*pow(1.-vdh,5.);
@@ -105,9 +104,10 @@ void main(){
  // Broken foam collects only in a shallow band; the wave modulation is filtered.
  float breakUp=noise(p.xz*.37+vec2(time*.13,-time*.09));
  float foam=(1.-smoothstep(.08,1.35,thickness))*smoothstep(.28,.68,breakUp+.12*sin(time*1.4+thickness*4.));
+ foam=max(foam,smoothstep(.20,.38,length(slope))*.35);
  foam*=1.-smoothstep(400.,2400.,waterT);
  color=mix(color,vec3(.58,.65,.65)*(.4+.6*max(0.,dot(up,sunDir))),foam*.72*(1.-frozen));
- vec3 ice=vec3(.35,.47,.50)*(.3+.7*max(0.,dot(up,sunDir)))+skyRadiance(up,up)*.12;
+ vec3 ice=vec3(.35,.47,.50)*(.3+.7*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.12;
  color=mix(color,ice,frozen);
  float coverage=smoothstep(-edgeWidth,edgeWidth,difference);
  gl_FragColor=vec4(mix(opaque,color,coverage),1.);

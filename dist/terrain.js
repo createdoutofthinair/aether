@@ -1,13 +1,16 @@
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=cinematic-1';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=spectral-2';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=cinematic-1';
+import {world,environment,climate,province} from './world.js?v=spectral-2';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
 function hash(x,y,z){return fract(Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453);}
 export function noise(x,y,z){let a=Math.floor(x),b=Math.floor(y),c=Math.floor(z);x-=a;y-=b;z-=c;x=x*x*(3-2*x);y=y*y*(3-2*y);z=z*z*(3-2*z);return mix(mix(mix(hash(a,b,c),hash(a+1,b,c),x),mix(hash(a,b+1,c),hash(a+1,b+1,c),x),y),mix(mix(hash(a,b,c+1),hash(a+1,b,c+1),x),mix(hash(a,b+1,c+1),hash(a+1,b+1,c+1),x),y),z);}
 const craters=Array.from({length:24},(_,i)=>{let z=hash(i,8,2)*2-1,a=hash(i,2,9)*Math.PI*2;return{n:new T.Vector3(Math.sqrt(1-z*z)*Math.cos(a),z,Math.sqrt(1-z*z)*Math.sin(a)),r:.018+hash(i,4,1)*.075};});
-function baseHeight(n){const localDistance=environment.basin?R*Math.sqrt(Math.max(0,2-2*n.dot(landing))):Infinity;if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let offset=(world.seed-6)*.173;let x=n.x+offset,y=n.y-offset*.7,z=n.z+offset*.3;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
+function baseHeight(n){const localDistance=environment.basin?R*Math.sqrt(Math.max(0,2-2*n.dot(landing))):Infinity;if(localDistance<4200){const p=basinCoordinates(n);return basinHeight(p.x,p.z);}let offset=(world.seed-6)*.173;let x=n.x+offset,y=n.y-offset*.7,z=n.z+offset*.3;// Broad domain warping bends ridge systems and coastlines without changing
+// authored landing regions or their shared collision height field.
+const wx=noise(x*2.1+43,y*2.1+11,z*2.1+7)-.5,wy=noise(x*2.1+5,y*2.1+37,z*2.1+19)-.5,wz=noise(x*2.1+23,y*2.1+3,z*2.1+47)-.5;
+x+=wx*.22;y+=wy*.22;z+=wz*.22;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=noise(x*f+17,y*f+9,z*f+31);h+=amp*(i<2?v-.44:(1-Math.abs(v*2-1))-.48);amp*=.47;f*=2.17;}for(const c of craters){const d2=2-2*n.dot(c.n);if(d2<c.r*c.r*2.8){let q=Math.sqrt(Math.max(0,d2))/c.r;h+=c.r*R*.16*(Math.exp(-Math.pow((q-.99)*7,2))*.7-Math.max(0,1-q*q)*.8);}}
  const d=environment.basin?R*Math.sqrt(Math.max(0,2-2*n.dot(landing))):Infinity;
  if(d>6500)return h;
  const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);

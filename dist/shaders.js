@@ -1,3 +1,4 @@
+import {skyGLSL} from './sky-light.js?v=spectral-2';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -82,6 +83,11 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),mix(ns(vPlanet*.008),.5,smoothstep(.5,2.,footprint*.008)));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
+ // Kilometre-scale mineral provinces retain structure after scan textures fade.
+ float macroRock=ns(vPlanet*.00037+vec3(31.,-17.,9.));
+ float macroDust=ns(vPlanet*.0012+vec3(-13.,27.,5.));
+ vec3 mineralTint=mix(vec3(.78,.83,.88),vec3(1.13,.99,.80),smoothstep(.25,.75,macroRock));
+ diffuseColor.rgb*=mineralTint*mix(.88,1.10,macroDust);
  // Macro mineral colours survive the detail fade; scanned luminance supplies close texture.
  float surfaceLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
  float beds=ns(vec3(elevation*.012+province*1.5,11.,7.));
@@ -121,8 +127,9 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
 export const atmosphereVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
 export const atmosphereFragment=`precision highp float;
 varying vec2 vUv;uniform sampler2D sceneColor,sceneDepth;uniform mat4 invProjection,camWorld;uniform vec3 origin,sunDir;uniform float cameraNear,cameraFar,air,exposure;uniform vec2 resolution;uniform int quality;
-vec2 sphere(vec3 o,vec3 d,float r){float b=dot(o,d),c=dot(o,o)-r*r,h=b*b-c;if(h<0.)return vec2(1e9,-1e9);return vec2(-b-sqrt(h),-b+sqrt(h));}
-vec2 density(vec3 p){float h=max(0.,length(p)-60.);return vec2(exp(-h/1.25),exp(-h/.42))*air;}
+${skyGLSL}
+vec2 sphere(vec3 o,vec3 d,float r){return skySphere(o,d,r);}
+vec2 density(vec3 p){return skyDensity(p);}
 vec3 tonemap(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view.xyz/view.w),ray=normalize(mat3(camWorld)*vr);vec3 o=origin*.001;
  float z=texture2D(sceneDepth,vUv).x;float viewZ=(cameraNear*cameraFar)/((cameraFar-cameraNear)*z-cameraFar);float limit=z<.999999?-viewZ/max(-vr.z,.00001)*.001:1e8;
@@ -149,7 +156,7 @@ void main(){vec4 view=invProjection*vec4(vUv*2.-1.,1.,1.);vec3 vr=normalize(view
  // Sparse procedural stars remain behind the atmosphere and planet.
  if(z>=.999999){vec3 cell=floor(ray*1600.);float seed=fract(sin(dot(cell,vec3(12.9898,78.233,39.425)))*43758.5453);color+=vec3(.55,.66,.82)*pow(seed,950.)*.7;float solar=dot(ray,sunDir);color+=vec3(12.,10.,7.)*smoothstep(.999974,.999987,solar);}
  vec2 hit=sphere(o,ray,66.);float a=max(0.,hit.x),b=min(hit.y,limit);
- if(b>a&&air>.001){vec3 br=vec3(.045,.095,.205),bm=vec3(.08);float mu=dot(ray,sunDir),pr=3./(16.*3.141593)*(1.+mu*mu),g=.76,pm=3./(8.*3.141593)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
+ if(b>a&&air>.001){vec3 br=skyRayleigh,bm=skyMie;float mu=dot(ray,sunDir),pr=3./(16.*3.141593)*(1.+mu*mu),g=.76,pm=3./(8.*3.141593)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
  vec2 optical=vec2(0.);vec3 sr=vec3(0.),sm=vec3(0.);int steps=quality==1?16:10;float stepSize=(b-a)/float(steps);
  for(int i=0;i<16;i++){if(i>=steps)break;vec3 p=o+ray*(a+(float(i)+.5)*stepSize);vec2 local=density(p)*stepSize;optical+=local*.5;vec2 planet=sphere(p,sunDir,60.);bool shadow=planet.y>0.&&planet.x>0.;if(!shadow){float sunLength=max(0.,sphere(p,sunDir,66.).y);vec2 sunOpt=vec2(0.);for(int j=0;j<5;j++){sunOpt+=density(p+sunDir*((float(j)+.5)*sunLength/5.))*sunLength/5.;}vec3 attenuation=exp(-(br*(optical.x+sunOpt.x)+bm*(optical.y+sunOpt.y)));sr+=attenuation*local.x;sm+=attenuation*local.y;}optical+=local*.5;}
  color=color*exp(-(br*optical.x+bm*optical.y))+(sr*br*pr+sm*bm*pm)*17.;}

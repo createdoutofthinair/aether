@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {featuredRegions,regionAt,regionDirection} from '../dist/regions.js?v=cinematic-1';
-import {world,defaults,configureWorld} from '../dist/world.js?v=cinematic-1';
+import {featuredRegions,regionAt,regionDirection} from '../dist/regions.js?v=spectral-2';
+import {world,defaults,configureWorld} from '../dist/world.js?v=spectral-2';
 import {height,R,regionLanding,surfaceClimate,surfaceNormal} from '../dist/terrain.js';
 import {rockCandidates} from '../dist/grounding.js';
 import {measure,sites} from './region-metrics.mjs';
