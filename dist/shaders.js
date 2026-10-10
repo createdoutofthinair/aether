@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-11';
+import {skyGLSL} from './sky-light.js?v=terrain-12';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -93,15 +93,16 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  // Grid samples sit at cell vertices; align GPU texel centres with CPU masks.
  vec2 referenceUV=(referenceXY/8192.+.5)*(512./513.)+vec2(.5/513.);
  vec2 localMaskUV=clamp(referenceUV,vec2(0.),vec2(1.));
- if(materialAtlas>.5)localMaskUV=(localMaskUV*513.+vec2(0.,8.))/vec2(1040.,1041.);
+ if(materialAtlas>.5)localMaskUV=(localMaskUV*513.+vec2(0.,8.))/vec2(1040.,2081.);
  vec4 geology=texture2D(referenceMask,localMaskUV);
  vec4 globalGeology=vec4(vSurfaceData.r,vSurfaceData.g,vHydraulic.x,vHydraulic.y);
- float materialResident=0.;
+ float parentRock=clamp(globalGeology.g-globalGeology.r*.3,0.,1.),parentWet=clamp(globalGeology.b*globalGeology.r,0.,1.);
+ float materialResident=0.;vec3 pageColor=mix(planetClimate.y<.05?vec3(.25,.24,.23):vec3(.43,.33,.22),vec3(.30,.28,.25),parentRock)*(1.-parentWet*.18);vec3 pageSurface=vec3(mix(mix(.94,.84,parentRock),.62,parentWet),mix(.82,1.,globalGeology.a),mix(.42,.62,parentRock)+globalGeology.r*.08);
  if(materialAtlas>.5){
   vec2 globalUV=vec2(fract(.5+atan(radial.x,radial.z)/6.283185307),clamp(.5-asin(clamp(radial.y,-1.,1.))/3.141592654,0.,.999999));
   vec2 pagePosition=globalUV*vec2(16.,8.);ivec2 page=ivec2(floor(pagePosition));
   vec4 table=texelFetch(referenceMask,page,0);materialResident=table.a;
-  if(materialResident>.5){vec2 slot=floor(table.rg*255.+.5),pixel=vec2(slot.x*130.,521.+slot.y*130.)+vec2(1.)+fract(pagePosition)*128.;globalGeology=texture2D(referenceMask,pixel/vec2(1040.,1041.));}
+  if(materialResident>.5){vec2 slot=floor(table.rg*255.+.5),pixel=vec2(slot.x*130.,521.+slot.y*130.)+vec2(1.)+fract(pagePosition)*128.;globalGeology=texture2D(referenceMask,pixel/vec2(1040.,2081.));pageColor=texture2D(referenceMask,(pixel+vec2(0.,520.))/vec2(1040.,2081.)).rgb;pageSurface=texture2D(referenceMask,(pixel+vec2(0.,1040.))/vec2(1040.,2081.)).rgb;}
  }
  float deposition=mix(globalGeology.r*vSurfaceData.b,geology.r,referenceBlend),bedrock=mix(globalGeology.g*vSurfaceData.b,geology.g,referenceBlend);
  float drainage=mix(globalGeology.b,geology.b,referenceBlend);
@@ -135,6 +136,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 regionalRock=mix(vec3(.27,.25,.225),vec3(.38,.32,.25),smoothstep(.22,.75,bedrock));
  vec3 regionalSoil=mix(vec3(.39,.285,.175),vec3(.48,.39,.27),deposition);
  vec3 broad=mix(regionalSoil,regionalRock,rockWeight);
+ broad=mix(broad,pageColor,1.-referenceBlend);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*(.96+.05*grain);
  // Mesoscale exposed beds and talus remain visible between scan and orbital scales.
  float meso=ns(vPlanet*.012+vec3(7.,3.,19.));
@@ -207,7 +209,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  diffuseColor.rgb*=mix(1.,.52,wetShore);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
- roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.98,meadow);roughnessFactor=mix(roughnessFactor,mix(snowData.r,.30,glacier),snowCover);roughnessFactor=mix(roughnessFactor,.26,wetShore);
+ roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,pageSurface.r,(1.-referenceBlend)*(1.-detailed));roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.98,meadow);roughnessFactor=mix(roughnessFactor,mix(snowData.r,.30,glacier),snowCover);roughnessFactor=mix(roughnessFactor,.26,wetShore);
  if(normalMomentsEnabled>.5){
   float variance=0.;
   if(weights.x>.01)variance+=normalVariance(rockNormal,rp,w,1./1.8)*weights.x;
@@ -239,7 +241,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <aomap_fragment>',`#include <aomap_fragment>
  float scannedAO=mix(dot(vec3(rockData.g,sandData.g,mudData.g),weights),1.,snowCover);
- reflectedLight.indirectDiffuse*=mix(1.,scannedAO,.70*detailed)*horizonVisibility;
+ reflectedLight.indirectDiffuse*=mix(1.,scannedAO,.70*detailed)*horizonVisibility*mix(1.,pageSurface.g,(1.-referenceBlend)*(1.-detailed));
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <opaque_fragment>','if(surfaceDebug>.5)outgoingLight=debugColor;\n#include <opaque_fragment>');
  };}
