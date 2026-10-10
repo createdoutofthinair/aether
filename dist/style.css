@@ -12,3 +12,5 @@
 
 #settingsBody{max-height:calc(100dvh - 285px);overflow-y:auto;overscroll-behavior:contain}
 @media(max-width:700px){#settingsBody{max-height:calc(100dvh - 290px)}}
+
+.workspaceNav{pointer-events:auto;min-width:155px}.workspaceNav label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin:0;color:#a4c2d2}.workspaceNav select{margin-top:5px;font-size:12px;padding:8px}header{z-index:2}.workspaceNav+ .world{margin-left:auto}@media(max-width:700px){.workspaceNav{min-width:130px}.workspaceNav label{display:none}.workspaceNav select{margin:0}}

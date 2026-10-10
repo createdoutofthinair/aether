@@ -1,3 +1,4 @@
+import {patchMixer} from '../dist/material-mixer.js';
 import * as T from '../dist/vendor/three.module.js';
 import {patchTerrain,atmosphereVertex,atmosphereFragment} from '../dist/shaders.js';
 import {waterVertex,waterFragment} from '../dist/water.js';
@@ -31,3 +32,5 @@ emit('water',{vertexShader:waterVertex,fragmentShader:waterFragment});
 emit('atmosphere',{vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment});
 emit('sky-environment',{vertexShader:skyEnvironmentVertex,fragmentShader:skyEnvironmentFragment});
 console.log('Exported terrain, environment, rock, shadow, water and atmosphere shaders');
+
+const mixMaterial=new T.MeshStandardMaterial();patchMixer(mixMaterial,{});s=shader();mixMaterial.onBeforeCompile(s);emit('material-mixer',s,'#define NORMALMAP_UV uv\n#define USE_NORMALMAP\n#define USE_NORMALMAP_TANGENTSPACE\n#define USE_ENVMAP\n#define ENVMAP_TYPE_CUBE_UV\n#define ENVMAP_MODE_REFLECTION\n#define CUBEUV_TEXEL_WIDTH .0013020833\n#define CUBEUV_TEXEL_HEIGHT .001953125\n#define CUBEUV_MAX_MIP 6.0\n');
