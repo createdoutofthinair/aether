@@ -1,15 +1,15 @@
-import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-4';
-import {positionSunShadow} from './shadows.js?v=terrain-4';
-import {systemExplorer} from './system-ui.js?v=terrain-4';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-4';
-import {createAtlas} from './atlas.js?v=terrain-4';
+import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-5';
+import {positionSunShadow} from './shadows.js?v=terrain-5';
+import {systemExplorer} from './system-ui.js?v=terrain-5';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-5';
+import {createAtlas} from './atlas.js?v=terrain-5';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-4';
-import {RockField,wheelLift} from './grounding.js?v=terrain-4';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-4';
-import {waterVertex,waterFragment} from './water.js?v=terrain-4';
-import {findCoast} from './inspection.js?v=terrain-4';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-5';
+import {RockField,wheelLift} from './grounding.js?v=terrain-5';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-5';
+import {waterVertex,waterFragment} from './water.js?v=terrain-5';
+import {findCoast} from './inspection.js?v=terrain-5';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
@@ -21,7 +21,7 @@ const sun=new T.DirectionalLight(0xffebcf,3.4);sun.castShadow=false;sun.shadow.m
 const sunDir=new T.Vector3(),lightAnchor=landing.clone();function updateSun(){const angle=Number($('sun').value)*Math.PI/180;sunDir.copy(basis(lightAnchor).east).multiplyScalar(Math.cos(angle)).addScaledVector(lightAnchor,Math.sin(angle)).normalize();$('sunValue').value=$('sun').value+'°';}updateSun();$('sun').oninput=updateSun;
 const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path+'?v=materials-2',undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
 const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_gravel_diff.jpg',true),rn:tex('./rock_boulder_dry_nor_gl.jpg'),sn:tex('./sandy_gravel_nor_gl.jpg'),rr:tex('./rock_boulder_dry_rough.jpg'),mud:tex('./mud_cracked_dry_03_diff.jpg',true),mn:tex('./mud_cracked_dry_03_nor_gl.jpg'),rs:tex('./rock_boulder_dry_surface.png'),ss:tex('./sandy_gravel_surface.png'),ms:tex('./mud_cracked_dry_03_surface.png')};
-const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65},seaLevel:{value:world.water},surfaceWater:{value:environment.waterEnabled?1:0}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
+const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65},seaLevel:{value:world.water},surfaceWater:{value:environment.waterEnabled?1:0},planetClimate:{value:new T.Vector4(world.temperature,world.pressure,world.relief,environment.iceEnabled?1:0)}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
 // Linear offscreen scene with real depth, followed by atmosphere integration.
 const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});target.samples=Math.min(4,renderer.capabilities.maxSamples);target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
 const waterTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});waterTarget.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
@@ -61,7 +61,7 @@ loadRover(g=>{
 const rocks=new RockField(root,textures,terrain),pebbles=new RockField(root,textures,terrain,true);
 let selectedSite=landing.clone();
 function orbitSite(site){selectedSite.copy(site);transition=null;mode='orbit';rover.visible=false;roverSpeed=0;roverVertical=0;camPos.copy(site).multiplyScalar(R+75000);yaw=0;pitch=-1.4;lightAnchor.copy(site);updateSun();label();$('message').textContent='Orbit above selected site · Choose Land & explore';}
-function applyWorld(remember=true){terrain.reset();oceanState.seaTemperature.value=world.temperature;oceanState.seaRadius.value=R+world.water;oceanState.waterEnabled.value=environment.waterEnabled;oceanState.iceEnabled.value=environment.iceEnabled;surfaceControls.seaLevel.value=world.water;surfaceControls.surfaceWater.value=environment.waterEnabled?1:0;uniforms.air.value=world.pressure;$('air').value=world.pressure*100;$('airValue').value=world.pressure.toFixed(1)+'×';orbitSite(selectedSite);if(remember)systemExplorer.remember({config:{...world},environment:{...environment}});}
+function applyWorld(remember=true){terrain.reset();oceanState.seaTemperature.value=world.temperature;oceanState.seaRadius.value=R+world.water;oceanState.waterEnabled.value=environment.waterEnabled;oceanState.iceEnabled.value=environment.iceEnabled;surfaceControls.planetClimate.value.set(world.temperature,world.pressure,world.relief,environment.iceEnabled?1:0);surfaceControls.seaLevel.value=world.water;surfaceControls.surfaceWater.value=environment.waterEnabled?1:0;uniforms.air.value=world.pressure;$('air').value=world.pressure*100;$('airValue').value=world.pressure.toFixed(1)+'×';orbitSite(selectedSite);if(remember)systemExplorer.remember({config:{...world},environment:{...environment}});}
 createAtlas({onTravel:orbitSite,onApply:()=>applyWorld(),onReset:()=>{const p=systemExplorer.getDefault();configureWorld(p.config);configureEnvironment(p.environment);}});
 systemExplorer.setVisit((planet,profile,star)=>{if(planet.id===systemExplorer.getActive().id){orbitSite(selectedSite);return;}systemExplorer.remember({config:{...world},environment:{...environment}});configureWorld(profile.config);configureEnvironment(profile.environment);selectedSite.copy(landing);applyWorld(false);sun.color.set(star.color);sun.intensity=3.4*clamp(Math.sqrt(planet.flux),.3,2.5);$('atlasTitle').textContent=planet.name+' · World atlas';$('message').textContent=planet.name+' · Open Planet atlas to choose dry terrain, or Land & explore';});
 const keys=new Set();let dragging=false,prevPointer=null;const canvas=renderer.domElement;

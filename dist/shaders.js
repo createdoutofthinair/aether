@@ -1,15 +1,16 @@
-import {skyGLSL} from './sky-light.js?v=terrain-4';
+import {skyGLSL} from './sky-light.js?v=terrain-5';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
- Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0}});
+ Object.assign(s.uniforms,{rockMap:{value:textures.rock},sandMap:{value:textures.sand},mudMap:{value:textures.mud},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},planetClimate:controls.planetClimate||{value:[18,1,1,1]}});
  s.vertexShader='attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
  s.fragmentShader=`varying vec3 vBiome;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
  uniform float sedimentCover,seaLevel,surfaceWater;
+ uniform vec4 planetClimate;
  vec3 terrainDx,terrainDy;
  ${noiseGLSL}
  vec2 tileHash(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
@@ -116,12 +117,35 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  diffuseColor.rgb=mix(diffuseColor.rgb,basalt*(.75+clamp(surfaceLuma,0.,.7)),clamp(vBiome.y*1.12,0.,1.));
  vec3 fineSand=mix(vec3(.46,.29,.105),vec3(.64,.47,.24),province);
  diffuseColor.rgb=mix(diffuseColor.rgb,fineSand*(.90+clamp(surfaceLuma,0.,.7)*.32),vBiome.z*.93);
- diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.68,.79,.84)*(.9+.1*grain),vBiome.x*(1.-smoothstep(.2,.65,slope)));
+ // Climate-driven elevation belts: lapse rate, latitude, rainfall and atmosphere.
+ float altitude=max(0.,elevation-seaLevel);
+ float localTemp=planetClimate.x-58.*radial.y*radial.y-altitude*.0065;
+ float rainfall=smoothstep(.27,.72,ns(radial.zxy*4.+vec3(17.,31.,7.)));
+ float moisture=clamp(rainfall+.22*exp(-altitude/450.)-.22*smoothstep(500.,1700.,altitude),0.,1.);
+ float life=surfaceWater*smoothstep(.12,.55,planetClimate.y)*smoothstep(-6.,6.,localTemp)*(1.-smoothstep(30.,48.,localTemp));
+ float lowlands=1.-smoothstep(250.*planetClimate.z,1000.*planetClimate.z,altitude);
+ float meadow=life*smoothstep(.23,.65,moisture)*lowlands*(1.-smoothstep(.06,.25,slope))*(1.-vBiome.y)*(1.-vBiome.z);
+ float coverPatch=ns(vPlanet*.007+vec3(13.,5.,23.));
+ meadow*=mix(.55,1.,smoothstep(.25,.7,coverPatch));
+ vec3 grassColor=mix(vec3(.20,.19,.055),vec3(.065,.18,.045),moisture);
+ grassColor=mix(grassColor,vec3(.27,.25,.09),smoothstep(19.,32.,localTemp)*.6);
+ diffuseColor.rgb=mix(diffuseColor.rgb,grassColor*(.72+surfaceLuma*.8)*(.85+.3*grain),meadow*.94);
+ float alpine=smoothstep(350.*planetClimate.z,1150.*planetClimate.z,altitude)*(1.-meadow)*(1.-vBiome.y)*(1.-vBiome.z);
+ vec3 alpineRock=mix(vec3(.24,.25,.27),vec3(.42,.40,.35),macroRock);
+ diffuseColor.rgb=mix(diffuseColor.rgb,alpineRock*(.75+surfaceLuma*.8),alpine*.68);
+ // Wind strips steep faces; cold shaded gullies retain snow below the snowline.
+ float snowTemperature=localTemp+(province-.5)*5.+slope*7.;
+ float snowCover=planetClimate.w*(1.-smoothstep(-5.,2.,snowTemperature))*(1.-smoothstep(.14,.48,slope));
+ float glacier=planetClimate.w*(1.-smoothstep(-19.,-8.,localTemp))*(1.-smoothstep(.18,.5,slope));
+ vec3 snowColor=mix(vec3(.78,.84,.87),vec3(.93,.95,.96),grain);
+ vec3 iceColor=mix(vec3(.30,.51,.61),vec3(.62,.76,.80),mediumLuma);
+ diffuseColor.rgb=mix(diffuseColor.rgb,mix(snowColor,iceColor,glacier*.65),snowCover);
+
  float wetShore=surfaceWater*(1.-smoothstep(0.,2.2,elevation-seaLevel))*(1.-vBiome.x);
  diffuseColor.rgb*=mix(1.,.52,wetShore);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
- roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.26,wetShore);`);
+ roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.98,meadow);roughnessFactor=mix(roughnessFactor,mix(.90,.30,glacier),snowCover);roughnessFactor=mix(roughnessFactor,.26,wetShore);`);
  s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
  vec3 gradient=vec3(0.);
  if(detailed>0.){
@@ -132,7 +156,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  gradient*=detailed;
  gradient+=triGradient(rockNormal,vPlanet/24.,w,1./24.)*.14*mediumVisibility*(1.-detailed);
  gradient+=triGradient(rockNormal,vPlanet/120.,w,1./120.)*.09*largeVisibility*(1.-detailed);
- gradient*=1.-vBiome.z*.88;
+ gradient*=1.-vBiome.z*.88;gradient*=1.-snowCover*.78;
  vec3 wind=normalize(vec3(.88,.12,.47));
  float ripplePhase=dot(vPlanet,wind)*18.+ns(vPlanet*.06)*2.;
  wind-=gn*dot(wind,gn);
