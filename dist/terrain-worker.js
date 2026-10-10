@@ -1,5 +1,5 @@
-import {generateReference} from './terrain-data.js?v=terrain-9';
-import {prepareDetail,generateDetailTile} from './terrain-detail.js?v=terrain-9';
+import {generateReference} from './terrain-data.js?v=terrain-10';
+import {prepareDetail,generateDetailTile} from './terrain-detail.js?v=terrain-10';
 const worlds=new Map();
 self.onmessage=({data:{id,seed,type,tx,tz}})=>{try{
  let data=worlds.get(seed);if(!data){data=prepareDetail(generateReference(seed));worlds.set(seed,data);while(worlds.size>3)worlds.delete(worlds.keys().next().value);}

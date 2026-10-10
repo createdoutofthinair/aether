@@ -1,8 +1,8 @@
 import * as T from './vendor/three.module.js';
-import {getReference} from './terrain-cache.js?v=terrain-9';
-import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-9';
-import {world,environment} from './world.js?v=terrain-9';
-import {patchTerrain} from './shaders.js?v=terrain-9';
+import {getReference} from './terrain-cache.js?v=terrain-10';
+import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-10';
+import {world,environment} from './world.js?v=terrain-10';
+import {patchTerrain} from './shaders.js?v=terrain-10';
 const hash=(n,s)=>{let v=Math.imul(n+1,374761393)^Math.imul(s+1,668265263);v=Math.imul(v^(v>>>13),1274126177);return((v^(v>>>16))>>>0)/4294967295;};
 
 // Three interlocking fractured slabs. Chamfered polygon footprints, stepped

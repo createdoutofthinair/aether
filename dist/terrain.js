@@ -1,7 +1,7 @@
-import {referenceAt} from './terrain-cache.js?v=terrain-9';
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-9';
+import {referenceAt} from './terrain-cache.js?v=terrain-10';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-10';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=terrain-9';
+import {world,environment,climate,province} from './world.js?v=terrain-10';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;

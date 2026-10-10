@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-9';
+import {skyGLSL} from './sky-light.js?v=terrain-10';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
@@ -15,8 +15,53 @@ uniform int quality;
 uniform bool waterEnabled,iceEnabled;
 const float PI=3.14159265359;
 float linearDepth(float z){return cameraNear*cameraFar/(cameraFar-z*(cameraFar-cameraNear));}
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+// Arithmetic hash avoids the large-coordinate sine quantisation visible as grids.
+vec2 foamHash(vec2 p){vec3 q=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973));q+=dot(q,q.yzx+33.33);return fract((q.xx+q.yz)*q.zy);}
+float hash(vec2 p){return foamHash(p).x;}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+// Nearest and second-nearest jittered sites define a cellular film. Cells are
+// centimetres across, never metre-sized white disks. Integrate unresolved cells
+// toward their mean area coverage instead of letting them sparkle or disappear.
+float bubbleFilm(vec2 q,float footprint){
+ vec2 cell=floor(q),f=fract(q);float first=10.,second=10.;
+ for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+  vec2 o=vec2(float(x),float(y)),site=o+.15+.7*foamHash(cell+o)-f;
+  float d=dot(site,site);if(d<first){second=first;first=d;}else second=min(second,d);
+ }
+ float gap=sqrt(second)-sqrt(first),aa=max(.015,footprint*.7);
+ float film=1.-smoothstep(.035-aa,.095+aa,gap);
+ return mix(film,.27,smoothstep(.25,.9,footprint));
+}
+float foamLayer(vec2 q,float pixel,float depth,float crest){
+ vec2 drift=vec2(.11,.065)*time;
+ vec2 advected=q-drift;
+ vec2 warp=vec2(noise(advected*.43),noise(advected*.43+19.7))-.5;
+ vec2 cells=advected+warp*.28;
+ float coarse=noise(advected*.19),medium=noise(advected*1.73+warp);
+ // Smooth irregular patches; a connected dense wash grades into lace-like film.
+ float patchiness=.58*coarse+.42*medium;
+ float phase=time*.72-depth*2.1+coarse*2.;
+ float wash=.5+.5*sin(phase);
+ float shore=(1.-smoothstep(.12,1.65,depth))*(.28+.72*wash);
+ float density=clamp(shore+crest,0.,1.);
+ float aa=max(.025,min(.22,pixel*.35));
+ float coverage=smoothstep(.54-density*.44-aa,.64-density*.44+aa,patchiness);
+ float small=.27;
+ if(pixel*18.<.9)small=bubbleFilm(cells*18.,pixel*18.);
+ float large=.27;
+ if(pixel*6.3<.9)large=bubbleFilm(cells*6.3+7.2,pixel*6.3);
+ float lace=mix(.18+.82*small,.35+.65*max(small,large),density);
+ return coverage*lace*density;
+}
+float seaFoam(vec3 p,vec3 up,float pixel,float depth,float crest){
+ vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
+ // World-space triplanar projection prevents latitude seams and polar stretching.
+ float result=0.;
+ if(w.x>.001)result+=foamLayer(p.yz,pixel,depth,crest)*w.x;
+ if(w.y>.001)result+=foamLayer(p.xz,pixel,depth,crest)*w.y;
+ if(w.z>.001)result+=foamLayer(p.xy,pixel,depth,crest)*w.z;
+ return result;
+}
 float seaHit(vec3 o,vec3 d){
  float b=dot(o,d),c=(length(o)-seaRadius)*(length(o)+seaRadius),disc=b*b-c;
  if(disc<0.)return -1.;
@@ -102,12 +147,13 @@ void main(){
  float F=.0204+.9796*pow(1.-vdh,5.);
  vec3 specular=sunColor*sunIntensity*(D*Gv*Gl*F/(4.*ndv+.0001))*ndl;
  vec3 color=body*(1.-fresnel)+reflection*fresnel+min(specular,vec3(14.));
- // Broken foam collects only in a shallow band; the wave modulation is filtered.
- float breakUp=noise(p.xz*.37+vec2(time*.13,-time*.09));
- float foam=(1.-smoothstep(.08,1.35,thickness))*smoothstep(.28,.68,breakUp+.12*sin(time*1.4+thickness*4.));
- foam=max(foam,smoothstep(.20,.38,length(slope))*.35);
- foam*=1.-smoothstep(400.,2400.,waterT);
- color=mix(color,vec3(.58,.65,.65)*(.4+.6*max(0.,dot(up,sunDir))),foam*.72*(1.-frozen));
+ // Crest foam is a steepness heuristic, not a physical overturning simulation.
+ float crest=smoothstep(.24,.42,length(slope))*smoothstep(.02,.22,waves.w)*.22;
+ float foam=0.;
+ if((thickness<1.65||crest>.001)&&frozen<.999)foam=seaFoam(p,up,footprint,thickness,crest)*(1.-frozen);
+ vec3 foamLight=vec3(.74,.78,.76)*(.32+.68*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.09;
+ // Opaque, rough bubble films suppress the sharp water reflection beneath them.
+ color=mix(color,foamLight,clamp(foam,0.,.94));
  vec3 ice=vec3(.35,.47,.50)*(.3+.7*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.12;
  color=mix(color,ice,frozen);
  float coverage=smoothstep(-edgeWidth,edgeWidth,difference);

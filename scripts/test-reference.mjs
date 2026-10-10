@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {generateReference,referenceSample} from '../dist/terrain-data.js?v=terrain-9';
-import {installReference,prepareReference,getReference} from '../dist/terrain-cache.js?v=terrain-9';
-import {world,defaults,configureWorld} from '../dist/world.js?v=terrain-9';
+import {generateReference,referenceSample} from '../dist/terrain-data.js?v=terrain-10';
+import {installReference,prepareReference,getReference} from '../dist/terrain-cache.js?v=terrain-10';
+import {world,defaults,configureWorld} from '../dist/world.js?v=terrain-10';
 import {R,landing,basis,height,surfaceNormal,surfaceGeology,PlanetTerrain} from '../dist/terrain.js';
 
 const started=performance.now(),data=generateReference(6);installReference(data);

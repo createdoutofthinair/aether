@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {generateReference} from '../dist/terrain-data.js?v=terrain-9';
-import {installReference} from '../dist/terrain-cache.js?v=terrain-9';
-import {R,landing,basinDirection,PlanetTerrain} from '../dist/terrain.js?v=terrain-9';
-import {world,configureEnvironment} from '../dist/world.js?v=terrain-9';
-import {OutcropField,createOutcropGeometry} from '../dist/outcrops.js?v=terrain-9';
-import {wheelLift,tyreSupport} from '../dist/grounding.js?v=terrain-9';
+import {generateReference} from '../dist/terrain-data.js?v=terrain-10';
+import {installReference} from '../dist/terrain-cache.js?v=terrain-10';
+import {R,landing,basinDirection,PlanetTerrain} from '../dist/terrain.js?v=terrain-10';
+import {world,configureEnvironment} from '../dist/world.js?v=terrain-10';
+import {OutcropField,createOutcropGeometry} from '../dist/outcrops.js?v=terrain-10';
+import {wheelLift,tyreSupport} from '../dist/grounding.js?v=terrain-10';
 const data=installReference(generateReference()),root=new T.Group(),terrain=new PlanetTerrain(root,new T.MeshStandardMaterial()),field=new OutcropField(root,{},terrain,{sediment:{value:.65}}),camera=basinDirection(700,250).multiplyScalar(R+650),started=performance.now();field.update(camera,Infinity);root.updateMatrixWorld(true);
 assert(field.count>50&&field.count<1024);assert.equal(field.count,data.outcrops.length);
 let contacts=0;for(const entry of field.entries.filter(e=>Math.hypot(e.feature.x-700,e.feature.z-250)<650).slice(0,12)){
