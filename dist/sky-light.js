@@ -24,3 +24,16 @@ vec3 reflectedSky(vec3 point,vec3 direction){
  return(sr*skyRayleigh*pr+sm*skyMie*pm)*17.+vec3(.001);
 }
 `;
+
+export const skyEnvironmentVertex=`
+varying vec3 direction;
+void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}
+`;
+export const skyEnvironmentFragment=`
+precision highp float;
+varying vec3 direction;
+uniform float air;
+uniform vec3 sunDir,skyPoint;
+${skyGLSL}
+void main(){gl_FragColor=vec4(reflectedSky(skyPoint,normalize(direction)),1.);}
+`;

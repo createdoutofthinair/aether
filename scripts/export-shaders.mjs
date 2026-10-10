@@ -1,6 +1,7 @@
 import * as T from '../dist/vendor/three.module.js';
 import {patchTerrain,atmosphereVertex,atmosphereFragment} from '../dist/shaders.js';
 import {waterVertex,waterFragment} from '../dist/water.js';
+import {skyEnvironmentVertex,skyEnvironmentFragment} from '../dist/sky-light.js';
 import {RockField} from '../dist/grounding.js';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const out=process.argv[2]||'/tmp/aether-shaders';mkdirSync(out,{recursive:true});
@@ -20,8 +21,10 @@ function emit(name,s,defines=''){
  writeFileSync(`${out}/${name}.vert`,vs);writeFileSync(`${out}/${name}.frag`,fs);
 }
 const shader=()=>({vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader,uniforms:{}}),m=new T.MeshStandardMaterial();patchTerrain(m,{});let s=shader();m.onBeforeCompile(s);emit('terrain',s,'#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
+emit('terrain-environment',s,'#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n#define USE_ENVMAP\n#define ENVMAP_TYPE_CUBE_UV\n#define ENVMAP_MODE_REFLECTION\n#define CUBEUV_TEXEL_WIDTH .0013020833\n#define CUBEUV_TEXEL_HEIGHT .001953125\n#define CUBEUV_MAX_MIP 6.0\n');
 const field=new RockField(new T.Group(),{rock:null,rn:null,rr:null},{});s=shader();field.mesh.material.onBeforeCompile(s);emit('rocks',s,'#define USE_INSTANCING\n#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n');
 s={...T.ShaderLib.depth};field.mesh.customDepthMaterial.onBeforeCompile(s);emit('rock-depth',s,'#define USE_INSTANCING\n#define DEPTH_PACKING 3201\n');
 emit('water',{vertexShader:waterVertex,fragmentShader:waterFragment});
 emit('atmosphere',{vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment});
-console.log('Exported terrain, rock, shadow and atmosphere shaders');
+emit('sky-environment',{vertexShader:skyEnvironmentVertex,fragmentShader:skyEnvironmentFragment});
+console.log('Exported terrain, environment, rock, shadow, water and atmosphere shaders');

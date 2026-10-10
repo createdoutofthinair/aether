@@ -6,9 +6,15 @@ Research date: 10 October 2026. Inspected renderer baseline: `d7984d26bd9ae51ea8
 
 Replace the current reliance on procedural color noise with a coherent terrain data pipeline, separate physical detail scales, and a measured material/geometry cache. Preserve seamless planetary exploration and GitHub Pages delivery. First prove one reference landscape from ground to orbit, then generalize it to planet profiles.
 
-The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. This document proposes work; it does not claim that the proposed renderer has been implemented or visually verified.
+The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. The audit below describes the recorded baseline; the architecture remains a staged roadmap.
 
-## Findings from the current source
+## Implementation status — first reference region
+
+The first implementation adds worker-generated hydraulic/thermal erosion to Nacre's reference area, cached metre-based heights, terrain-derived soil/exposure/drainage/horizon masks, shared rendered-surface contact, per-channel Gaussianized stochastic colour blending, dedicated procedural snow maps, atmospheric PBR environment lighting, and fixed inspection heights with seven surface diagnostics. Enlarged 24 m and 120 m rock scans are removed. The 8192 m grid has 16 m samples, full influence inside a 2.7 km radius and a smooth transition ending at 3.9 km.
+
+Determinism, region continuity, height-gradient continuity, contact parity and contrast reconstruction pass numerical tests. All seven GLSL program pairs compile and link, including terrain with environment lighting. Visual acceptance remains open because the development browser cannot create WebGL. This is a reference-region milestone, not completion of the whole roadmap: global connected erosion, material page streaming, KTX2 conversion, photogrammetric outcrops, normal-distribution filtering and WebGPU work remain unimplemented. Gaussianization is per channel without PCA or mip-specific histogram correction; new snow maps are procedural, not scanned. No GPU frame-rate target has been established.
+
+## Findings from the audited baseline
 
 | Area | Observed implementation | Consequence / proposed correction |
 | --- | --- | --- |

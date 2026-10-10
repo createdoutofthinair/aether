@@ -9,3 +9,6 @@
 .regionVisits{display:flex;flex-wrap:wrap;gap:7px}.regionVisits button{font-size:12px;padding:10px;text-align:left;flex:1;min-width:120px}
 
 #inspectCoast,#inspectTerrain{font-size:12px;padding:10px 12px;border-color:#8bbfca65;background:#18333b90}header{flex-wrap:wrap}header .brand{flex-shrink:0}@media(max-width:700px){header{gap:6px}.telemetry{top:150px}.settings{top:150px}#inspectCoast,#inspectTerrain{font-size:11px;padding:9px 7px}header button{flex-shrink:0}}
+
+#settingsBody{max-height:calc(100dvh - 285px);overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:700px){#settingsBody{max-height:calc(100dvh - 290px)}}

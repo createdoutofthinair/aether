@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-6';
+import {skyGLSL} from './sky-light.js?v=terrain-7';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
@@ -10,7 +10,7 @@ uniform float waveMix;
 uniform mat4 invProjection,camWorld,seaView,seaProjection;
 uniform vec3 origin,sunDir,sunColor;
 uniform vec2 resolution;
-uniform float cameraNear,cameraFar,seaRadius,seaTemperature,time,air,sunIntensity;
+uniform float cameraNear,cameraFar,seaRadius,seaTemperature,time,air,sunIntensity,surfaceDebug;
 uniform int quality;
 uniform bool waterEnabled,iceEnabled;
 const float PI=3.14159265359;
@@ -87,6 +87,7 @@ void main(){
  float refractedZ=texture2D(sceneDepth,refractedUV).r;
  vec4 seaClip=seaProjection*vec4(mat3(seaView)*(ray*waterT),1.);
  float waterZ=seaClip.z/seaClip.w*.5+.5;
+ if(surfaceDebug>.5){gl_FragDepth=waterZ;gl_FragColor=vec4(frozen>.5?vec3(.16,.42,.72):vec3(.015,.14,.55),1.);return;}
  vec3 bottom=refractedZ>waterZ?texture2D(sceneColor,refractedUV).rgb:opaque;
  vec3 scatter=vec3(.004,.033,.065)*(.35+.65*max(0.,dot(up,sunDir)));
  vec3 body=bottom*transmission+scatter*(1.-transmission);

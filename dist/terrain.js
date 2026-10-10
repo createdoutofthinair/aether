@@ -1,6 +1,7 @@
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-6';
+import {referenceAt} from './terrain-cache.js?v=terrain-7';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-7';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=terrain-6';
+import {world,environment,climate,province} from './world.js?v=terrain-7';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -59,7 +60,7 @@ export function basinProfile(x,z){
  }
  return{bank,mesa,distance,drainage,wx,wz};
 }
-export function basinHeight(x,z){
+function legacyBasinHeight(x,z){
  const {bank,mesa,drainage,wx,wz}=basinProfile(x,z);
  const uplift=30+80*noise(wx/760+8,wz/690+4,9);
  const shoulders=bank*(uplift+mesa*105);
@@ -72,13 +73,23 @@ export function basinHeight(x,z){
  const gravel=(noise(x*.12+7,z*.12+3,5)-.5)*.14;
  return floor+shoulders+resistant*bank*17-gullies+broken+talus+gravel;
 }
+export function basinHeight(x,z){
+ const data=referenceAt(world.seed,x,z);
+ if(!data||data.weight<=0)return legacyBasinHeight(x,z);
+ // The same bounded centimetre/meter relief participates in rendering and contact.
+ const fine=(noise(x*.14+world.seed,z*.14,17)-.5)*.12*(1-data.flow)
+  +(noise(x*.032,z*.032+world.seed,29)-.5)*.65*data.exposure;
+ return data.weight>=1?data.height+fine:mix(legacyBasinHeight(x,z),data.height+fine,data.weight);
+}
+export function referenceGeology(d){const {x,z}=basinCoordinates(d);return environment.basin?referenceAt(world.seed,x,z):null;}
 export function surfaceGeology(d){
  const region=regionAt(d);if(region?.id==='badlands'){const h=regionHeight(region),deposition=1-T.MathUtils.smoothstep(h,190,550);return[deposition,1-deposition,region.weight];}
  if(!environment.basin)return[0,0,0];
  const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
  if(regional===0)return[0,0,0];
- const {x,z}=basinCoordinates(d),p=basinProfile(x,z);
- return[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
+ const {x,z}=basinCoordinates(d),p=basinProfile(x,z),eroded=referenceAt(world.seed,x,z);
+ const original=[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
+ return eroded?original.map((v,i)=>mix(v,[eroded.soil,eroded.exposure,regional][i],eroded.weight)):original;
 }
 
 export function surfaceClimate(d,elevation){const c=climate(d,elevation),r=regionAt(d);if(!r||c.ocean)return c;const cover=r.weight*(1-c.ice);if(r.id==='volcanic'){c.volcanic=mix(c.volcanic,.92,cover);c.dunes*=1-cover;}else if(r.id==='dunes'){c.dunes=mix(c.dunes,.98,cover);c.volcanic*=1-cover;}else{c.volcanic*=1-cover;c.dunes*=1-cover;}if(r.weight>.5&&c.ice<.55)c.biome=r.name;return c;}

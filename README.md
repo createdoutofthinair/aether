@@ -2,7 +2,7 @@
 
 Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, e.g. `python -m http.server 8000 --directory dist`.
 
-- Continuous spherical planet, 60 km radius, deterministic ridges and impact craters. Nacre Basin adds an irregular dry channel, a spatially indexed branching tributary network, isolated resistant beds, mesas and small geometric surface relief across the landing region, blending into the planet over 4.2–6.5 km.
+- Continuous spherical planet, 60 km radius, deterministic ridges and impact craters. Nacre Basin now uses a cached hydraulic/thermal erosion height field with aligned drainage, soil, rock exposure and horizon visibility. Its centre blends into the older basin at 2.7–3.9 km, then into planetary terrain at 4.2–6.5 km.
 - Six cube-face quadtrees, 16×16 patches, up to level 14, stitched coarse/fine edges, isolated radial skirts, shared height-field normals, incremental generation and mesh eviction.
 - Camera-relative render origin; metre-based CPU coordinates.
 - Depth-aware single-scattering atmospheric integration with Rayleigh and Mie terms and planetary sunlight occlusion. This version ray marches directly; it does not yet precompute scattering lookup tables.
@@ -12,7 +12,7 @@ Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, 
 
 ## Known limitations
 
-LOD edges are stitched and skirt lighting is isolated; refinement does not yet geomorph. High-speed travel may show detail arriving. Wheel and rock contact samples the currently visible stitched terrain triangles. Rocks are visual scatter and have no colliders. The basin is an erosion-inspired procedural landform, not a hydraulic erosion simulation. No caves, clouds, terrain self-shadowing at planetary scale, multiple scattering, or atmospheric LUTs. Atmospheric planet shadow uses the reference sphere. Each wheel is repositioned independently against the terrain under a damped chassis; this is a kinematic contact solver, not full articulated rigid-body suspension. This intentionally small planet is not Earth-scale.
+LOD edges are stitched, morph continuously, and isolate skirt lighting. High-speed travel may show detail arriving. Wheel and rock contact samples the currently visible stitched terrain triangles. Rocks are visual scatter and have no colliders. Erosion runs on the reference basin; the rest of the planet uses procedural landforms. No caves, clouds, terrain self-shadowing at planetary scale, multiple scattering, or atmospheric LUTs. Atmospheric planet shadow uses the reference sphere. Each wheel is repositioned independently against the terrain under a damped chassis; this is a kinematic contact solver, not full articulated rigid-body suspension. This intentionally small planet is not Earth-scale.
 
 ## Assets
 
@@ -28,7 +28,7 @@ The Rover R06 asset comes from the user's prior project.
 
 ## Validation
 
-Run `npm run check && npm test` for shared-edge normals, same-level and coarse/fine edge alignment, cube-face transitions and skirt isolation, plus tyre clearance, deterministic rock/pebble placement, regional continuity and asset availability. GitHub Actions compiles and links terrain, rock, shadow and atmosphere GLSL before deployment.
+Run `npm run check && npm test` for shared-edge normals, same-level and coarse/fine edge alignment, cube-face transitions and skirt isolation, plus tyre clearance, deterministic rock/pebble placement, regional continuity, erosion repeatability, reference contact and stochastic contrast preservation. GitHub Actions compiles and links terrain with/without environment lighting, rock, shadow, water, atmosphere and sky-environment GLSL before deployment.
 
 The rover is bundled as losslessly compressed `dist/rover.glb.gz` and decompressed in the browser before loading. Geometry and embedded textures are unchanged. Requires a modern browser with WebGL 2 and DecompressionStream support.
 
@@ -110,8 +110,20 @@ This is not full Bruneton ocean BRDF or multi-scattering atmosphere: wave energy
 ### Terrain distance correction
 LOD now measures every cell centre rather than nine samples, with a 1.15 pixel high-quality error target. Vertex normals use a sampling footprint tied to mesh spacing to suppress unresolved ridge lighting. Scan blending follows pixel footprint, with mesoscale sediment/mineral and strata shading between ground and orbital views. Aerosol scattering and its scale height are reduced to retain terrain contrast. Visual confirmation is still required; the development cloud browser has no WebGL context.
 
-The material bridge additionally samples stochastic scanned rock at 24 m and 120 m scales with separately filtered normals and luminance variation. High-quality mode uses up to 2× device pixel ratio and 16× anisotropy where supported. This increases GPU cost compared with the earlier 1.5× cap.
+The reference upgrade removes the previous 24 m and 120 m rock-scan bands. Distant colour now follows terrain-derived soil and exposed rock. High-quality mode uses up to 2× device pixel ratio and 16× anisotropy where supported.
 
 Elevation material belts use latitude and a 6.5°C/km lapse rate, rainfall, atmospheric pressure and water availability. Temperate lowlands receive patchy grass surface color (no vegetation geometry); dry/hot/airless worlds retain mineral ground. Uplands expose cooler rock, with slope- and temperature-dependent snow accumulation and blue glacier ice. Climate uniforms update when changing planets or atlas settings.
 
 Snow uses a continuous temperature/slope cover rather than coarse noise islands. Glacier tint is limited to cold, low-slope deposition hollows; fine directional fractures replace enlarged rock-scan brightness. Snow suppresses underlying rock normals and uses subtle wind drift relief.
+
+### Eroded reference landscape
+
+Open `?view=terrain&altitude=200` to inspect Nacre from 200 m. **Inspect terrain at** offers 2 m, 20 m, 200 m, 2 km and 75 km over the same location. **Surface view** exposes materials, drainage, soil/rock exposure, normals, pixel footprint, snow and sky visibility. Water is blue in diagnostic views. `planetExplorer.getState()` reports drawing-buffer resolution and active erosion statistics.
+
+`terrain-data.js` generates a deterministic 513² height field spanning 8192 m at 16 m spacing, transports sediment with 100,000 hydraulic droplets, and relaxes talus over twelve thermal passes. Final heights determine flow accumulation, soil/exposure and an eight-direction horizon visibility estimate. Catmull-Rom reconstruction and bounded fine relief feed the existing quadtree and rendered-surface contact sampler. A worker prepares the data before entering the reference world, with up to three seed results cached. This establishes a local region, not connected planet-wide hydrology or texture streaming.
+
+Colour scans are rank-transformed per channel into an approximately Gaussian distribution in a worker. Stochastic patch and triplanar blends normalize variance; an inverse-CDF lookup reconstructs linear albedo. This prevents the ordinary blend's contrast loss in the numerical fixture. It is a simplified per-channel implementation, without PCA colour decorrelation or mip-specific histogram correction. Source scans still define normal/roughness/height channels. Dedicated procedural snow/firn maps supply grain, crust, normals and roughness; grass remains surface colour rather than a captured grass material or vegetation mesh.
+
+The atmospheric radiance model now supplies a prefiltered environment map for PBR sky lighting. Terrain-derived horizon visibility attenuates diffuse skylight. This improves coherent ambient response but does not add bounced global illumination or long-range terrain shadow maps. Initial erosion/material preparation adds loading time; the recorded Node fixture prepares and tests the reference in about 2.5 s, not a browser performance guarantee.
+
+This implements the first reference-region milestone from [the research roadmap](docs/terrain-rendering-research.md). Full virtual texturing, KTX2 assets, captured outcrop geometry, planet-wide erosion and WebGPU migration remain future stages. Numerical tests and GLSL compilation pass; the development browser lacks WebGL, so the visual-quality gate remains open for live inspection.
