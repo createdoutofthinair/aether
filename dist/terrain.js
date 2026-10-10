@@ -1,8 +1,8 @@
-import {planetAt} from './planet-cache.js?v=terrain-13';
-import {referenceAt} from './terrain-cache.js?v=terrain-13';
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-13';
+import {planetAt} from './planet-cache.js?v=terrain-14';
+import {referenceAt} from './terrain-cache.js?v=terrain-14';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-14';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=terrain-13';
+import {world,environment,climate,province} from './world.js?v=terrain-14';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;

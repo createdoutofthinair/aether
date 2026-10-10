@@ -1,5 +1,5 @@
-import {profileRules} from './planet-profiles.js?v=terrain-13';
-import {referenceSample} from './terrain-data.js?v=terrain-13';
+import {profileRules} from './planet-profiles.js?v=terrain-14';
+import {referenceSample} from './terrain-data.js?v=terrain-14';
 
 export const DETAIL_STEP=2,DETAIL_EXTENT=128,DETAIL_CELLS=DETAIL_EXTENT/DETAIL_STEP,DETAIL_SIZE=DETAIL_CELLS+3;
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),mix=(a,b,t)=>a+(b-a)*t;

@@ -1,4 +1,5 @@
-import {skyGLSL} from './sky-light.js?v=terrain-13';
+import {coastalGLSL} from './coastal.js?v=terrain-14';
+import {skyGLSL} from './sky-light.js?v=terrain-14';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
@@ -6,6 +7,8 @@ export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(p
 export const waterFragment=`precision highp float;
 varying vec2 vUv;
 uniform sampler2D sceneColor,sceneDepth,wave0,wave1,wave2,waveNext0,waveNext1,waveNext2,chop0,chop1,chop2,chopNext0,chopNext1,chopNext2;
+uniform sampler2D referenceMask;
+${coastalGLSL}
 uniform float waveMix,oceanSlopeVariance[16];
 uniform mat4 invProjection,camWorld,seaView,seaProjection;
 uniform vec3 origin,sunDir,sunColor;
@@ -32,7 +35,7 @@ float bubbleFilm(vec2 q,float footprint){
  float film=1.-smoothstep(.035-aa,.095+aa,gap);
  return mix(film,.27,smoothstep(.25,.9,footprint));
 }
-float foamLayer(vec2 q,float pixel,float depth,float crest){
+float foamLayer(vec2 q,float pixel,float depth,float crest,float shoreWeight){
  vec2 drift=vec2(.11,.065)*time;
  vec2 advected=q-drift;
  vec2 warp=vec2(noise(advected*.43),noise(advected*.43+19.7))-.5;
@@ -42,7 +45,7 @@ float foamLayer(vec2 q,float pixel,float depth,float crest){
  float patchiness=.58*coarse+.42*medium;
  float phase=time*.72-depth*2.1+coarse*2.;
  float wash=.5+.5*sin(phase);
- float shore=(1.-smoothstep(.12,1.65,depth))*(.28+.72*wash);
+ float shore=(1.-smoothstep(.12,1.65,depth))*(.28+.72*wash)*shoreWeight;
  float density=clamp(shore+crest,0.,1.);
  float aa=max(.025,min(.22,pixel*.35));
  float coverage=smoothstep(.54-density*.44-aa,.64-density*.44+aa,patchiness);
@@ -56,10 +59,11 @@ float foamLayer(vec2 q,float pixel,float depth,float crest){
 float seaFoam(vec3 p,vec3 up,float pixel,float depth,float crest){
  vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
  // World-space triplanar projection prevents latitude seams and polar stretching.
+ float shoreWeight=1.-coastalSample(p).z;
  float result=0.;
- if(w.x>.001)result+=foamLayer(p.yz,pixel,depth,crest)*w.x;
- if(w.y>.001)result+=foamLayer(p.xz,pixel,depth,crest)*w.y;
- if(w.z>.001)result+=foamLayer(p.xy,pixel,depth,crest)*w.z;
+ if(w.x>.001)result+=foamLayer(p.yz,pixel,depth,crest,shoreWeight)*w.x;
+ if(w.y>.001)result+=foamLayer(p.xz,pixel,depth,crest,shoreWeight)*w.y;
+ if(w.z>.001)result+=foamLayer(p.xy,pixel,depth,crest,shoreWeight)*w.z;
  return result;
 }
 float seaHit(vec3 o,vec3 d){
@@ -132,6 +136,15 @@ void main(){
  for(int j=0;j<2;j++){vec3 q=origin+ray*waterT;float residual=length(q)-seaRadius-seaField(q,normalize(q)).w*displace;waterT-=residual/min(-.12,incidence);}
 
  float opaqueT=opaqueZ<.999999?linearDepth(opaqueZ)/max(-viewRay.z,.00001):1e9;
+ // Resolve thin run-up against the actual visible shore, including dry ground
+ // above mean sea level. Reject grazing rays and frozen coastlines.
+ vec3 shorePoint=origin+ray*opaqueT,shoreUp=normalize(shorePoint),coast=coastalSample(shorePoint);
+ float coastLiquid=iceEnabled?smoothstep(-8.,0.,seaTemperature-58.*shoreUp.y*shoreUp.y):1.;
+ float shoreElevation=length(shorePoint)-seaRadius,shoreIncidence=-dot(shoreUp,ray);
+ if(opaqueZ<.999999&&coast.z>.001&&abs(shoreElevation)<2.&&shoreIncidence>.15&&coastLiquid>.999){
+  float runup=coastalLevel(coast.y),shoreT=opaqueT-(runup-shoreElevation)/shoreIncidence;
+  waterT=mix(waterT,shoreT,coast.z*(1.-smoothstep(1.,2.,abs(shoreElevation))));
+ }
  float difference=opaqueT-waterT;
  float edgeWidth=max(.012,min(1.5,fwidth(difference)*.6));
  if(difference<-edgeWidth)return;
@@ -140,6 +153,8 @@ void main(){
  float frozen=iceEnabled?1.-smoothstep(-8.,0.,seaTemperature-58.*up.y*up.y):0.;
  vec3 spectrumPoint=waveCoordinates(p,up);vec4 waves=seaRawField(spectrumPoint,up);
  vec3 slope=waves.xyz-up*dot(waves.xyz,up);
+ vec3 coastalField=coastalSample(p);
+ if(coastalField.z>.001){vec3 ex=coastalSample(p+coastalEast*4.),ny=coastalSample(p+coastalNorth*4.);vec3 shoreSlope=(coastalEast*((coastalLevel(ex.y)-coastalLevel(coastalField.y))*step(.001,ex.z))+coastalNorth*((coastalLevel(ny.y)-coastalLevel(coastalField.y))*step(.001,ny.z)))/4.;slope=mix(slope,shoreSlope,coastalField.z);}
  vec3 normal=normalize(up-slope*(1.-frozen));
  float ndv=max(.001,dot(normal,view)),ndl=max(0.,dot(normal,sunDir));
  float thickness=opaqueZ<.999999?max(0.,difference)*max(.08,dot(up,view)):120.;
@@ -165,8 +180,10 @@ void main(){
  vec3 specular=sunColor*sunIntensity*(D*Gv*Gl*F/(4.*ndv+.0001))*ndl;
  vec3 color=body*(1.-fresnel)+reflection*fresnel+min(specular,vec3(14.));
  // Band foam integrates horizontal compression, periodic flow transport and decay.
- // Shoreline run-up and overturning surf require a separate coastal solver.
+ // The resident coastal approximation adds a depth-limited advancing wash.
  float crest=0.;if(frozen<.999&&footprint<30.)crest=clamp(foamBand(wave0,waveNext0,spectrumPoint,up,768.)+foamBand(wave1,waveNext1,spectrumPoint,up,137.)+foamBand(wave2,waveNext2,spectrumPoint,up,23.),0.,1.);
+ float phase=coastalTime*.8-coastalField.y*.08;
+ crest=max(crest,coastalField.z*(1.-smoothstep(.05,1.5,thickness))*smoothstep(.15,.85,sin(phase)));
  float foam=0.;
  if((thickness<1.65||crest>.001)&&frozen<.999)foam=seaFoam(p,up,footprint,thickness,crest)*(1.-frozen);
  vec3 foamLight=vec3(.74,.78,.76)*(.32+.68*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.09;

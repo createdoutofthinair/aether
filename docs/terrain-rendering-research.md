@@ -8,7 +8,7 @@ Replace the current reliance on procedural color noise with a coherent terrain d
 
 The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. The audit below describes the recorded baseline; the architecture remains a staged roadmap.
 
-## Current implementation — terrain-13
+## Current implementation — terrain-14
 
 The reference/detail/formation pipeline now runs at the landing region on every landable solar-system planet. Shared rules select temperate catchments, dry mesas, volcanic shields/calderas, glacial troughs, or airless impact terrain. Hydraulic/thermal strengths and 2 m residual rules differ by profile; near-vacuum profiles do not run hydraulic droplets or carve subordinate water channels. Active volcanism can override the airless substrate. Each region retains its touchdown pad and the shared rendered contact path. Cache identity includes seed, temperature, pressure, activity, water and ice settings; same-seed profiles coexist in the worker. This generalizes representative regions, not metre-scale erosion over the entire sphere.
 
@@ -18,14 +18,17 @@ The virtual surface is 65,536 × 32,768 texels (approximately 5.75 m spacing at 
 
 Ocean bands now compute real horizontal displacement with the same inverse FFT as height. Per-band deformation Jacobians drive compression foam; periodic semi-Lagrangian transport and exponential decay preserve history. Height slopes account for the horizontal deformation, and near water in High quality uses a first-order inverse of the choppy surface. The 15 Hz current/next height, foam and displacement textures stay synchronized. There are twelve 64² RGBA float textures; water uses 14 fragment samplers and terrain/outcrops remain within 16. Diagnostics include the last ocean CPU update duration and base-level texture budget.
 
+A bounded coastal approximation samples the shared terrain height into a 128² field at 4 m spacing (508 m extent). Fractional coastline crossings seed a two-pass chamfer distance field; packed height and signed distance occupy an unused 128² atlas rectangle without increasing atlas allocation. Coast inspection starts sampling in batches across frames, and near-ground exploration can recenter it. World changes cancel stale builds. A periodic advancing/receding wash resolves thin run-up against opaque terrain depth, adds wash foam and a shore normal gradient, and shares its phase with wet-sand darkening/roughness. Drying is an analytic recent-crest approximation, not stored wetness history. Frozen water suppresses run-up. Water now uses 15 samplers, terrain/outcrops remain within 16. This is not a Saint-Venant solver, physically simulated shoaling, overturning surf or spray. Visual/GPU acceptance remains open.
+
 | Gate | Latest evidence | Status |
 | --- | --- | --- |
 | Five detailed representative planet profiles | Distinct geometry, safe touchdown, boundary continuity, shared fine halos, rendered contacts, climate invalidation and production-worker cache isolation | Numerically passed |
 | Regional material composition and bounded streaming | Four-channel worker transfers, analytic normal/height agreement, longitude halos, atlas-bank separation, 30-page eviction/reset and bounded rectangle uploads | Numerically passed |
 | Horizontal ocean deformation and foam transport | Hermitian displacement, Jacobian compression, periodic edge transport, decay/rewind isolation and current/next texture scheduling | Numerically passed |
-| GLSL compatibility | All ten exported programs link; terrain/outcrops ≤16 samplers, water 14 | Passed |
+| Coastal approximation | Terrain-sampled signed shore distance, height packing, advancing/receding wash and analytic drying checks | Numerically passed |
+| GLSL compatibility | All ten exported programs link; terrain/outcrops ≤16 samplers, water 15 | Passed |
 | Moving ground-to-orbit visual acceptance and representative GPU frame times | Available environment does not provide a working browser WebGL context | Open |
-| Shore distance-field solver, run-up/wet sand and overturning/breaking surf | Horizontal compression and foam transport are implemented; these coastal stages remain separate work | Open |
+| Shallow-water coastal solver and overturning/breaking surf | A terrain-anchored analytic wash and drying approximation is implemented; fluid dynamics and overturning geometry remain open | Open |
 | Full scanned PBR and arbitrary decal-stack page baking | Regional procedural PBR/overlays are composed; fine scans remain shader evaluated | Open |
 | WebGPU/clipmap/CBT migration | Requires measurements identifying a bottleneck; no speculative backend migration | Deferred |
 
