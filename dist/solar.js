@@ -32,7 +32,7 @@ export function generateSystem(seed=6,spectral='G'){
   // Preserve the original exploration world in the default system.
   if(seed===6&&spectral==='G'&&i===2){Object.assign(config,{seed:6,relief:1,temperature:18,water:-180,pressure:1,activity:.45});greenhouse=273.15-equilibrium;}
   const liquid=type==='Temperate rock'||type==='Oceanic world';
-  return{id:`${seed}-${spectral}-${i}`,name:names[i],type,axis,flux,period:periodDays(axis,star.mass),eccentricity:.01+rng()*.07,phase:rng()*Math.PI*2,periapsis:rng()*Math.PI*2,radius,mass,gravity:mass/(radius*radius),albedo,equilibrium,greenhouse,pressure:config.pressure,tilt:rng()*35,dayHours:8+rng()*60,landable:!giant,config,environment:{waterEnabled:liquid,iceEnabled:type!=='Scorched rock'&&type!=='Arid rock',basin:seed===6&&spectral==='G'&&i===2,gravity:mass/(radius*radius)},inZone:axis>=habitable.inner&&axis<=habitable.outer};
+  return{id:`${seed}-${spectral}-${i}`,name:names[i],type,axis,flux,period:periodDays(axis,star.mass),eccentricity:.01+rng()*.07,phase:rng()*Math.PI*2,periapsis:rng()*Math.PI*2,radius,mass,gravity:mass/(radius*radius),albedo,equilibrium,greenhouse,pressure:config.pressure,tilt:rng()*35,dayHours:8+rng()*60,landable:!giant,config,environment:{waterEnabled:liquid,iceEnabled:type!=='Scorched rock'&&type!=='Arid rock',basin:!giant,gravity:mass/(radius*radius)},inZone:axis>=habitable.inner&&axis<=habitable.outer};
  });
  return{seed,star,habitable,planets};
 }

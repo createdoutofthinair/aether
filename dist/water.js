@@ -1,11 +1,11 @@
-import {skyGLSL} from './sky-light.js?v=terrain-12';
+import {skyGLSL} from './sky-light.js?v=terrain-13';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
 
 export const waterFragment=`precision highp float;
 varying vec2 vUv;
-uniform sampler2D sceneColor,sceneDepth,wave0,wave1,wave2,waveNext0,waveNext1,waveNext2;
+uniform sampler2D sceneColor,sceneDepth,wave0,wave1,wave2,waveNext0,waveNext1,waveNext2,chop0,chop1,chop2,chopNext0,chopNext1,chopNext2;
 uniform float waveMix,oceanSlopeVariance[16];
 uniform mat4 invProjection,camWorld,seaView,seaProjection;
 uniform vec3 origin,sunDir,sunColor;
@@ -77,7 +77,19 @@ vec4 band(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
  vec3 slope=vec3(0.,x.y,x.z)*w.x+vec3(y.y,0.,y.z)*w.y+vec3(z.y,z.z,0.)*w.z;
  return vec4(slope,x.x*w.x+y.x*w.y+z.x*w.z);
 }
-vec4 seaField(vec3 p,vec3 up){return band(wave0,waveNext0,p,up,768.)+band(wave1,waveNext1,p,up,137.)+band(wave2,waveNext2,p,up,23.);}
+vec3 displacementBand(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
+ vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
+ vec2 x=mix(texture2D(a,p.yz/scale),texture2D(b,p.yz/scale),waveMix).rg,y=mix(texture2D(a,p.xz/scale),texture2D(b,p.xz/scale),waveMix).rg,z=mix(texture2D(a,p.xy/scale),texture2D(b,p.xy/scale),waveMix).rg;
+ return vec3(0.,x.x,x.y)*w.x+vec3(y.x,0.,y.y)*w.y+vec3(z.x,z.y,0.)*w.z;
+}
+vec3 waveCoordinates(vec3 p,vec3 up){
+ if(quality!=1||length(p-origin)>2500.)return p;
+ vec3 d=displacementBand(chop0,chopNext0,p,up,768.)+displacementBand(chop1,chopNext1,p,up,137.)+displacementBand(chop2,chopNext2,p,up,23.);d-=up*dot(d,up);
+ // First-order inverse of the horizontally displaced periodic surface.
+ return p-d;
+}
+vec4 seaRawField(vec3 p,vec3 up){return band(wave0,waveNext0,p,up,768.)+band(wave1,waveNext1,p,up,137.)+band(wave2,waveNext2,p,up,23.);}
+vec4 seaField(vec3 p,vec3 up){return seaRawField(waveCoordinates(p,up),up);}
 float foamBand(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
  vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
  return dot(vec3(mix(texture2D(a,p.yz/scale).a,texture2D(b,p.yz/scale).a,waveMix),mix(texture2D(a,p.xz/scale).a,texture2D(b,p.xz/scale).a,waveMix),mix(texture2D(a,p.xy/scale).a,texture2D(b,p.xy/scale).a,waveMix)),w);
@@ -126,7 +138,7 @@ void main(){
  vec3 p=origin+ray*waterT,up=normalize(p),view=-ray;
  float footprint=max(length(dFdx(p)),length(dFdy(p)));
  float frozen=iceEnabled?1.-smoothstep(-8.,0.,seaTemperature-58.*up.y*up.y):0.;
- vec4 waves=seaField(p,up);
+ vec3 spectrumPoint=waveCoordinates(p,up);vec4 waves=seaRawField(spectrumPoint,up);
  vec3 slope=waves.xyz-up*dot(waves.xyz,up);
  vec3 normal=normalize(up-slope*(1.-frozen));
  float ndv=max(.001,dot(normal,view)),ndl=max(0.,dot(normal,sunDir));
@@ -152,9 +164,9 @@ void main(){
  float F=.0204+.9796*pow(1.-vdh,5.);
  vec3 specular=sunColor*sunIntensity*(D*Gv*Gl*F/(4.*ndv+.0001))*ndl;
  vec3 color=body*(1.-fresnel)+reflection*fresnel+min(specular,vec3(14.));
- // Persistent band foam integrates steepness production and a three-second decay.
- // It is not a transported breaking-wave or shoreline fluid simulation.
- float crest=0.;if(frozen<.999&&footprint<30.)crest=clamp(foamBand(wave0,waveNext0,p,up,768.)+foamBand(wave1,waveNext1,p,up,137.)+foamBand(wave2,waveNext2,p,up,23.),0.,1.);
+ // Band foam integrates horizontal compression, periodic flow transport and decay.
+ // Shoreline run-up and overturning surf require a separate coastal solver.
+ float crest=0.;if(frozen<.999&&footprint<30.)crest=clamp(foamBand(wave0,waveNext0,spectrumPoint,up,768.)+foamBand(wave1,waveNext1,spectrumPoint,up,137.)+foamBand(wave2,waveNext2,spectrumPoint,up,23.),0.,1.);
  float foam=0.;
  if((thickness<1.65||crest>.001)&&frozen<.999)foam=seaFoam(p,up,footprint,thickness,crest)*(1.-frozen);
  vec3 foamLight=vec3(.74,.78,.76)*(.32+.68*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.09;

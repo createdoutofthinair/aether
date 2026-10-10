@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import {generatePlanetData,samplePlanetData,planetDataKey} from '../dist/planet-data.js?v=terrain-12';
-import {installPlanetData,planetAt,planetCacheState} from '../dist/planet-cache.js?v=terrain-12';
-import {defaults,environment,configureWorld,world} from '../dist/world.js?v=terrain-12';
+import {generatePlanetData,samplePlanetData,planetDataKey} from '../dist/planet-data.js?v=terrain-13';
+import {installPlanetData,planetAt,planetCacheState} from '../dist/planet-cache.js?v=terrain-13';
+import {defaults,environment,configureWorld,world} from '../dist/world.js?v=terrain-13';
 import * as T from '../dist/vendor/three.module.js';
-import {height,authoredHeight,landing,referenceGeology,PlanetTerrain} from '../dist/terrain.js?v=terrain-12';
+import {height,authoredHeight,landing,referenceGeology,PlanetTerrain} from '../dist/terrain.js?v=terrain-13';
 const sample=n=>500*n.x+180*n.z+70*Math.sin(n.y*13),options={width:64,height:33,passes:4};
 const data=generatePlanetData(defaults,environment,sample,options),same=generatePlanetData(defaults,environment,sample,options);
 assert.deepEqual(data.residual,same.residual);assert(data.residual.every(Number.isFinite));assert(data.stats.maximumFlow>50);assert(data.stats.maximumCorrection>0);

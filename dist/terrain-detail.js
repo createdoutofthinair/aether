@@ -1,4 +1,5 @@
-import {referenceSample} from './terrain-data.js?v=terrain-12';
+import {profileRules} from './planet-profiles.js?v=terrain-13';
+import {referenceSample} from './terrain-data.js?v=terrain-13';
 
 export const DETAIL_STEP=2,DETAIL_EXTENT=128,DETAIL_CELLS=DETAIL_EXTENT/DETAIL_STEP,DETAIL_SIZE=DETAIL_CELLS+3;
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),mix=(a,b,t)=>a+(b-a)*t;
@@ -14,7 +15,7 @@ export function prepareDetail(data){
  const n=data.size,s=data.step,channels=[],outcrops=[];
  const node=(i,j)=>[(i/(n-1)-.5)*data.extent+(hash(i,j,data.seed+101)-.5)*2.4,(j/(n-1)-.5)*data.extent+(hash(i,j,data.seed+103)-.5)*2.4];
  for(let j=1;j<n-1;j++)for(let i=1;i<n-1;i++){
-  const k=j*n+i,flow=data.masks[k*4+2]/255;if(flow<.36||Math.hypot((i/(n-1)-.5)*data.extent,(j/(n-1)-.5)*data.extent)>2740)continue;
+  const k=j*n+i,flow=data.masks[k*4+2]/255;if(data.profile==='airless'||data.config?.pressure<.05||flow<.36||Math.hypot((i/(n-1)-.5)*data.extent,(j/(n-1)-.5)*data.extent)>2740)continue;
   let best=0,ti=i,tj=j;for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dz)continue;const drop=(data.height[k]-data.height[(j+dz)*n+i+dx])/(s*Math.hypot(dx,dz));if(drop>best){best=drop;ti=i+dx;tj=j+dz;}}
   if(best<.055)continue;
   const a=node(i,j),b=node(ti,tj);channels.push(...a,...b,1.8+flow*3.2,(.35+flow*2.1)*smooth(.04,.35,best));
@@ -41,6 +42,7 @@ export function prepareDetailIndex(data){channelIndex(data);return data;}
 export function detailResidual(data,x,z){
  const radius=Math.hypot(x,z),influence=smooth(100,200,radius)*(1-smooth(2450,2700,radius));if(influence===0)return 0;
  const g=referenceSample(data,x,z);if(!g)return 0;
+ const profile=data.profile||'temperate',rules=profileRules[profile];
  const exposure=g.exposure,soil=g.soil,c=data.detailChannels,cells=channelIndex(data);let incision=0,deposit=0;
  for(const k of cells.get(Math.floor(x/32)+','+Math.floor(z/32))||[]){const dx=c[k+2]-c[k],dz=c[k+3]-c[k+1],t=clamp(((x-c[k])*dx+(z-c[k+1])*dz)/(dx*dx+dz*dz)),distance=Math.hypot(x-c[k]-t*dx,z-c[k+1]-t*dz)/c[k+4];incision=Math.max(incision,c[k+5]*Math.exp(-distance*distance*1.8));deposit=Math.max(deposit,c[k+5]*.24*Math.exp(-(((distance-1.8)/.65)**2))*soil);}
  // A resistant bed steepens selected exposed shoulders, rather than painting
@@ -50,14 +52,18 @@ export function detailResidual(data,x,z){
  const ledge=(smooth(.12,.76,phase)-phase)*6.5*exposure*patch;
  const broken=(noise(x/5+3,z/7+7,data.seed+313)-.5)*.60*exposure;
  const gravel=(noise(x/3,z/4,data.seed+317)-.5)*.14*soil;
- return influence*(ledge+broken+gravel-incision+deposit);
+ let profileRelief=0;
+ if(profile==='volcanic')profileRelief=(noise(x/11,z/29,data.seed+331)-.5)*2.6*exposure;
+ if(profile==='glacial')profileRelief=Math.sin(x/17+noise(x/190,z/340,data.seed+337)*2)*.35*exposure;
+ if(profile==='airless')profileRelief=(noise(x/8,z/9,data.seed+347)-.5)*1.1*(.4+soil);
+ return influence*(ledge*rules.ledge+broken*rules.broken+gravel*rules.gravel-incision*rules.incision+deposit*rules.incision+profileRelief);
 }
 // A tile is a cache of one continuous 2 m lattice, with a halo for Catmull-Rom.
 // Resident and fallback samples are identically rounded Float32 values.
 export function generateDetailTile(data,tx,tz){
  prepareDetail(data);const values=new Float32Array(DETAIL_SIZE*DETAIL_SIZE);
  for(let j=0;j<DETAIL_SIZE;j++)for(let i=0;i<DETAIL_SIZE;i++)values[j*DETAIL_SIZE+i]=detailResidual(data,tx*DETAIL_EXTENT+(i-1)*DETAIL_STEP,tz*DETAIL_EXTENT+(j-1)*DETAIL_STEP);
- return{seed:data.seed,tx,tz,values,complete:true};
+ return{seed:data.seed,key:data.key,tx,tz,values,complete:true};
 }
 export function emptyDetailTile(seed,tx,tz){const values=new Float32Array(DETAIL_SIZE*DETAIL_SIZE);values.fill(NaN);return{seed,tx,tz,values};}
 const cubic=(a,b,c,d,t)=>b+.5*t*(c-a+t*(2*a-5*b+4*c-d+t*(3*(b-c)+d-a)));

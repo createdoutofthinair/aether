@@ -1,8 +1,8 @@
 import * as T from './vendor/three.module.js';
-import {getReference} from './terrain-cache.js?v=terrain-12';
-import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-12';
-import {world,environment} from './world.js?v=terrain-12';
-import {patchTerrain} from './shaders.js?v=terrain-12';
+import {getReference,referenceMatches} from './terrain-cache.js?v=terrain-13';
+import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-13';
+import {world,environment} from './world.js?v=terrain-13';
+import {patchTerrain} from './shaders.js?v=terrain-13';
 const hash=(n,s)=>{let v=Math.imul(n+1,374761393)^Math.imul(s+1,668265263);v=Math.imul(v^(v>>>13),1274126177);return((v^(v>>>16))>>>0)/4294967295;};
 
 // Three interlocking fractured slabs. Chamfered polygon footprints, stepped
@@ -49,7 +49,7 @@ export class OutcropField{
   }
  }
  update(camera,budgetMs=4){
-  const data=getReference(),enabled=environment.basin&&data?.seed===world.seed;
+  const data=getReference(),enabled=environment.basin&&referenceMatches(data);
   const visible=enabled&&camera.distanceTo(this.anchor)<6000;for(const mesh of this.meshes)mesh.visible=visible;if(!enabled){if(this.data)this.reset();return;}
   if(this.data!==data)this.load(data);
   if(!visible)return;
@@ -65,14 +65,14 @@ export class OutcropField{
    const {east,north}=basis(entry.direction),strike=east.clone().multiplyScalar(Math.cos(f.angle)).addScaledVector(north,Math.sin(f.angle)),across=new T.Vector3().crossVectors(strike,entry.direction).normalize();
    let foundation=0;for(const x of [-.5,0,.5])for(const z of [-.5,.5]){const probe=hit.point.clone().addScaledVector(strike,x*f.width).addScaledVector(across,z*f.depth);foundation=Math.min(foundation,this.terrain.sampleGround(probe).point.sub(hit.point).dot(entry.direction));}
    dummy.position.copy(hit.point).addScaledVector(entry.direction,foundation-f.height*.12).sub(this.anchor);dummy.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(strike,entry.direction,across));dummy.scale.set(f.width,f.height,f.depth);dummy.updateMatrix();entry.mesh.setMatrixAt(entry.index,dummy.matrix);entry.matrix.fromArray(entry.mesh.instanceMatrix.array,entry.index*16);entry.inverse.copy(entry.matrix).invert();
-   const c=surfaceClimate(entry.direction,hit.point.length()-R),g=entry.mesh.geometry;g.attributes.biomeData.setXYZ(entry.index,c.ice,0,0);g.attributes.surfaceData.setXYZ(entry.index,0,1,1);entry.submerged=c.ocean;if(!entry.center)entry.readyAt=now;entry.center=hit.point.clone();changed.add(entry.mesh);
+   const c=surfaceClimate(entry.direction,hit.point.length()-R),g=entry.mesh.geometry;g.attributes.biomeData.setXYZ(entry.index,c.ice,c.volcanic,0);g.attributes.surfaceData.setXYZ(entry.index,0,1,1);entry.submerged=c.ocean;if(!entry.center)entry.readyAt=now;entry.center=hit.point.clone();changed.add(entry.mesh);
   }
   for(const mesh of changed){mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.biomeData.needsUpdate=true;mesh.geometry.attributes.surfaceData.needsUpdate=true;mesh.computeBoundingSphere();}if(deferred)this.lastSignature=null;if(changed.size)this.revision++;
  }
  // Exact radial triangle contacts, indexed by reference-space cells. Foundations
  // use sampleGround, preventing feedback from their own collision surface.
  sample(p,ground){
-  if(!this.data||!environment.basin||this.data.seed!==world.seed)return null;const d=p.clone().normalize(),{x,z}=basinCoordinates(d),entries=this.cells.get(Math.floor(x/96)+','+Math.floor(z/96));if(!entries)return null;
+  if(!this.data||!environment.basin||!referenceMatches(this.data))return null;const d=p.clone().normalize(),{x,z}=basinCoordinates(d),entries=this.cells.get(Math.floor(x/96)+','+Math.floor(z/96));if(!entries)return null;
   let best=null,bestRadius=ground.point.lengthSq();const ray=new T.Ray(d.clone().multiplyScalar(R+10000).sub(this.anchor),d.clone().negate()),a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3(),hit=new T.Vector3();
   for(const entry of entries){if(entry.submerged||!entry.center)continue;const local=ray.clone().applyMatrix4(entry.inverse),g=entry.mesh.geometry;if(!local.intersectsBox(g.boundingBox))continue;const positions=g.attributes.position;
    for(let i=0;i<positions.count;i+=3){a.fromBufferAttribute(positions,i);b.fromBufferAttribute(positions,i+1);c.fromBufferAttribute(positions,i+2);if(!local.intersectTriangle(a,b,c,false,hit))continue;const point=hit.clone().applyMatrix4(entry.matrix).add(this.anchor),radius=point.lengthSq();if(radius<=bestRadius)continue;const normal=new T.Triangle(a,b,c).getNormal(new T.Vector3()).applyMatrix3(new T.Matrix3().getNormalMatrix(entry.matrix)).normalize();if(normal.dot(d)<0)normal.negate();bestRadius=radius;best={point,normal,outcrop:entry.feature.id};}
