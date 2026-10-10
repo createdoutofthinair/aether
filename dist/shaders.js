@@ -1,8 +1,8 @@
-import {pageScanGLSL} from './page-pbr.js?v=terrain-18';
-import {coastalGLSL} from './coastal.js?v=terrain-18';
-import {regionalMaterialGLSL} from './regional-material.js?v=terrain-18';
-import {ATLAS_WIDTH,ATLAS_HEIGHT,PAGE_COLUMNS,PAGE_ROWS,PAGE_SIZE,PAGE_STRIDE,TABLE_X,TABLE_Y,PARENT_X,PARENT_Y,REFERENCE_Y,CACHE_Y,COLOR_X,COLOR_Y,SURFACE_X,SURFACE_Y,NORMAL_X,NORMAL_Y} from './material-pages.js?v=terrain-18';
-import {skyGLSL} from './sky-light.js?v=terrain-18';
+import {pageScanGLSL} from './page-pbr.js?v=terrain-19';
+import {coastalGLSL} from './coastal.js?v=terrain-19';
+import {regionalMaterialGLSL} from './regional-material.js?v=terrain-19';
+import {ATLAS_WIDTH,ATLAS_HEIGHT,PAGE_COLUMNS,PAGE_ROWS,PAGE_SIZE,PAGE_STRIDE,TABLE_X,TABLE_Y,PARENT_X,PARENT_Y,REFERENCE_Y,CACHE_Y,COLOR_X,COLOR_Y,SURFACE_X,SURFACE_Y,NORMAL_X,NORMAL_Y,ORBITAL_X,ORBITAL_Y} from './material-pages.js?v=terrain-19';
+import {skyGLSL} from './sky-light.js?v=terrain-19';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -26,6 +26,8 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  ${regionalMaterialGLSL}
  ${pageScanGLSL}
  vec4 maskCubic(vec4 a,vec4 b,vec4 c,vec4 d,float t){return b+.5*t*(c-a+t*(2.*a-5.*b+4.*c-d+t*(3.*(b-c)+d-a)));}
+ vec4 orbitalTexel(ivec2 p,int bank){p.x=(p.x%256+256)%256;p.y=clamp(p.y,0,127);return texelFetch(referenceMask,p+ivec2(${ORBITAL_X},${ORBITAL_Y}+bank*128),0);}
+ vec4 orbitalSample(vec2 uv,int bank){vec2 p=uv*vec2(256.,128.)-.5;ivec2 i=ivec2(floor(p));vec2 f=fract(p);return mix(mix(orbitalTexel(i,bank),orbitalTexel(i+ivec2(1,0),bank),f.x),mix(orbitalTexel(i+ivec2(0,1),bank),orbitalTexel(i+ivec2(1,1),bank),f.x),f.y);}
  vec4 parentMaskTexel(ivec2 p){ivec2 size=ivec2(planetMaskSize);if(p.y<0){p.y=-p.y;p.x+=size.x/2;}else if(p.y>=size.y){p.y=2*(size.y-1)-p.y;p.x+=size.x/2;}p.x=(p.x%size.x+size.x)%size.x;return texelFetch(referenceMask,p+ivec2(${PARENT_X},${PARENT_Y}),0);}
  vec4 parentGeology(vec2 uv){vec2 q=uv*vec2(planetMaskSize.x,planetMaskSize.y-1.),f=fract(q);ivec2 cell=ivec2(floor(q));vec4 rows[4];for(int y=0;y<4;y++)rows[y]=maskCubic(parentMaskTexel(cell+ivec2(-1,y-1)),parentMaskTexel(cell+ivec2(0,y-1)),parentMaskTexel(cell+ivec2(1,y-1)),parentMaskTexel(cell+ivec2(2,y-1)),f.x);return clamp(maskCubic(rows[0],rows[1],rows[2],rows[3],f.y),0.,1.);}
  vec2 tileHash(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
@@ -118,12 +120,15 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec4 composedGeology=mix(globalGeology,geology,referenceBlend);
  regionalMaterial(radial,composedGeology,materialProfile,planetClimate,false,parentColor,parentSurface,unusedGradient,unusedDecal);
  applyPageScans(radial,composedGeology,materialProfile,planetClimate,parentColor,parentSurface,unusedGradient);
- pageColor=parentColor;pageSurface=parentSurface;
+ float orbitalDecal=0.;vec3 orbitalColorDelta=vec3(0.),orbitalSurfaceDelta=vec3(0.);
+ if(materialAtlas>.5){vec2 uv=vec2(fract(.5+atan(radial.x,radial.z)/6.283185307),clamp(.5-asin(clamp(radial.y,-1.,1.))/3.141592654,0.,1.));vec4 c=orbitalSample(uv,0);orbitalDecal=c.a;if(c.a>0.){orbitalColorDelta=(c.rgb-vec3(128./255.))*2.;orbitalSurfaceDelta=(orbitalSample(uv,1).rgb-vec3(128./255.))*2.;}}
+ parentColor=clamp(parentColor+orbitalColorDelta,0.,1.);parentSurface=clamp(parentSurface+orbitalSurfaceDelta,0.,1.);
+ pageColor=parentColor;pageSurface=parentSurface;pageDecal=orbitalDecal;
  if(footprint<32.){
   if(materialResident>.5){vec4 bakedColor=texture2D(referenceMask,(pagePixel+vec2(${COLOR_X}.,${COLOR_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.));pageColor=bakedColor.rgb;pageDecal=bakedColor.a;pageSurface=texture2D(referenceMask,(pagePixel+vec2(${SURFACE_X}.,${SURFACE_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.)).rgb;pageGradient=(texture2D(referenceMask,(pagePixel+vec2(${NORMAL_X}.,${NORMAL_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.)).rgb*255.-128.)*(.125/127.);}
-  else {regionalMaterial(radial,composedGeology,materialProfile,planetClimate,true,pageColor,pageSurface,pageGradient,pageDecal);applyPageScans(radial,composedGeology,materialProfile,planetClimate,pageColor,pageSurface,pageGradient);}
+  else {regionalMaterial(radial,composedGeology,materialProfile,planetClimate,true,pageColor,pageSurface,pageGradient,pageDecal);applyPageScans(radial,composedGeology,materialProfile,planetClimate,pageColor,pageSurface,pageGradient);pageColor=clamp(pageColor+orbitalColorDelta,0.,1.);pageSurface=clamp(pageSurface+orbitalSurfaceDelta,0.,1.);pageDecal=orbitalDecal;}
  }
- float mesoDetail=1.-smoothstep(8.,32.,footprint);pageColor=mix(parentColor,pageColor,mesoDetail);pageSurface=mix(parentSurface,pageSurface,mesoDetail);pageGradient*=mesoDetail;
+ float mesoDetail=1.-smoothstep(8.,32.,footprint);pageColor=mix(parentColor,pageColor,mesoDetail);pageSurface=mix(parentSurface,pageSurface,mesoDetail);pageGradient*=mesoDetail;pageDecal=mix(orbitalDecal,pageDecal,mesoDetail);
  float deposition=mix(globalGeology.r*vSurfaceData.b,geology.r,referenceBlend),bedrock=mix(globalGeology.g*vSurfaceData.b,geology.g,referenceBlend);
  float drainage=mix(globalGeology.b,geology.b,referenceBlend);
  float horizonVisibility=mix(globalGeology.a,geology.a,referenceBlend);

@@ -1,5 +1,5 @@
-import {coastalGLSL} from './coastal.js?v=terrain-18';
-import {skyGLSL} from './sky-light.js?v=terrain-18';
+import {coastalGLSL} from './coastal.js?v=terrain-19';
+import {skyGLSL} from './sky-light.js?v=terrain-19';
 // Parametric breaking sheets are a visual closure for depth-averaged flow.
 // They do not reconstruct a volume-of-fluid or air-entraining water surface.
 export const CREST_LIMIT=48,CREST_SOURCES=32;

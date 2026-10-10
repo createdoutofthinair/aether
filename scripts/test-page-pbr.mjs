@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from '../dist/vendor/three.module.js';
 import {parsePageScans,validatePageAssets,validateDecals,samplePagePbr,composeScans,composeDecals,pageScanUniforms} from '../dist/page-pbr.js';
-import {composeMaterialPage,MaterialPageCache,PAGE_STRIDE,PAGE_SIZE,PAGE_ROWS,ATLAS_WIDTH} from '../dist/material-pages.js';
+import {composeMaterialPage,composeOrbitalLayers,ORBITAL_X,ORBITAL_Y,MaterialPageCache,PAGE_STRIDE,PAGE_SIZE,PAGE_ROWS,ATLAS_WIDTH} from '../dist/material-pages.js';
 import {generatePlanetData} from '../dist/planet-data.js';
 import {defaults,environment} from '../dist/world.js';
 const file=readFileSync(new URL('../dist/page-scans.bin',import.meta.url)),buffer=file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength),assets=parsePageScans(buffer);
@@ -15,3 +15,8 @@ const data=generatePlanetData(defaults,environment,n=>n.x*100,{width:32,height:1
 for(const channel of ['color','surface','normal'])for(let y=0;y<PAGE_STRIDE;y++)for(let c=0;c<4;c++)assert.equal(a[channel][(y*PAGE_STRIDE+PAGE_SIZE+1)*4+c],b[channel][(y*PAGE_STRIDE+1)*4+c],'scanned/decal PBR shares page halos');
 const cache=new MaterialPageCache(T);cache.reset(data,null);cache.install(a);const coastal=new Uint8Array(16).fill(177);cache.installRegion(coastal,2,2,1296,0);const oldEpoch=cache.epoch;cache.setAssets(assets,decals);assert(cache.epoch>oldEpoch&&cache.pages.size===0);assert.equal(cache.pixels[1296*4],177,'material edits preserve resident coastal field');const prior=cache.assets;assert.throws(()=>cache.setAssets(assets,[make('missing')]));assert.equal(cache.assets,prior,'rejected edit is atomic');
 console.log('Page PBR: real scan pyramids, normal moments, filtered averages, ordered/height-aware decals, validation, shared halos and isolated cache edits passed');
+
+const orbital=composeOrbitalLayers(data,assets,decals);assert(orbital.color.some((v,i)=>i%4===3&&v>0),'authored layer survives coarse filtering');assert.deepEqual(composeOrbitalLayers(data,assets,[]).color,new Uint8Array(256*128*4));
+const coarse=composeDecals(base,g,direction,custom,stack,1472,true);assert(coarse.decal>0&&coarse.decal<.02,'subpixel area reduces coverage rather than magnifying layer');
+assert.equal(cache.pixels[((ORBITAL_Y)*ATLAS_WIDTH+ORBITAL_X)*4],orbital.color[0]);cache.setDecals([]);for(let y=0;y<128;y++)assert(cache.pixels.subarray(((ORBITAL_Y+y)*ATLAS_WIDTH+ORBITAL_X)*4,((ORBITAL_Y+y)*ATLAS_WIDTH+ORBITAL_X+256)*4).every(v=>v===0),'removal clears coarse fallback');
+console.log('Orbital layers: filtered coverage, resident atlas updates and removal passed');

@@ -17,7 +17,7 @@ cache.reset({...data,key:'new'},null);assert.equal(cache.pages.size,0);assert(ca
 console.log('Material pages: shared halos, longitude continuity, bounded residency, eviction invalidation and world reset pass');
 
 assert(ATLAS_WIDTH<=2048&&ATLAS_HEIGHT<=2048,'Atlas fits WebGL2 minimum maximum texture dimensions');
-const rects=[[0,0,513,513],[TABLE_X,TABLE_Y,PAGE_COLUMNS,PAGE_ROWS],[PARENT_X,PARENT_Y,256,129],[0,513,780,650],[COLOR_X,COLOR_Y,780,650],[SURFACE_X,SURFACE_Y,780,650],[NORMAL_X,NORMAL_Y,780,650]];
+const rects=[[0,0,513,513],[TABLE_X,TABLE_Y,PAGE_COLUMNS,PAGE_ROWS],[PARENT_X,PARENT_Y,256,129],[1040,129,256,256],[1296,0,128,384],[0,513,780,650],[COLOR_X,COLOR_Y,780,650],[SURFACE_X,SURFACE_Y,780,650],[NORMAL_X,NORMAL_Y,780,650]];
 for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){const [x,y,w,h]=rects[i],[a,b,c,d]=rects[j];assert(x+w<=a||a+c<=x||y+h<=b||b+d<=y,'Atlas banks do not overlap');}
 cache.reset(data,null);const textureVersion=cache.texture.version;cache.install(a);assert.equal(cache.texture.version,textureVersion,'Page arrival avoids a full atlas upload');let calls=0,bytes=0;const uploaded=new Uint8Array(cache.pixels.length);
 cache.flush({copyTextureToTexture(source,destination,region,position){calls++;bytes+=source.image.data.byteLength;assert.equal(destination,cache.texture);for(let y=0;y<source.image.height;y++)uploaded.set(source.image.data.subarray(y*source.image.width*4,(y+1)*source.image.width*4),((position.y+y)*ATLAS_WIDTH+position.x)*4);}});

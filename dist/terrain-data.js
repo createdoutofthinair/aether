@@ -1,4 +1,4 @@
-import {geologicalProfile,profileRules,referenceKey} from './planet-profiles.js?v=terrain-18';
+import {geologicalProfile,profileRules,referenceKey} from './planet-profiles.js?v=terrain-19';
 // Pure, deterministic reference-region generator. Runs in a worker in the browser.
 // Heights are metres, not normalized texture values. No Three.js dependency.
 export const REFERENCE_SIZE=513,REFERENCE_EXTENT=8192;

@@ -8,7 +8,7 @@ Replace the current reliance on procedural color noise with a coherent terrain d
 
 The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. The audit below describes the recorded baseline; the architecture remains a staged roadmap.
 
-## Current implementation — terrain-18
+## Current implementation — terrain-19
 
 The reference/detail/formation pipeline now runs at the landing region on every landable solar-system planet. Shared rules select temperate catchments, dry mesas, volcanic shields/calderas, glacial troughs, or airless impact terrain. Hydraulic/thermal strengths and 2 m residual rules differ by profile; near-vacuum profiles do not run hydraulic droplets or carve subordinate water channels. Active volcanism can override the airless substrate. Each region retains its touchdown pad and the shared rendered contact path. Cache identity includes seed, temperature, pressure, activity, water and ice settings; same-seed profiles coexist in the worker. This generalizes representative regions, not metre-scale erosion over the entire sphere.
 
@@ -32,7 +32,7 @@ The material-page worker now includes **filtered scanned PBR and ordered authore
 
 Up to 64 ordered elliptical layers can use any of up to 16 validated registered PBR materials, opacity, rotation, tint, height influence and an optional geology coverage mask. Layer opacity participates across the baked channels; opaque authored overlays suppress the underlying fine material channels. The Terrain layers panel places/reorders/removes patches and imports/exports their JSON placements. Lists are retained in memory per configured world. Layer changes invalidate page mappings with an epoch guard while preserving the coastal atlas regions. Actual worker output is compared with CPU composition; scan/decal halo continuity and rejected-edit isolation are tested. See [Terrain page authoring](terrain-page-authoring.md) for source rebuilding and schema/API instructions.
 
-This is **coarse, filtered** page baking: about 5.75 m texel spacing. It does not bake original scan UV features at centimetre resolution, and the original fine textures remain independently evaluated. Authored overlays currently require resident pages and fade through the existing 8–32 m footprint transition; a filtered coarse decal hierarchy for orbital visibility remains open. Additional material pyramids can be registered programmatically; a general multi-map image import interface is not implemented. Visual/UI and representative GPU acceptance remain open.
+This is **coarse, filtered** page baking: about 5.75 m texel spacing. It does not bake original scan UV features at centimetre resolution, and the original fine textures remain independently evaluated. Authored overlays now blend to filtered 256×128 coarse delta banks over 8–32 m footprints, including while pages load. This approximate orbital fallback uses existing atlas space and no additional sampler. Small placements blur or fall below RGBA8 precision; a complete mip hierarchy and fine fallback remain open. Additional material pyramids can be registered programmatically; a general multi-map image import interface is not implemented. Visual/UI and representative GPU acceptance remain open.
 
 | Gate | Latest evidence | Status |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ This is **coarse, filtered** page baking: about 5.75 m texel spacing. It does no
 | Breaking-wave spray | Solver-driven ballistic droplet bundles implemented; visual acceptance remains open | Implemented; visual acceptance open |
 | Overturning/breaking surf geometry | Solver-driven parametric sheets implemented as a visual approximation; physically reconstructed overturning and impact volumes remain open | Visual approximation implemented; acceptance open |
 | Scanned PBR and authored decal-stack page baking | Coarse filtered scans and ordered registered-material layers are implemented | Implemented; visual acceptance open |
-| Fine imported scan/decal virtual texturing and orbital decal hierarchy | Coarse pages do not retain centimetre scan features; custom decal fallback/hierarchy remains open | Open |
+| Fine imported scan/decal virtual texturing and orbital decal hierarchy | Coarse pages do not retain centimetre scan features; coarse orbital fallback implemented; fine fallback/full hierarchy remains open | Open |
 | WebGPU/clipmap/CBT migration | Requires measurements identifying a bottleneck; no speculative backend migration | Deferred |
 
 The older milestones below record what was delivered at each revision. This section supersedes their remaining-work statements. Numerical/shader checks are not a claim of photorealism, a passed visual comparison, or native 1080p 60 fps.
