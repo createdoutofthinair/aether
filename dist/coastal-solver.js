@@ -2,7 +2,7 @@
 // Depth-averaged flow supports wetting/drying; it cannot overturn a wave.
 const G=9.81,DRY=1e-5;
 export class CoastalSolver{
- constructor(bed,{size=128,step=4,forcing=true}={}){this.size=size;this.step=step;this.forcing=forcing;this.bed=Float64Array.from(bed,z=>Math.max(-32,Math.min(64,z)));const n=size*size;this.h=Float64Array.from(this.bed,z=>Math.max(0,-z));this.mx=new Float64Array(n);this.my=new Float64Array(n);this.nextH=new Float64Array(n);this.nextX=new Float64Array(n);this.nextY=new Float64Array(n);this.foam=new Float64Array(n);this.wet=new Float64Array(n);this.nextFoam=new Float64Array(n);this.time=0;this.steps=0;}
+ constructor(bed,{size=128,step=4,forcing=true}={}){this.size=size;this.step=step;this.forcing=forcing;this.bed=Float64Array.from(bed,z=>Math.max(-32,Math.min(64,z)));const n=size*size;this.h=Float64Array.from(this.bed,z=>Math.max(0,-z));this.mx=new Float64Array(n);this.my=new Float64Array(n);this.nextH=new Float64Array(n);this.nextX=new Float64Array(n);this.nextY=new Float64Array(n);this.breaking=new Float32Array(n);this.foam=new Float64Array(n);this.wet=new Float64Array(n);this.nextFoam=new Float64Array(n);this.time=0;this.steps=0;}
  axis(dt,axis){const {size:n,step:dx,h,mx,my,bed:z,nextH:nh,nextX:nx,nextY:ny}=this;nh.set(h);nx.set(mx);ny.set(my);const mn=axis===0?mx:my,mt=axis===0?my:mx,nn=axis===0?nx:ny,nt=axis===0?ny:nx,k=dt/dx;
   // Interior and reflective exterior faces use the same Rusanov flux.
   for(let row=0;row<n;row++)for(let face=0;face<=n;face++){
@@ -25,6 +25,7 @@ export class CoastalSolver{
     const xm=Math.max(0,x-1),xp=Math.min(n-1,x+1),ym=Math.max(0,y-1),yp=Math.min(n-1,y+1),velocity=(j,m)=>this.h[j]>DRY?m[j]/this.h[j]:0;
     const compression=Math.max(0,-((velocity(y*n+xp,this.mx)-velocity(y*n+xm,this.mx))+(velocity(yp*n+x,this.my)-velocity(ym*n+x,this.my)))/(2*this.step));
     const froude=Math.hypot(u,v)/Math.sqrt(G*Math.max(.03,depth)),breaking=Math.max(0,froude-.8)*Math.min(1,depth/.1);
+    this.breaking[i]=compression*3+breaking;
     this.nextFoam[i]=Math.min(1,this.sample(this.foam,x-u*dt/this.step,y-v*dt/this.step)*Math.exp(-dt/3)+dt*(compression*3+breaking));
     if(depth>.025)this.wet[i]=1;else this.wet[i]*=Math.exp(-dt/12);
    }

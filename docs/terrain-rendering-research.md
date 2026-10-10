@@ -8,7 +8,7 @@ Replace the current reliance on procedural color noise with a coherent terrain d
 
 The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. The audit below describes the recorded baseline; the architecture remains a staged roadmap.
 
-## Current implementation — terrain-15
+## Current implementation — terrain-16
 
 The reference/detail/formation pipeline now runs at the landing region on every landable solar-system planet. Shared rules select temperate catchments, dry mesas, volcanic shields/calderas, glacial troughs, or airless impact terrain. Hydraulic/thermal strengths and 2 m residual rules differ by profile; near-vacuum profiles do not run hydraulic droplets or carve subordinate water channels. Active volcanism can override the airless substrate. Each region retains its touchdown pad and the shared rendered contact path. Cache identity includes seed, temperature, pressure, activity, water and ice settings; same-seed profiles coexist in the worker. This generalizes representative regions, not metre-scale erosion over the entire sphere.
 
@@ -22,16 +22,20 @@ The coastal region now runs a **worker-owned, first-order Saint-Venant solver** 
 
 Two packed dynamic frames occupy unused 128² atlas rectangles below the static bathymetry/distance field. Height (±8 m, 16 bits), foam and wetness upload in two rectangles: **131,072 bytes per update**, targeted at 15 Hz. One request can be in flight; stale epochs cannot upload after recentering/world changes. The worker bounds catch-up to 0.2 s per request. Rendering interpolates the previous/current frame with a nominal one-update delay, applies simulated near-shore height/normal and thin run-up against actual opaque terrain depth, and shares stored wetness with ground darkening/roughness. Atlas allocation and sampler counts remain unchanged (water 15, terrain/outcrops ≤16). Frozen water suppresses run-up, and the timed analytic wash remains a worker-unavailable fallback. Numerical tests cover still water, conservation with forcing disabled, propagation, wetting/drying, bounded foam, worker transfers and reset isolation. A local Node 128² beach test averaged about 5.6 ms per 15 Hz update over four simulated seconds; this is not a browser/GPU frame-time claim. Visual/GPU acceptance remains open.
 
+The worker now selects up to **128 active shallow breaking emitters** from flow compression/Froude production, with stable strength ordering. Lingering foam, dry cells and depths above 4 m do not emit. Six-float emitter records add at most 3,072 transferred bytes per update. A bounded **2,048-instance** pool launches deterministic ballistic droplet bundles with flow-directed horizontal velocity, gravity, 6–18 mm sprite radii and lifetimes below 0.85 s. These sprites approximate unresolved spray; they are not an air/water simulation or physically sized individual drops. Reset/recentering clears particle history, frozen/debug views hide spray, and expired particles stop drawing. The spray pass runs after water in the same target with existing water/terrain depth tests, alpha blending and depth writes disabled. It adds no sampler or texture allocation; instance buffers total 81,920 bytes. All eleven shader programs link. Moving-camera visual appearance, blending/sorting and GPU cost remain unverified in a working WebGL browser.
+
 | Gate | Latest evidence | Status |
 | --- | --- | --- |
 | Five detailed representative planet profiles | Distinct geometry, safe touchdown, boundary continuity, shared fine halos, rendered contacts, climate invalidation and production-worker cache isolation | Numerically passed |
 | Regional material composition and bounded streaming | Four-channel worker transfers, analytic normal/height agreement, longitude halos, atlas-bank separation, 30-page eviction/reset and bounded rectangle uploads | Numerically passed |
 | Horizontal ocean deformation and foam transport | Hermitian displacement, Jacobian compression, periodic edge transport, decay/rewind isolation and current/next texture scheduling | Numerically passed |
 | Coastal fluid region | Lake-at-rest balance, closed-domain volume, wave propagation, positivity, run-up, foam bounds, stored drying, worker/frame isolation and atlas uploads | Numerically passed |
-| GLSL compatibility | All ten exported programs link; terrain/outcrops ≤16 samplers, water 15 | Passed |
+| Solver-driven spray | Active-breaking selection, dry/deep exclusion, deterministic pool bounds, ballistic lifetime, reset isolation and depth render state | Numerically passed |
+| GLSL compatibility | All eleven exported programs link; terrain/outcrops ≤16 samplers, water 15 | Passed |
 | Moving ground-to-orbit visual acceptance and representative GPU frame times | Available environment does not provide a working browser WebGL context | Open |
 | Shallow-water coastal solver | First-order depth-averaged solver, incident sponge, foam transport and stored wetness are implemented for one bounded region | Implemented; visual acceptance open |
-| Overturning/breaking surf geometry and spray | Depth-averaged equations cannot represent overturning waves; compression/Froude foam is an approximation | Open |
+| Breaking-wave spray | Solver-driven ballistic droplet bundles implemented; visual acceptance remains open | Implemented; visual acceptance open |
+| Overturning/breaking surf geometry | Depth-averaged equations cannot represent overturning waves; compression/Froude foam and spray are approximations | Open |
 | Full scanned PBR and arbitrary decal-stack page baking | Regional procedural PBR/overlays are composed; fine scans remain shader evaluated | Open |
 | WebGPU/clipmap/CBT migration | Requires measurements identifying a bottleneck; no speculative backend migration | Deferred |
 

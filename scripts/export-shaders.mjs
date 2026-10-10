@@ -1,3 +1,4 @@
+import {sprayVertex,sprayFragment} from '../dist/coastal-spray.js';
 import {patchMixer} from '../dist/material-mixer.js';
 import * as T from '../dist/vendor/three.module.js';
 import {patchTerrain,atmosphereVertex,atmosphereFragment} from '../dist/shaders.js';
@@ -28,6 +29,7 @@ const field=new RockField(new T.Group(),{rock:null,rn:null,rr:null},{});s=shader
 const outcrops=new OutcropField(new T.Group(),{}, {},{sediment:{value:.65}});s=shader();outcrops.meshes[0].material.onBeforeCompile(s);emit('outcrops',s,'#define USE_INSTANCING\n#define USE_SHADOWMAP\n#define SHADOWMAP_TYPE_PCF\n#define USE_ENVMAP\n#define ENVMAP_TYPE_CUBE_UV\n#define ENVMAP_MODE_REFLECTION\n#define CUBEUV_TEXEL_WIDTH .0013020833\n#define CUBEUV_TEXEL_HEIGHT .001953125\n#define CUBEUV_MAX_MIP 6.0\n');
 s={...T.ShaderLib.depth};outcrops.meshes[0].customDepthMaterial.onBeforeCompile(s);emit('outcrop-depth',s,'#define USE_INSTANCING\n#define DEPTH_PACKING 3201\n');
 s={...T.ShaderLib.depth};field.mesh.customDepthMaterial.onBeforeCompile(s);emit('rock-depth',s,'#define USE_INSTANCING\n#define DEPTH_PACKING 3201\n');
+emit('coastal-spray',{vertexShader:sprayVertex,fragmentShader:sprayFragment});
 emit('water',{vertexShader:waterVertex,fragmentShader:waterFragment});
 emit('atmosphere',{vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment});
 emit('sky-environment',{vertexShader:skyEnvironmentVertex,fragmentShader:skyEnvironmentFragment});
