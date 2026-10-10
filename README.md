@@ -153,3 +153,21 @@ Recipes save locally on the current browser/device (up to 40), with validated JS
 The compositor now supports an ordered base plus two overlays, a clickable material-flow strip, and layer reordering. Presets demonstrate mossy rock, snow caps and weathered soil. Each layer can use a 3D domain-warped fractal-noise mask, upward-face placement, sample-height placement, or the base scan's low-height areas as a cavity proxy. Coverage, patch frequency, softness, seed and inversion determine placement independently of material opacity and texture repeats. Inspect either overlay mask or RGB contributions. Ordered alpha composition conserves coverage; height influence gives taller map features priority. These are editable placement heuristics, not biological growth or geometric curvature simulation.
 
 Moss and lichen now have deterministic tileable generated colour, tangent-normal and packed roughness/AO/height maps. They are procedural approximations, not scans. Version 1 recipes upgrade to version 2 in weighted mode with uniform masks, preserving existing behaviour. Saved recipe storage keeps its existing key. A horizontal, colour-only CPU mixture preview works without WebGL; it has no 3D lighting and uses the same mask/stack equations without GPU derivative filtering. The GPU shader remains at 11 fragment samplers. Planet integration and an arbitrary connected node-graph editor are not part of this release.
+
+
+### Terrain-11: planetary data, residency and filtering
+
+The terrain now includes worker-generated connected spherical drainage, shared erosion corrections, a bounded 32-page material-mask atlas, thirteen prebuilt KTX2 materials, isotropic normal slope moments, one simplified CC0 scanned outcrop variant, and spectral-variance ocean roughness with persistent crest-foam energy. Organic ground is disabled unless explicitly configured.
+
+Use **World settings → Material residency** to inspect pages. **Export render measurements** downloads browser/GPU identity, frame/CPU/GPU timing percentiles, camera settings and residency statistics. JavaScript automation can call `planetExplorer.performance()` and `planetExplorer.resetPerformance()`. These measurements must be collected on an actual working WebGL browser; numerical tests do not establish visual acceptance or 60 fps.
+
+See [the roadmap and acceptance status](docs/terrain-rendering-research.md). The full PBR/decal material-page cache, complete detail rollout across planetary profiles, advanced surf and GPU-driven geometry remain open or conditional.
+
+Asset rebuilds require a Basis Universal encoder and Python/Pillow:
+
+```sh
+node scripts/prepare-compressed-materials.mjs /tmp/aether-material-input
+python scripts/compress-materials.py /path/to/basisu /tmp/aether-material-input
+```
+
+The scan metadata records its source, author, CC0 license and simplification error. The terrain material is applied to the captured shape; the original scan UV texture set is not used.

@@ -11,3 +11,7 @@ for(const length of [768,137,23]){
  assert(Math.max(...band.imag.map(Math.abs))<1e-8,'Hermitian spectrum must produce real heights');
 }
 console.log('FFT roundtrip, deterministic waves, real-valued output, wave energy and mean sea level: pass');
+
+const varianceBand=new OceanBand(64,23,.2);let previous=0;for(const footprint of [.01,.1,.5,1,2,4,8,16,64,256]){const variance=varianceBand.missingSlopeVariance(footprint);assert(variance>=previous-1e-12);previous=variance;}assert(previous>0);
+varianceBand.evaluate(0);varianceBand.foam.fill(.4);const foam=varianceBand.evaluate(1/15);assert(foam.filter((_,i)=>i%4===3).every(v=>v>=.4*Math.exp(-1/45)-1e-6&&v<=1));
+console.log('Ocean slope variance: monotonic unresolved energy; foam: bounded persistence/decay pass');

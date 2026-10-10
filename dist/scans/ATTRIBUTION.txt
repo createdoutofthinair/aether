@@ -1,0 +1,5 @@
+Rock Face 01 — Dario Barresi, Poly Haven
+Source: https://polyhaven.com/a/rock_face_01
+License: CC0 1.0 Universal
+Geometry simplified using meshoptimizer; source dimensions preserved with bounded placement scaling.
+Terrain triplanar materials replace the source UV material set.

@@ -1,7 +1,8 @@
-import {referenceAt} from './terrain-cache.js?v=terrain-10';
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-10';
+import {planetAt} from './planet-cache.js?v=terrain-11';
+import {referenceAt} from './terrain-cache.js?v=terrain-11';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-11';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=terrain-10';
+import {world,environment,climate,province} from './world.js?v=terrain-11';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -16,7 +17,7 @@ x+=wx*.22;y+=wy*.22;z+=wz*.22;let h=0,amp=1100,f=3;for(let i=0;i<8;i++){let v=no
  if(d>6500)return h;
  const coords=basinCoordinates(n),regional=basinHeight(coords.x,coords.z);
  return mix(regional,h,T.MathUtils.smoothstep(d,4200,6500));}
-export function height(n){
+export function authoredHeight(n){
  const region=regionAt(n);if(region?.weight===1)return regionHeight(region)*world.relief;
  const h=baseHeight(n)*world.relief;
  const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing))),outside=environment.basin?T.MathUtils.smoothstep(distance,4200,6500):1;
@@ -25,6 +26,14 @@ export function height(n){
  const original=h+outside*(c.dunes*dunes*7+Math.pow(Math.max(0,p-.55),2)*world.activity*1500)*world.relief;
  return region?mix(original,regionHeight(region)*world.relief,region.weight):original;
 }
+export function height(n){
+ const original=authoredHeight(n),global=planetAt(world,environment,n);
+ if(!global)return original;
+ const distance=R*Math.sqrt(Math.max(0,2-2*n.dot(landing)));
+ const preserveReference=environment.basin?T.MathUtils.smoothstep(distance,4200,6500):1;
+ return original+global.height*preserveReference;
+}
+export function surfaceHydrology(n){const global=planetAt(world,environment,n),local=referenceGeology(n);const blend=local?.weight||0;return [mix(global?.flow||0,local?.flow||0,blend),mix(global?.shelter??1,local?.shelter??1,blend),regionAt(n)?.id==='badlands'?1:0];}
 const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
 const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
 export function basinCoordinates(d){return{x:d.dot(landingEast)*R,z:d.dot(landingNorth)*R};}
@@ -82,15 +91,17 @@ export function basinHeight(x,z){
   +(noise(x*.032,z*.032+world.seed,29)-.5)*.65*data.exposure;
  return data.weight>=1?data.height+fine:mix(legacyBasinHeight(x,z),data.height+fine,data.weight);
 }
-export function referenceGeology(d){const {x,z}=basinCoordinates(d);return environment.basin?referenceAt(world.seed,x,z,false):null;}
+export function referenceGeology(d){if(d.dot(landing)<=0)return null;const {x,z}=basinCoordinates(d);return environment.basin?referenceAt(world.seed,x,z,false):null;}
 export function surfaceGeology(d){
  const region=regionAt(d);if(region?.id==='badlands'){const h=regionHeight(region),deposition=1-T.MathUtils.smoothstep(h,190,550);return[deposition,1-deposition,region.weight];}
- if(!environment.basin)return[0,0,0];
+ const global=planetAt(world,environment,d),globalGeology=global?[global.soil,global.exposure,1]:[0,0,0];
+ if(!environment.basin)return globalGeology;
  const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
- if(regional===0)return[0,0,0];
+ if(regional===0)return globalGeology;
  const {x,z}=basinCoordinates(d),p=basinProfile(x,z),eroded=referenceAt(world.seed,x,z,false);
  const original=[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
- return eroded?original.map((v,i)=>mix(v,[eroded.soil,eroded.exposure,regional][i],eroded.weight)):original;
+ const local=eroded?original.map((v,i)=>mix(v,[eroded.soil,eroded.exposure,regional][i],eroded.weight)):original;
+ return local.map((v,i)=>mix(globalGeology[i],v,regional));
 }
 
 export function surfaceClimate(d,elevation){const c=climate(d,elevation),r=regionAt(d);if(!r||c.ocean)return c;const cover=r.weight*(1-c.ice);if(r.id==='volcanic'){c.volcanic=mix(c.volcanic,.92,cover);c.dunes*=1-cover;}else if(r.id==='dunes'){c.dunes=mix(c.dunes,.98,cover);c.volcanic*=1-cover;}else{c.volcanic*=1-cover;c.dunes*=1-cover;}if(r.weight>.5&&c.ice<.55)c.biome=r.name;return c;}
@@ -113,8 +124,8 @@ const N=16;
 export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.contactLayers=new Set();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
- build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,n.size*R/N*.65));normals.push(sn.x,sn.y,sn.z);}
+ build(n){const positions=[],normals=[],coords=[],geology=[],hydrology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));hydrology.push(...surfaceHydrology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,n.size*R/N*.65));normals.push(sn.x,sn.y,sn.z);}
  // Measure omitted geometry at cell centres, including spherical curvature.
  // This catches narrow crater rims and coastlines that proximity alone misses.
  n.geometricError=R*(n.size/N)**2*.25;
@@ -129,10 +140,10 @@ export class PlanetTerrain{
  // Skirts have separate vertices; their side faces never influence surface normals.
  n.edge=edge;n.skirt=Math.max(.4,n.size*R*.015);n.surfaceCount=positions.length/3;
  for(let k=0;k<edge.length;k++){const ix=edge[k],p=pts[ix],d=p.clone().normalize(),q=p.clone().addScaledVector(d,-n.skirt);
-  for(const v of [p,q]){biomes.push(...biomes.slice(ix*3,ix*3+3));geology.push(...geology.slice(ix*3,ix*3+3));positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
+  for(const v of [p,q]){biomes.push(...biomes.slice(ix*3,ix*3+3));geology.push(...geology.slice(ix*3,ix*3+3));hydrology.push(...hydrology.slice(ix*3,ix*3+3));positions.push(v.x-n.anchor.x,v.y-n.anchor.y,v.z-n.anchor.z);coords.push(v.x,v.y,v.z);normals.push(...normals.slice(ix*3,ix*3+3));}
   const a=n.surfaceCount+k*2,b=n.surfaceCount+((k+1)%edge.length)*2;indices.push(a,a+1,b,b,a+1,b+1);
  }
- const g=new T.BufferGeometry();g.setAttribute('biomeData',new T.Float32BufferAttribute(biomes,3));g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
+ const g=new T.BufferGeometry();g.setAttribute('hydraulicData',new T.Float32BufferAttribute(hydrology,3));g.setAttribute('biomeData',new T.Float32BufferAttribute(biomes,3));g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('surfaceData',new T.Float32BufferAttribute(geology,3));g.setAttribute('planetPosition',new T.Float32BufferAttribute(coords,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setIndex(indices);g.computeBoundingSphere();
  n.originalPositions=g.attributes.position.array.slice();n.originalNormals=g.attributes.normal.array.slice();n.originalGeology=g.attributes.surfaceData.array.slice();n.originalBiomes=g.attributes.biomeData.array.slice();
  n.renderPositions=n.originalPositions.slice();n.renderNormals=n.originalNormals.slice();n.renderGeology=n.originalGeology.slice();n.renderBiomes=n.originalBiomes.slice();n.morph=1;n.morphTarget=1;n.open=false;n.revision=0;
  let mesh=new T.Mesh(g,this.material);mesh.position.copy(n.anchor);mesh.frustumCulled=true;mesh.visible=false;mesh.receiveShadow=true;n.mesh=mesh;this.root.add(mesh);

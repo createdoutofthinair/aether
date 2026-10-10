@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-10';
+import {skyGLSL} from './sky-light.js?v=terrain-11';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
@@ -6,7 +6,7 @@ export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(p
 export const waterFragment=`precision highp float;
 varying vec2 vUv;
 uniform sampler2D sceneColor,sceneDepth,wave0,wave1,wave2,waveNext0,waveNext1,waveNext2;
-uniform float waveMix;
+uniform float waveMix,oceanSlopeVariance[16];
 uniform mat4 invProjection,camWorld,seaView,seaProjection;
 uniform vec3 origin,sunDir,sunColor;
 uniform vec2 resolution;
@@ -78,6 +78,11 @@ vec4 band(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
  return vec4(slope,x.x*w.x+y.x*w.y+z.x*w.z);
 }
 vec4 seaField(vec3 p,vec3 up){return band(wave0,waveNext0,p,up,768.)+band(wave1,waveNext1,p,up,137.)+band(wave2,waveNext2,p,up,23.);}
+float foamBand(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
+ vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
+ return dot(vec3(mix(texture2D(a,p.yz/scale).a,texture2D(b,p.yz/scale).a,waveMix),mix(texture2D(a,p.xz/scale).a,texture2D(b,p.xz/scale).a,waveMix),mix(texture2D(a,p.xy/scale).a,texture2D(b,p.xy/scale).a,waveMix)),w);
+}
+float missingVariance(float footprint){float level=clamp(log2(max(.0625,footprint)/.0625),0.,15.);int i=int(floor(level));return mix(oceanSlopeVariance[i],oceanSlopeVariance[min(15,i+1)],fract(level));}
 ${skyGLSL}
 // Screen-space reflection of the opaque terrain, with sky fallback when a ray
 // leaves the screen. It deliberately does not sample the water output itself.
@@ -141,14 +146,15 @@ void main(){
  float fresnel=.0204+.9796*pow(1.-ndv,5.);
  vec3 halfVector=normalize(view+sunDir);float ndh=max(0.,dot(normal,halfVector)),vdh=max(0.,dot(view,halfVector));
  // Unresolved wave energy becomes reflection roughness rather than vanishing.
- float roughness=sqrt(.055*.055+.12*.12*smoothstep(.3,12.,footprint)+.20*.20*smoothstep(12.,180.,footprint)),a=roughness*roughness,a2=a*a;
+ float roughness=clamp(pow(pow(.055,4.)+missingVariance(footprint)*.35,.25),.055,.8),a=roughness*roughness,a2=a*a;
  float denom=ndh*ndh*(a2-1.)+1.,D=a2/max(PI*denom*denom,.000001);
  float k=roughness*roughness*.5,Gv=ndv/(ndv*(1.-k)+k),Gl=ndl/(ndl*(1.-k)+k);
  float F=.0204+.9796*pow(1.-vdh,5.);
  vec3 specular=sunColor*sunIntensity*(D*Gv*Gl*F/(4.*ndv+.0001))*ndl;
  vec3 color=body*(1.-fresnel)+reflection*fresnel+min(specular,vec3(14.));
- // Crest foam is a steepness heuristic, not a physical overturning simulation.
- float crest=smoothstep(.24,.42,length(slope))*smoothstep(.02,.22,waves.w)*.22;
+ // Persistent band foam integrates steepness production and a three-second decay.
+ // It is not a transported breaking-wave or shoreline fluid simulation.
+ float crest=0.;if(frozen<.999&&footprint<30.)crest=clamp(foamBand(wave0,waveNext0,p,up,768.)+foamBand(wave1,waveNext1,p,up,137.)+foamBand(wave2,waveNext2,p,up,23.),0.,1.);
  float foam=0.;
  if((thickness<1.65||crest>.001)&&frozen<.999)foam=seaFoam(p,up,footprint,thickness,crest)*(1.-frozen);
  vec3 foamLight=vec3(.74,.78,.76)*(.32+.68*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.09;

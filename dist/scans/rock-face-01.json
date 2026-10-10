@@ -1,0 +1,15 @@
+{
+  "count": 4500,
+  "dimensions": [
+    4.9535112380981445,
+    3.5640490017831326,
+    3.8273032903671265
+  ],
+  "sourceTriangles": 20174,
+  "triangles": 1500,
+  "simplificationRelativeError": 0.009132609702646732,
+  "source": "https://polyhaven.com/a/rock_face_01",
+  "author": "Dario Barresi",
+  "license": "CC0",
+  "format": "Float32 position(3), normal(3), uv(2); nonindexed"
+}

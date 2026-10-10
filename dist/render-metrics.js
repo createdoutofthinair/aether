@@ -1,0 +1,12 @@
+// Bounded rolling measurements. RAF time is frame interval, CPU time covers the
+// application frame body. GPU queries are optional and discarded when disjoint.
+export class RenderMetrics{
+ constructor(renderer,limit=600){this.renderer=renderer;this.limit=limit;this.samples=[];this.cpu=[];this.gpu=[];this.pending=[];this.gl=renderer.getContext();this.extension=this.gl.getExtension('EXT_disjoint_timer_query_webgl2');this.started=0;this.query=null;}
+ begin(now){this.started=performance.now();if(this.previous!==undefined)this.add(this.samples,now-this.previous);this.previous=now;const gl=this.gl;if(this.extension&&this.pending.length<8){this.query=gl.createQuery();gl.beginQuery(this.extension.TIME_ELAPSED_EXT,this.query);}}
+ add(buffer,value){if(Number.isFinite(value)&&value>=0){buffer.push(value);if(buffer.length>this.limit)buffer.shift();}}
+ end(){this.add(this.cpu,performance.now()-this.started);const gl=this.gl;if(this.query){gl.endQuery(this.extension.TIME_ELAPSED_EXT);this.pending.push(this.query);this.query=null;}if(this.extension){const disjoint=gl.getParameter(this.extension.GPU_DISJOINT_EXT);for(let i=this.pending.length-1;i>=0;i--){const q=this.pending[i];if(disjoint||gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE)){if(!disjoint)this.add(this.gpu,gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6);gl.deleteQuery(q);this.pending.splice(i,1);}}}}
+ reset(){this.samples=[];this.cpu=[];this.gpu=[];this.previous=undefined;}
+ report(extra={}){const stats=values=>{const sorted=values.slice().sort((a,b)=>a-b),q=p=>sorted[Math.min(sorted.length-1,Math.floor(sorted.length*p))]??null;return{samples:values.length,p50Ms:q(.5),p95Ms:q(.95),p99Ms:q(.99)};};const gl=this.gl,debug=gl.getExtension('WEBGL_debug_renderer_info');return{capturedAt:new Date().toISOString(),browser:navigator.userAgent,gpu:debug?gl.getParameter(debug.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),frameInterval:stats(this.samples),cpu:stats(this.cpu),gpuTime:stats(this.gpu),gpuTimerSupported:!!this.extension,drawingBuffer:[gl.drawingBufferWidth,gl.drawingBufferHeight],resources:{...this.renderer.info.memory},draw:{...this.renderer.info.render},...extra};}
+}
+
+export function estimateTextureBytes(texture){if(!texture?.isTexture)return 0;if(texture.mipmaps?.length)return texture.mipmaps.reduce((sum,mip)=>sum+(mip.data?.byteLength||0),0);const image=texture.image;if(image?.data)return image.data.byteLength*(texture.generateMipmaps?4/3:1);return image?.width&&image?.height?image.width*image.height*4*(texture.generateMipmaps?4/3:1):0;}

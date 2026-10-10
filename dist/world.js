@@ -1,8 +1,8 @@
 // Shared deterministic world parameters. Climate is an artistic approximation.
 export const defaults=Object.freeze({seed:6,relief:1,temperature:18,water:-180,pressure:1,activity:.45});
 export const world={...defaults};
-export const environment={waterEnabled:true,iceEnabled:true,basin:true,gravity:1};
-export function configureEnvironment(input={}){Object.assign(environment,{waterEnabled:input.waterEnabled!==false,iceEnabled:input.iceEnabled!==false,basin:input.basin!==false,gravity:Number.isFinite(input.gravity)?Math.max(.1,Math.min(3,input.gravity)):1});}
+export const environment={waterEnabled:true,iceEnabled:true,basin:true,organicGround:false,gravity:1};
+export function configureEnvironment(input={}){Object.assign(environment,{waterEnabled:input.waterEnabled!==false,iceEnabled:input.iceEnabled!==false,basin:input.basin!==false,organicGround:input.organicGround===true,gravity:Number.isFinite(input.gravity)?Math.max(.1,Math.min(3,input.gravity)):1});}
 export function configureWorld(input={}){
  const ranges={seed:[0,999999],relief:[.25,3],temperature:[-240,450],water:[-1000,1000],pressure:[0,2],activity:[0,1]};
  for(const [key,[lo,hi]] of Object.entries(ranges)){const v=Number(input[key]??defaults[key]);world[key]=Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):defaults[key];}

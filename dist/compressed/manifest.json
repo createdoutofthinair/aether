@@ -1,0 +1,67 @@
+{
+  "rock": {
+    "path": "./compressed/rock.ktx2",
+    "srgb": true,
+    "normalMoments": false
+  },
+  "sand": {
+    "path": "./compressed/sand.ktx2",
+    "srgb": true,
+    "normalMoments": false
+  },
+  "mud": {
+    "path": "./compressed/mud.ktx2",
+    "srgb": true,
+    "normalMoments": false
+  },
+  "rockGaussian": {
+    "path": "./compressed/rockGaussian.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "sandGaussian": {
+    "path": "./compressed/sandGaussian.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "mudGaussian": {
+    "path": "./compressed/mudGaussian.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "rn": {
+    "path": "./compressed/rn.ktx2",
+    "srgb": false,
+    "normalMoments": true
+  },
+  "sn": {
+    "path": "./compressed/sn.ktx2",
+    "srgb": false,
+    "normalMoments": true
+  },
+  "mn": {
+    "path": "./compressed/mn.ktx2",
+    "srgb": false,
+    "normalMoments": true
+  },
+  "rs": {
+    "path": "./compressed/rs.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "ss": {
+    "path": "./compressed/ss.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "ms": {
+    "path": "./compressed/ms.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  },
+  "rr": {
+    "path": "./compressed/rr.ktx2",
+    "srgb": false,
+    "normalMoments": false
+  }
+}

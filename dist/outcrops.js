@@ -1,8 +1,8 @@
 import * as T from './vendor/three.module.js';
-import {getReference} from './terrain-cache.js?v=terrain-10';
-import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-10';
-import {world,environment} from './world.js?v=terrain-10';
-import {patchTerrain} from './shaders.js?v=terrain-10';
+import {getReference} from './terrain-cache.js?v=terrain-11';
+import {R,landing,basis,basinDirection,basinCoordinates,surfaceClimate} from './terrain.js?v=terrain-11';
+import {world,environment} from './world.js?v=terrain-11';
+import {patchTerrain} from './shaders.js?v=terrain-11';
 const hash=(n,s)=>{let v=Math.imul(n+1,374761393)^Math.imul(s+1,668265263);v=Math.imul(v^(v>>>13),1274126177);return((v^(v>>>16))>>>0)/4294967295;};
 
 // Three interlocking fractured slabs. Chamfered polygon footprints, stepped
@@ -34,17 +34,17 @@ function fadeMaterial(material,near=2600,far=3400){
 }
 export class OutcropField{
  constructor(root,textures,terrain,controls){
-  this.terrain=terrain;this.anchor=landing.clone().multiplyScalar(R);this.data=null;this.entries=[];this.cells=new Map();this.lastSignature=null;this.revision=0;this.cursor=0;
+  this.scanned=textures.scannedOutcrop;this.terrain=terrain;this.anchor=landing.clone().multiplyScalar(R);this.data=null;this.entries=[];this.cells=new Map();this.lastSignature=null;this.revision=0;this.cursor=0;
   const material=new T.MeshStandardMaterial({roughness:.9,metalness:0});patchTerrain(material,textures,{...controls,outcropAnchor:{value:this.anchor}});fadeMaterial(material);
   this.meshes=Array.from({length:8},(_,variant)=>{
-   const g=createOutcropGeometry(variant);g.setAttribute('biomeData',new T.InstancedBufferAttribute(new Float32Array(128*3),3));g.setAttribute('surfaceData',new T.InstancedBufferAttribute(new Float32Array(128*3),3));g.setAttribute('formationReady',new T.InstancedBufferAttribute(new Float32Array(128),1));
+   const g=variant===0&&this.scanned?this.scanned.geometry.clone():createOutcropGeometry(variant);g.setAttribute('hydraulicData',new T.Float32BufferAttribute(Float32Array.from({length:g.attributes.position.count*3},(_,i)=>i%3===1?1:0),3));g.setAttribute('biomeData',new T.InstancedBufferAttribute(new Float32Array(128*3),3));g.setAttribute('surfaceData',new T.InstancedBufferAttribute(new Float32Array(128*3),3));g.setAttribute('formationReady',new T.InstancedBufferAttribute(new Float32Array(128),1));
    const mesh=new T.InstancedMesh(g,material,128);mesh.count=0;mesh.position.copy(this.anchor);mesh.castShadow=mesh.receiveShadow=true;
    mesh.customDepthMaterial=new T.MeshDepthMaterial({depthPacking:T.RGBADepthPacking});fadeMaterial(mesh.customDepthMaterial);root.add(mesh);return mesh;
   });terrain.contactLayers?.add(this);
  }
  reset(){this.data=null;this.entries=[];this.cells.clear();this.lastSignature=null;this.cursor=0;for(const mesh of this.meshes)mesh.count=0;this.revision++;}
  load(data){
-  this.reset();this.data=data;const collapsed=new T.Matrix4().makeScale(0,0,0);for(const feature of data.outcrops){const mesh=this.meshes[feature.variant];if(mesh.count>=128)continue;const entry={feature,mesh,index:mesh.count++,direction:basinDirection(feature.x,feature.z),inverse:new T.Matrix4(),matrix:new T.Matrix4(),signature:null};mesh.setMatrixAt(entry.index,collapsed);mesh.geometry.attributes.formationReady.setX(entry.index,0);this.entries.push(entry);
+  this.reset();this.data=data;const collapsed=new T.Matrix4().makeScale(0,0,0);for(const original of data.outcrops){let feature=original;if(original.variant===0&&this.scanned){const scale=.85+hash(original.seed,17)*.5,[width,height,depth]=this.scanned.metadata.dimensions;feature={...original,width:width*scale,height:height*scale,depth:depth*scale,scanned:true};}const mesh=this.meshes[feature.variant];if(mesh.count>=128)continue;const entry={feature,mesh,index:mesh.count++,direction:basinDirection(feature.x,feature.z),inverse:new T.Matrix4(),matrix:new T.Matrix4(),signature:null};mesh.setMatrixAt(entry.index,collapsed);mesh.geometry.attributes.formationReady.setX(entry.index,0);this.entries.push(entry);
    const reach=Math.max(feature.width,feature.depth)*.75+12;for(let z=Math.floor((feature.z-reach)/96);z<=Math.floor((feature.z+reach)/96);z++)for(let x=Math.floor((feature.x-reach)/96);x<=Math.floor((feature.x+reach)/96);x++){const key=x+','+z;if(!this.cells.has(key))this.cells.set(key,[]);this.cells.get(key).push(entry);}
   }
  }
