@@ -1,4 +1,4 @@
-import {world,field} from './world.js?v=spectral-2';
+import {world,field} from './world.js?v=terrain-3';
 const R=60000,TAU=Math.PI*2;
 const smooth=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const definitions=[

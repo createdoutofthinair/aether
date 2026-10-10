@@ -1,6 +1,6 @@
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=spectral-2';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-3';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=spectral-2';
+import {world,environment,climate,province} from './world.js?v=terrain-3';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -102,11 +102,11 @@ export class PlanetTerrain{
  constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
  build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
- for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,Math.min(100,n.size*R/N*.25)));normals.push(sn.x,sn.y,sn.z);}
+ for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,n.size*R/N*.65));normals.push(sn.x,sn.y,sn.z);}
  // Measure omitted geometry at cell centres, including spherical curvature.
  // This catches narrow crater rims and coastlines that proximity alone misses.
  n.geometricError=R*(n.size/N)**2*.25;
- for(const j of [2,8,13])for(const i of [2,8,13]){
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
   const d=direction(n.f,n.u+n.size*(i+.5)/N,n.v+n.size*(j+.5)/N),actual=d.multiplyScalar(R+height(d));
   const interpolated=pts[j*(N+1)+i+1].clone().lerp(pts[(j+1)*(N+1)+i],.5);
   n.geometricError=Math.max(n.geometricError,actual.distanceTo(interpolated));
@@ -159,7 +159,7 @@ export class PlanetTerrain{
  if(!collapse&&altitude<40000&&horizon<Math.min(.94,R/cam.length())-n.size*1.7-.04)return;
  const threshold=n.size*R*(this.quality==='high'?2.7:2.1);
  const projectedError=(n.geometricError||0)*(this.focalPixels||700)/Math.max(dist-n.size*R*.45,n.size*R*.2,1);
- const errorLimit=(this.quality==='high'?2.5:5)*(n.wasSplit?.82:1);
+ const errorLimit=(this.quality==='high'?1.15:3)*(n.wasSplit?.82:1);
  const split=!collapse&&(n.l<2||(n.l<maxLevel&&(dist<threshold*(n.wasSplit?1.18:1)||projectedError>errorLimit)));n.wasSplit=split;
  if(n.open&&!n.children.every(c=>c.mesh))n.open=false;
  if(n.open){

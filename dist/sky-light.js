@@ -1,9 +1,9 @@
 // Shared single-scattering coefficients and density profiles, in kilometres.
 // Both the atmospheric pass and ocean reflection use this radiance model.
 export const skyGLSL=`
-const vec3 skyRayleigh=vec3(.045,.095,.205),skyMie=vec3(.08);
+const vec3 skyRayleigh=vec3(.045,.095,.205),skyMie=vec3(.035);
 vec2 skySphere(vec3 o,vec3 d,float r){float b=dot(o,d),c=dot(o,o)-r*r,h=b*b-c;if(h<0.)return vec2(1e9,-1e9);return vec2(-b-sqrt(h),-b+sqrt(h));}
-vec2 skyDensity(vec3 p){float h=max(0.,length(p)-60.);return vec2(exp(-h/1.25),exp(-h/.42))*air;}
+vec2 skyDensity(vec3 p){float h=max(0.,length(p)-60.);return vec2(exp(-h/1.25),exp(-h/.24))*air;}
 vec3 reflectedSky(vec3 point,vec3 direction){
  vec3 o=point*.001;vec2 hit=skySphere(o,direction,66.);float start=max(0.,hit.x),end=hit.y;
  vec2 ground=skySphere(o,direction,59.999);if(ground.x>0.)end=min(end,ground.x);

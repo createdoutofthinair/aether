@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=spectral-2';
+import {skyGLSL} from './sky-light.js?v=terrain-3';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -53,7 +53,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  terrainDx=dFdx(vPlanet);terrainDy=dFdy(vPlanet);
  vec3 radial=normalize(vPlanet),gn=normalize(vGeoNormal),w=pow(abs(gn),vec3(8.));w/=max(dot(w,vec3(1.)),.0001);w=max(w-.025,0.);w/=max(dot(w,vec3(1.)),.0001);
  float slope=1.-abs(dot(radial,gn)),elevation=length(vPlanet)-60000.;
- float dist=length(vViewPosition),detailed=1.-smoothstep(350.,2200.,dist);
+ float dist=length(vViewPosition),detailed=1.-smoothstep(.65,3.5,max(length(terrainDx),length(terrainDy)));
  float footprint=max(length(terrainDx),length(terrainDy));
  float province=mix(ns(vPlanet*.002),.5,smoothstep(.5,2.,footprint*.002)),deposits=mix(ns(vPlanet*.018),.5,smoothstep(.5,2.,footprint*.018)),grain=mix(ns(vPlanet*.19),.5,smoothstep(.5,2.,footprint*.19));
  float deposition=vSurfaceData.r*vSurfaceData.b,bedrock=vSurfaceData.g*vSurfaceData.b;
@@ -83,6 +83,14 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),mix(ns(vPlanet*.008),.5,smoothstep(.5,2.,footprint*.008)));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
+ // Mesoscale exposed beds and talus remain visible between scan and orbital scales.
+ float meso=ns(vPlanet*.012+vec3(7.,3.,19.));
+ float bedPhase=elevation*.018+ns(vPlanet*.0014)*2.;
+ float bedsVisible=1.-smoothstep(.4,2.,footprint*.018);
+ float strataBand=.5+.5*sin(bedPhase);
+ vec3 mesoColor=mix(vec3(.23,.205,.175),vec3(.43,.35,.25),meso);
+ diffuseColor.rgb=mix(diffuseColor.rgb,mesoColor,.24*(1.-detailed));
+ diffuseColor.rgb*=1.+(strataBand-.5)*.13*bedsVisible*smoothstep(.03,.24,slope);
  // Kilometre-scale mineral provinces retain structure after scan textures fade.
  float macroRock=ns(vPlanet*.00037+vec3(31.,-17.,9.));
  float macroDust=ns(vPlanet*.0012+vec3(-13.,27.,5.));
