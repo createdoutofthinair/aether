@@ -1,5 +1,4 @@
-// Bounded coastal approximation. Bathymetry comes from the same terrain height
-// function as contacts. This is not a shallow-water fluid solver.
+// Shared coastal bathymetry, atlas sampling and worker-unavailable fallback.
 export const COAST_SIZE=128,COAST_STEP=4,COAST_X=1296,COAST_Y=0;
 export function encodeCoast(heights,size=COAST_SIZE,step=COAST_STEP){
  const distance=new Float32Array(size*size).fill(1e6),pixels=new Uint8Array(size*size*4);
@@ -21,7 +20,7 @@ export function coastalWash(distance,time){
 }
 export const coastalGLSL=`
 uniform vec3 coastalCenter,coastalEast,coastalNorth;
-uniform float coastalActive,coastalTime;
+uniform float coastalActive,coastalTime,coastalReady,coastalMix;
 vec3 coastalSample(vec3 p){
  vec3 n=normalize(p);vec2 q=vec2(dot(n-coastalCenter,coastalEast),dot(n-coastalCenter,coastalNorth))*60000./4.+63.5;
  float edge=min(min(q.x,q.y),min(127.-q.x,127.-q.y));
@@ -31,7 +30,16 @@ vec3 coastalSample(vec3 p){
  return vec3(bed,distance,coastalActive*smoothstep(0.,16.,edge)*(1.-smoothstep(65.,100.,abs(distance))));
 }
 float coastalLevel(float distance){float phase=coastalTime*.8-distance*.08;return .72*sin(phase)+.16*sin(phase*2.);}
-float coastalWet(vec3 field,float elevation){
+vec3 coastalWater(vec3 p){
+ vec3 field=coastalSample(p);if(coastalReady<.5)return vec3(coastalLevel(field.y),0.,0.);
+ vec3 n=normalize(p);vec2 q=vec2(dot(n-coastalCenter,coastalEast),dot(n-coastalCenter,coastalNorth))*60000./4.+63.5;
+ q=clamp(q,vec2(0.),vec2(127.));
+ vec2 uv=(vec2(1296.,128.)+q+.5)/vec2(1560.,1813.);
+ vec4 a=texture2D(referenceMask,uv),b=texture2D(referenceMask,uv+vec2(0.,128./1813.));
+ vec4 data=mix(a,b,coastalMix);return vec3((data.r*65280.+data.g*255.)/65535.*16.-8.,data.b,data.a);
+}
+float coastalWet(vec3 p,vec3 field,float elevation){
+ if(coastalReady>.5){vec3 water=coastalWater(p);return field.z*max(water.z*(1.-smoothstep(.1,.4,elevation-field.x)),1.-smoothstep(-.04,.08,elevation-water.x));}
  float phase=coastalTime*.8-field.y*.08,age=mod(phase-1.570796327,6.283185307)/.8;
  float memory=exp(-age/8.)*(1.-smoothstep(.55,.9,elevation));
  return field.z*max(1.-smoothstep(-.04,.08,elevation-coastalLevel(field.y)),memory);

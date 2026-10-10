@@ -1,5 +1,5 @@
-import {coastalGLSL} from './coastal.js?v=terrain-14';
-import {skyGLSL} from './sky-light.js?v=terrain-14';
+import {coastalGLSL} from './coastal.js?v=terrain-15';
+import {skyGLSL} from './sky-light.js?v=terrain-15';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
@@ -93,7 +93,7 @@ vec3 waveCoordinates(vec3 p,vec3 up){
  return p-d;
 }
 vec4 seaRawField(vec3 p,vec3 up){return band(wave0,waveNext0,p,up,768.)+band(wave1,waveNext1,p,up,137.)+band(wave2,waveNext2,p,up,23.);}
-vec4 seaField(vec3 p,vec3 up){return seaRawField(waveCoordinates(p,up),up);}
+vec4 seaField(vec3 p,vec3 up){vec4 field=seaRawField(waveCoordinates(p,up),up);vec3 coast=coastalSample(p);if(coastalReady>.5&&coast.z>.001){float eta=coastalWater(p).x;if(eta-coast.x<.015)eta=min(0.,coast.x-.04);field.w=mix(field.w,eta,coast.z);}return field;}
 float foamBand(sampler2D a,sampler2D b,vec3 p,vec3 up,float scale){
  vec3 w=pow(abs(up),vec3(6.));w/=dot(w,vec3(1.));
  return dot(vec3(mix(texture2D(a,p.yz/scale).a,texture2D(b,p.yz/scale).a,waveMix),mix(texture2D(a,p.xz/scale).a,texture2D(b,p.xz/scale).a,waveMix),mix(texture2D(a,p.xy/scale).a,texture2D(b,p.xy/scale).a,waveMix)),w);
@@ -142,7 +142,10 @@ void main(){
  float coastLiquid=iceEnabled?smoothstep(-8.,0.,seaTemperature-58.*shoreUp.y*shoreUp.y):1.;
  float shoreElevation=length(shorePoint)-seaRadius,shoreIncidence=-dot(shoreUp,ray);
  if(opaqueZ<.999999&&coast.z>.001&&abs(shoreElevation)<2.&&shoreIncidence>.15&&coastLiquid>.999){
-  float runup=coastalLevel(coast.y),shoreT=opaqueT-(runup-shoreElevation)/shoreIncidence;
+  vec3 coastalWaterState=coastalWater(shorePoint);
+  float runup=coastalWaterState.x;
+  if(coastalReady>.5&&runup-coast.x<.015)runup=min(runup,shoreElevation-.04);
+  float shoreT=opaqueT-(runup-shoreElevation)/shoreIncidence;
   waterT=mix(waterT,shoreT,coast.z*(1.-smoothstep(1.,2.,abs(shoreElevation))));
  }
  float difference=opaqueT-waterT;
@@ -154,7 +157,7 @@ void main(){
  vec3 spectrumPoint=waveCoordinates(p,up);vec4 waves=seaRawField(spectrumPoint,up);
  vec3 slope=waves.xyz-up*dot(waves.xyz,up);
  vec3 coastalField=coastalSample(p);
- if(coastalField.z>.001){vec3 ex=coastalSample(p+coastalEast*4.),ny=coastalSample(p+coastalNorth*4.);vec3 shoreSlope=(coastalEast*((coastalLevel(ex.y)-coastalLevel(coastalField.y))*step(.001,ex.z))+coastalNorth*((coastalLevel(ny.y)-coastalLevel(coastalField.y))*step(.001,ny.z)))/4.;slope=mix(slope,shoreSlope,coastalField.z);}
+ if(coastalField.z>.001){vec3 ex=coastalSample(p+coastalEast*4.),ny=coastalSample(p+coastalNorth*4.);vec3 shoreSlope=(coastalEast*((coastalWater(p+coastalEast*4.).x-coastalWater(p).x)*step(.001,ex.z))+coastalNorth*((coastalWater(p+coastalNorth*4.).x-coastalWater(p).x)*step(.001,ny.z)))/4.;slope=mix(slope,shoreSlope,coastalField.z);}
  vec3 normal=normalize(up-slope*(1.-frozen));
  float ndv=max(.001,dot(normal,view)),ndl=max(0.,dot(normal,sunDir));
  float thickness=opaqueZ<.999999?max(0.,difference)*max(.08,dot(up,view)):120.;
@@ -180,10 +183,11 @@ void main(){
  vec3 specular=sunColor*sunIntensity*(D*Gv*Gl*F/(4.*ndv+.0001))*ndl;
  vec3 color=body*(1.-fresnel)+reflection*fresnel+min(specular,vec3(14.));
  // Band foam integrates horizontal compression, periodic flow transport and decay.
- // The resident coastal approximation adds a depth-limited advancing wash.
+ // The coastal worker transports foam with depth-averaged flow and decay.
  float crest=0.;if(frozen<.999&&footprint<30.)crest=clamp(foamBand(wave0,waveNext0,spectrumPoint,up,768.)+foamBand(wave1,waveNext1,spectrumPoint,up,137.)+foamBand(wave2,waveNext2,spectrumPoint,up,23.),0.,1.);
  float phase=coastalTime*.8-coastalField.y*.08;
- crest=max(crest,coastalField.z*(1.-smoothstep(.05,1.5,thickness))*smoothstep(.15,.85,sin(phase)));
+ float washFoam=coastalReady>.5?coastalWater(p).y:(1.-smoothstep(.05,1.5,thickness))*smoothstep(.15,.85,sin(phase));
+ crest=max(crest,coastalField.z*washFoam);
  float foam=0.;
  if((thickness<1.65||crest>.001)&&frozen<.999)foam=seaFoam(p,up,footprint,thickness,crest)*(1.-frozen);
  vec3 foamLight=vec3(.74,.78,.76)*(.32+.68*max(0.,dot(up,sunDir)))+reflectedSky(p+up*.1,up)*.09;

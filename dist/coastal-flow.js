@@ -1,0 +1,10 @@
+import {COAST_SIZE,COAST_X} from './coastal.js?v=terrain-15';
+// Two resident frames reuse the atlas: no extra sampler or texture allocation.
+export class CoastalFlow{
+ constructor(atlas,uniforms,WorkerClass=globalThis.Worker){this.atlas=atlas;this.uniforms=uniforms;this.epoch=0;this.pending=false;this.active=false;this.lastRequest=-Infinity;this.cpuMs=0;this.frames=0;try{if(WorkerClass)this.worker=new WorkerClass(new URL('./coastal-worker.js?v=terrain-15',import.meta.url),{type:'module'});}catch(error){console.warn('Coastal worker unavailable:',error.message);}if(this.worker){this.worker.onmessage=({data})=>this.receive(data);this.worker.onerror=event=>{console.warn('Coastal solver failed:',event.message);this.clear();this.worker.terminate();this.worker=null;};}}
+ clear(){this.epoch++;this.pending=false;this.active=false;this.uniforms.coastalReady.value=0;this.lastRequest=-Infinity;}
+ reset(bed,time){this.clear();if(!this.worker)return;this.active=true;this.worker.postMessage({type:'reset',epoch:this.epoch,bed,time});this.update(time+.001);}
+ receive(data){if(data.epoch!==this.epoch)return;this.pending=false;if(data.error){console.warn('Coastal solver failed:',data.error);this.clear();return;}this.atlas.installRegion(data.previous,COAST_SIZE,COAST_SIZE,COAST_X,128);this.atlas.installRegion(data.current,COAST_SIZE,COAST_SIZE,COAST_X,256);this.previousTime=data.previousTime;this.time=data.time;this.cpuMs=data.cpuMs;this.frames++;this.uniforms.coastalReady.value=1;}
+ update(time){if(this.uniforms.coastalReady.value){const span=this.time-this.previousTime;this.uniforms.coastalMix.value=span>0?Math.max(0,Math.min(1,(time-1/15-this.previousTime)/span)):1;}if(!this.active||this.pending||time-this.lastRequest<1/15)return;this.pending=true;this.lastRequest=time;this.worker.postMessage({type:'advance',epoch:this.epoch,time});}
+ state(){return{active:this.active,ready:!!this.uniforms.coastalReady.value,pending:this.pending,frames:this.frames,lastCpuMs:this.cpuMs,uploadBytesPerFrame:131072,model:this.worker?'Saint-Venant finite volumes':'analytic fallback'};}
+}

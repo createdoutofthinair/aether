@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';
+import {CoastalSolver} from '../dist/coastal-solver.js';
+const size=32,step=2,bed=Float64Array.from({length:size*size},(_,i)=>(i%size-17)*.15+.1*Math.sin(Math.floor(i/size)*.3));
+const lake=new CoastalSolver(bed,{size,step,forcing:false}),start=lake.h.slice(),volume=lake.volume();lake.advance(2);assert(Math.abs(lake.volume()-volume)<1e-8);assert(Math.max(...lake.h.map((x,i)=>Math.abs(x-start[i])))<1e-12);assert(Math.max(...lake.mx.map(Math.abs))<1e-11);
+const wave=new CoastalSolver(new Float64Array(size*size).fill(-2),{size,step,forcing:false});wave.h[16*size+16]+=.5;const mass=wave.volume();wave.advance(1);assert(Math.abs(wave.volume()-mass)<1e-8);assert(wave.h[16*size+18]>2);assert(wave.h[16*size+16]<2.5);
+const beach=new CoastalSolver(bed,{size,step});let wet=0;for(let t=.1;t<=20;t+=.1){beach.advance(t);assert(beach.h.every(x=>Number.isFinite(x)&&x>=0));assert(beach.foam.every(x=>x>=0&&x<=1));wet=Math.max(wet,...beach.h.filter((_,i)=>bed[i]>.02));}assert(wet>.025,'wave runs onto initially dry beach');assert(beach.wet.some((x,i)=>bed[i]>0&&x>0));const old=beach.wet.slice();beach.h.fill(0);beach.mx.fill(0);beach.my.fill(0);beach.forcing=false;beach.advance(beach.time+1);assert(beach.wet.every((x,i)=>x<=old[i]));assert.throws(()=>beach.advance(0));assert.equal(beach.pixels().length,size*size*4);
+console.log('Coastal solver: lake-at-rest balance, closed volume, wave propagation, positivity, run-up, foam bounds and stored drying passed');

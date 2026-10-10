@@ -1,7 +1,7 @@
-import {referenceSample} from './terrain-data.js?v=terrain-14';
-import {composeRegionalSurface} from './regional-material.js?v=terrain-14';
-export {composeRegionalSurface} from './regional-material.js?v=terrain-14';
-import {samplePlanetData} from './planet-data.js?v=terrain-14';
+import {referenceSample} from './terrain-data.js?v=terrain-15';
+import {composeRegionalSurface} from './regional-material.js?v=terrain-15';
+export {composeRegionalSurface} from './regional-material.js?v=terrain-15';
+import {samplePlanetData} from './planet-data.js?v=terrain-15';
 export const PAGE_SIZE=128,PAGE_BORDER=1,PAGE_STRIDE=130,PAGE_COLUMNS=512,PAGE_ROWS=256,CACHE_COLUMNS=6,CACHE_ROWS=5,ATLAS_WIDTH=1560,ATLAS_HEIGHT=1813,REFERENCE_Y=0,PARENT_X=1040,PARENT_Y=0,TABLE_X=520,TABLE_Y=0,CACHE_Y=513,COLOR_X=780,COLOR_Y=513,SURFACE_X=0,SURFACE_Y=1163,NORMAL_X=780,NORMAL_Y=1163;
 const length=Math.hypot(.27,.46,.846),landing=[.27/length,.46/length,.846/length],horizontal=Math.hypot(landing[0],landing[2]),east=[landing[2]/horizontal,0,-landing[0]/horizontal],north=[-landing[1]*landing[0]/horizontal,horizontal,-landing[1]*landing[2]/horizontal];
 export function composeMaterialPage(data,tx,ty,reference=null){
@@ -20,7 +20,7 @@ export function composeMaterialPage(data,tx,ty,reference=null){
  return{tx,ty,pixels,color,surface,normal};
 }
 export class MaterialPageCache{
- constructor(T){this.T=T;this.dirty=new Map();this.uploadTexture=new T.DataTexture(new Uint8Array(4),1,1,T.RGBAFormat);this.uploadPosition=new T.Vector2();this.parentSize={value:new T.Vector2(0,0)};this.pixels=new Uint8Array(ATLAS_WIDTH*ATLAS_HEIGHT*4);this.texture=new T.DataTexture(this.pixels,ATLAS_WIDTH,ATLAS_HEIGHT,T.RGBAFormat);this.texture.minFilter=this.texture.magFilter=T.LinearFilter;this.texture.generateMipmaps=false;this.texture.needsUpdate=true;this.pages=new Map();this.pending=new Set();this.epoch=0;this.clock=0;this.enabled=false;this.worker=null;try{if(typeof Worker!=='undefined')this.worker=new Worker(new URL('./material-page-worker.js?v=terrain-14',import.meta.url),{type:'module'});}catch(error){console.warn('Material pages unavailable; using parent masks.',error.message);}
+ constructor(T){this.T=T;this.dirty=new Map();this.uploadTexture=new T.DataTexture(new Uint8Array(4),1,1,T.RGBAFormat);this.uploadPosition=new T.Vector2();this.parentSize={value:new T.Vector2(0,0)};this.pixels=new Uint8Array(ATLAS_WIDTH*ATLAS_HEIGHT*4);this.texture=new T.DataTexture(this.pixels,ATLAS_WIDTH,ATLAS_HEIGHT,T.RGBAFormat);this.texture.minFilter=this.texture.magFilter=T.LinearFilter;this.texture.generateMipmaps=false;this.texture.needsUpdate=true;this.pages=new Map();this.pending=new Set();this.epoch=0;this.clock=0;this.enabled=false;this.worker=null;try{if(typeof Worker!=='undefined')this.worker=new Worker(new URL('./material-page-worker.js?v=terrain-15',import.meta.url),{type:'module'});}catch(error){console.warn('Material pages unavailable; using parent masks.',error.message);}
   if(this.worker){this.worker.onmessage=({data})=>{if(data.epoch!==this.epoch)return;this.pending.delete(data.key);if(data.error){console.warn('Material page failed:',data.error);return;}this.install(data.result);};this.worker.onerror=event=>{console.warn('Material page worker unavailable:',event.message);this.pending.clear();this.worker.terminate();this.worker=null;};}
  }
  reset(data,reference){this.epoch++;this.dirty.clear();this.data=data;this.pages.clear();this.pending.clear();this.previous=null;this.pixels.fill(0);this.enabled=!!data;
