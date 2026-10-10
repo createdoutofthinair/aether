@@ -1,4 +1,4 @@
-import {generateSystem,orbitalPosition,surfaceProfile} from './solar.js?v=terrain-3';
+import {generateSystem,orbitalPosition,surfaceProfile} from './solar.js?v=terrain-4';
 const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg';
 const palette={'Scorched rock':'#b66b4d','Arid rock':'#cdad73','Temperate rock':'#9db8b1','Oceanic world':'#599cc4','Ice world':'#b9d8e5','Gas giant':'#d6b58f','Ice giant':'#7fbccd'};
 function element(tag,attrs,parent){const el=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);parent.appendChild(el);return el;}

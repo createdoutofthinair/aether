@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {world,defaults,configureWorld,climate,mapDirection,mapUV} from '../dist/world.js?v=terrain-3';
+import {world,defaults,configureWorld,climate,mapDirection,mapUV} from '../dist/world.js?v=terrain-4';
 import {height,R,landing,PlanetTerrain} from '../dist/terrain.js';
 for(let u=.03;u<1;u+=.07)for(let v=.03;v<1;v+=.07){const n=mapDirection(u,v),uv=mapUV(n);assert(Math.abs(uv.u-u)<1e-12&&Math.abs(uv.v-v)<1e-12);}
 assert(climate({x:1,y:0,z:0},0).temperature>climate({x:0,y:1,z:0},0).temperature);

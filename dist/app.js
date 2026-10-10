@@ -1,25 +1,25 @@
-import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-3';
-import {positionSunShadow} from './shadows.js?v=terrain-3';
-import {systemExplorer} from './system-ui.js?v=terrain-3';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-3';
-import {createAtlas} from './atlas.js?v=terrain-3';
+import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-4';
+import {positionSunShadow} from './shadows.js?v=terrain-4';
+import {systemExplorer} from './system-ui.js?v=terrain-4';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-4';
+import {createAtlas} from './atlas.js?v=terrain-4';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-3';
-import {RockField,wheelLift} from './grounding.js?v=terrain-3';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-3';
-import {waterVertex,waterFragment} from './water.js?v=terrain-3';
-import {findCoast} from './inspection.js?v=terrain-3';
+import {R,landing,height,surface,basis,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-4';
+import {RockField,wheelLift} from './grounding.js?v=terrain-4';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-4';
+import {waterVertex,waterFragment} from './water.js?v=terrain-4';
+import {findCoast} from './inspection.js?v=terrain-4';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 let renderer;
 try{renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loadText').textContent='WebGL could not start. Enable hardware acceleration in your browser and reload.';throw e;}
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.LinearSRGBColorSpace;renderer.toneMapping=T.NoToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;$('viewport').appendChild(renderer.domElement);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.LinearSRGBColorSpace;renderer.toneMapping=T.NoToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;$('viewport').appendChild(renderer.domElement);
 const scene=new T.Scene(),root=new T.Group();scene.add(root);const camera=new T.PerspectiveCamera(55,innerWidth/innerHeight,.3,500000);const camPos=landing.clone().multiplyScalar(R+75000);
 const hemi=new T.HemisphereLight(0xb8d4ed,0x31251c,.45);scene.add(hemi);
 const sun=new T.DirectionalLight(0xffebcf,3.4);sun.castShadow=false;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-24,right:24,top:24,bottom:-24,near:1,far:300});sun.shadow.radius=2;sun.shadow.normalBias=.025;sun.shadow.bias=-.0001;scene.add(sun,sun.target);
 const sunDir=new T.Vector3(),lightAnchor=landing.clone();function updateSun(){const angle=Number($('sun').value)*Math.PI/180;sunDir.copy(basis(lightAnchor).east).multiplyScalar(Math.cos(angle)).addScaledVector(lightAnchor,Math.sin(angle)).normalize();$('sunValue').value=$('sun').value+'°';}updateSun();$('sun').oninput=updateSun;
-const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path+'?v=materials-2',undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
+const manager=new T.LoadingManager();let pending=0;const loader=new T.TextureLoader(manager);function tex(path,color=false){let t=loader.load(path+'?v=materials-2',undefined,undefined,()=>{$('message').textContent='A surface texture could not load. Reload to retry.';});t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());t.colorSpace=color?T.SRGBColorSpace:T.NoColorSpace;return t;}
 const textures={rock:tex('./rock_boulder_dry_diff.jpg',true),sand:tex('./sandy_gravel_diff.jpg',true),rn:tex('./rock_boulder_dry_nor_gl.jpg'),sn:tex('./sandy_gravel_nor_gl.jpg'),rr:tex('./rock_boulder_dry_rough.jpg'),mud:tex('./mud_cracked_dry_03_diff.jpg',true),mn:tex('./mud_cracked_dry_03_nor_gl.jpg'),rs:tex('./rock_boulder_dry_surface.png'),ss:tex('./sandy_gravel_surface.png'),ms:tex('./mud_cracked_dry_03_surface.png')};
 const material=new T.MeshStandardMaterial({color:0xffffff,roughness:.9,metalness:0});const surfaceControls={sediment:{value:.65},seaLevel:{value:world.water},surfaceWater:{value:environment.waterEnabled?1:0}};patchTerrain(material,textures,surfaceControls);const terrain=new PlanetTerrain(root,material);
 // Linear offscreen scene with real depth, followed by atmosphere integration.
@@ -32,7 +32,7 @@ const uniforms={sceneColor:{value:waterTarget.texture},sceneDepth:{value:waterTa
 const postScene=new T.Scene(),postCamera=new T.OrthographicCamera(-1,1,1,-1,0,1),postMaterial=new T.ShaderMaterial({uniforms,vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment,depthTest:false,depthWrite:false});postScene.add(new T.Mesh(new T.PlaneGeometry(2,2),postMaterial));
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();const size=renderer.getDrawingBufferSize(new T.Vector2());target.setSize(size.x,size.y);waterTarget.setSize(size.x,size.y);oceanState.resolution.value.copy(size);terrain.focalPixels=size.y/(2*Math.tan(camera.fov*Math.PI/360));}resize();addEventListener('resize',resize);
 $('sediment').oninput=()=>{surfaceControls.sediment.value=+$('sediment').value/100;$('sedimentValue').value=$('sediment').value+'%';};
-$('air').oninput=()=>{uniforms.air.value=+$('air').value/100;world.pressure=uniforms.air.value;$('airValue').value=uniforms.air.value.toFixed(1)+'×';};$('exposure').oninput=()=>{uniforms.exposure.value=+$('exposure').value/100;$('exposureValue').value=uniforms.exposure.value.toFixed(1)+'×';};$('quality').onchange=()=>{terrain.quality=$('quality').value;uniforms.quality.value=terrain.quality==='high'?1:0;oceanState.quality.value=uniforms.quality.value;renderer.setPixelRatio(Math.min(devicePixelRatio,terrain.quality==='high'?1.5:1));target.samples=Math.min(terrain.quality==='high'?4:2,renderer.capabilities.maxSamples);target.dispose();resize();};
+$('air').oninput=()=>{uniforms.air.value=+$('air').value/100;world.pressure=uniforms.air.value;$('airValue').value=uniforms.air.value.toFixed(1)+'×';};$('exposure').oninput=()=>{uniforms.exposure.value=+$('exposure').value/100;$('exposureValue').value=uniforms.exposure.value.toFixed(1)+'×';};$('quality').onchange=()=>{terrain.quality=$('quality').value;uniforms.quality.value=terrain.quality==='high'?1:0;oceanState.quality.value=uniforms.quality.value;renderer.setPixelRatio(Math.min(devicePixelRatio,terrain.quality==='high'?2:1));target.samples=Math.min(terrain.quality==='high'?4:2,renderer.capabilities.maxSamples);target.dispose();resize();};
 let mode='orbit',paused=false,transition=null,yaw=.12,pitch=-1.4,flightMultiplier=1,roverYaw=0,roverSpeed=0,roverHeight=0,roverVertical=0,roverReady=false,roverAngle=.5,roverPitch=.26,roverZoom=13,roverHeading=0;
 const roverPos=landing.clone().multiplyScalar(R+height(landing)+1.05),rover=new T.Group();root.add(rover);rover.visible=false;const wheels=[];let wheelSpin=0;
 // Lossless compression keeps the original rover geometry and embedded textures intact.

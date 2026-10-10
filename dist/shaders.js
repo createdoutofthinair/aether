@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-3';
+import {skyGLSL} from './sky-light.js?v=terrain-4';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -81,8 +81,18 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float strata=ns(vec3(elevation*.033+ns(vPlanet*.004)*1.5,province*3.,11.));
  float localVariation=mix(ns(vPlanet*.13),.5,smoothstep(.5,2.,footprint*.13));
  vec3 weathering=mix(vec3(.81,.78,.72),vec3(1.06,1.0,.90),mix(ns(vPlanet*.008),.5,smoothstep(.5,2.,footprint*.008)));
+ // Scan-derived mesoscopic grain bridges the gap between metre-scale maps
+ // and mineral provinces. Explicit gradients filter each band independently.
+ float mediumVisibility=1.-smoothstep(6.,24.,footprint);
+ float largeVisibility=1.-smoothstep(30.,120.,footprint);
+ vec3 mediumScan=tri(rockMap,vPlanet/24.,w,1./24.).rgb;
+ vec3 largeScan=tri(rockMap,vPlanet/120.,w,1./120.).rgb;
+ float mediumLuma=dot(mediumScan,vec3(.2126,.7152,.0722));
+ float largeLuma=dot(largeScan,vec3(.2126,.7152,.0722));
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
+ float scanRelief=clamp((mediumLuma-.28)*1.3,-.28,.36)*mediumVisibility+clamp((largeLuma-.28)*.85,-.18,.23)*largeVisibility;
+ diffuseColor.rgb*=1.+scanRelief*(1.-detailed);
  // Mesoscale exposed beds and talus remain visible between scan and orbital scales.
  float meso=ns(vPlanet*.012+vec3(7.,3.,19.));
  float bedPhase=elevation*.018+ns(vPlanet*.0014)*2.;
@@ -119,13 +129,16 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   if(weights.y>.01)gradient+=triGradient(sandNormal,sp,w,.5)*weights.y;
   if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w,1./1.5)*weights.z;
  }
+ gradient*=detailed;
+ gradient+=triGradient(rockNormal,vPlanet/24.,w,1./24.)*.14*mediumVisibility*(1.-detailed);
+ gradient+=triGradient(rockNormal,vPlanet/120.,w,1./120.)*.09*largeVisibility*(1.-detailed);
  gradient*=1.-vBiome.z*.88;
  vec3 wind=normalize(vec3(.88,.12,.47));
  float ripplePhase=dot(vPlanet,wind)*18.+ns(vPlanet*.06)*2.;
  wind-=gn*dot(wind,gn);
  gradient+=wind*cos(ripplePhase)*.09*vBiome.z*(1.-smoothstep(.03,.18,footprint));
  gradient-=gn*dot(gn,gradient);
- normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*detailed*(1.-vBiome.x*.8)));
+ normal=normalize(mat3(viewMatrix)*normalize(gn+gradient*.7*(1.-vBiome.x*.8)));
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <aomap_fragment>',`#include <aomap_fragment>
  float scannedAO=dot(vec3(rockData.g,sandData.g,mudData.g),weights);
