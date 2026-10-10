@@ -30,6 +30,8 @@ The Rover R06 asset comes from the user's prior project.
 
 Run `npm run check && npm test` for shared-edge normals, same-level and coarse/fine edge alignment, cube-face transitions and skirt isolation, plus tyre clearance, deterministic rock/pebble placement, regional continuity, erosion repeatability, reference contact and stochastic contrast preservation. GitHub Actions compiles and links terrain with/without environment lighting, rock, shadow, water, atmosphere and sky-environment GLSL before deployment.
 
+With `glslangValidator` installed, run `node scripts/export-shaders.mjs /tmp/aether-shaders` then `node scripts/check-shaders.mjs /tmp/aether-shaders`. The check also enforces the WebGL2 minimum of sixteen fragment texture samplers. Terrain uses sixteen with environment lighting, including Three's DFG lookup and local shadow map; snow grain/albedo shares the surface map to fit this budget.
+
 The rover is bundled as losslessly compressed `dist/rover.glb.gz` and decompressed in the browser before loading. Geometry and embedded textures are unchanged. Requires a modern browser with WebGL 2 and DecompressionStream support.
 
 

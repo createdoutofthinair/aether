@@ -1,7 +1,7 @@
-import {regionAt} from './regions.js?v=terrain-7';
-import {world,environment,climate} from './world.js?v=terrain-7';
+import {regionAt} from './regions.js?v=terrain-8';
+import {world,environment,climate} from './world.js?v=terrain-8';
 import * as T from './vendor/three.module.js';
-import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=terrain-7';
+import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=terrain-8';
 const hash=(a,b,c)=>{const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);};
 // IDs and positions depend only on planet cells, not camera position or travel history.
 export function rockCandidates(p,radius=330,div=2048){

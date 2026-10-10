@@ -1,15 +1,15 @@
-import {skyGLSL} from './sky-light.js?v=terrain-7';
+import {skyGLSL} from './sky-light.js?v=terrain-8';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
- Object.assign(s.uniforms,{rockMap:{value:textures.rockGaussian||textures.rock},sandMap:{value:textures.sandGaussian||textures.sand},mudMap:{value:textures.mudGaussian||textures.mud},histogramLUT:{value:textures.histogram},histogramEnabled:{value:textures.histogram?1:0},snowMap:{value:textures.snow},snowNormalMap:{value:textures.snowNormal},snowSurfaceMap:{value:textures.snowSurface},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},planetClimate:controls.planetClimate||{value:[18,1,1,1]},referenceMask:controls.referenceMask||{value:null},referenceEast:controls.referenceEast||{value:[1,0,0]},referenceNorth:controls.referenceNorth||{value:[0,0,1]},referenceActive:controls.referenceActive||{value:0},surfaceDebug:controls.surfaceDebug||{value:0}});
+ Object.assign(s.uniforms,{rockMap:{value:textures.rockGaussian||textures.rock},sandMap:{value:textures.sandGaussian||textures.sand},mudMap:{value:textures.mudGaussian||textures.mud},histogramLUT:{value:textures.histogram},histogramEnabled:{value:textures.histogram?1:0},snowNormalMap:{value:textures.snowNormal},snowSurfaceMap:{value:textures.snowSurface},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},planetClimate:controls.planetClimate||{value:[18,1,1,1]},referenceMask:controls.referenceMask||{value:null},referenceEast:controls.referenceEast||{value:[1,0,0]},referenceNorth:controls.referenceNorth||{value:[0,0,1]},referenceActive:controls.referenceActive||{value:0},surfaceDebug:controls.surfaceDebug||{value:0}});
  s.vertexShader='attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
  s.fragmentShader=`varying vec3 vBiome;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
- uniform sampler2D histogramLUT,snowMap,snowNormalMap,snowSurfaceMap,referenceMask;
+ uniform sampler2D histogramLUT,snowNormalMap,snowSurfaceMap,referenceMask;
  uniform float sedimentCover,seaLevel,surfaceWater,histogramEnabled,referenceActive,surfaceDebug;
  uniform vec3 referenceEast,referenceNorth;
  uniform vec4 planetClimate;
@@ -166,7 +166,9 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float iceCrack=(1.-smoothstep(.015,.065,abs(sin(icePhase))))*(1.-smoothstep(.6,3.,footprint));
  vec3 snowColor=vec3(.86,.89,.91)*(.98+.025*(snowDrift-.5));
  vec3 snowData=vec3(.91,1.,.5);
- if(detailed>0.&&snowCover>.01){snowColor=mix(snowColor,tri(snowMap,vPlanet/4.,w,.25).rgb,detailed);snowData=tri(snowSurfaceMap,vPlanet/4.,w,.25).rgb;}
+ // Snow grain and roughness share one map, retaining the WebGL2 16-sampler
+ // budget including Three's DFG LUT, environment map and directional shadow.
+ if(detailed>0.&&snowCover>.01){snowData=tri(snowSurfaceMap,vPlanet/4.,w,.25).rgb;float grainSnow=clamp((snowData.r-.78)/.18,0.,1.);snowColor=mix(snowColor,vec3(.82,.86,.90)+vec3(.05,.04,.03)*grainSnow,detailed);}
  vec3 iceColor=mix(vec3(.66,.78,.82),vec3(.26,.43,.50),iceCrack*.65);
  diffuseColor.rgb=mix(diffuseColor.rgb,mix(snowColor,iceColor,glacier*.55),snowCover);
 

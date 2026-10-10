@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
-import {height,basis,R,landing} from './terrain.js?v=terrain-7';
-import {world,environment,mapDirection} from './world.js?v=terrain-7';
+import {height,basis,R,landing} from './terrain.js?v=terrain-8';
+import {world,environment,mapDirection} from './world.js?v=terrain-8';
 
 // Find an actual crossing of this world's height field, rather than placing
 // the camera above a hard-coded sea that disappears when the seed changes.
