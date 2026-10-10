@@ -1,6 +1,6 @@
-import {referenceKey} from './planet-profiles.js?v=terrain-17';
-import {generateReference} from './terrain-data.js?v=terrain-17';
-import {prepareDetail,generateDetailTile} from './terrain-detail.js?v=terrain-17';
+import {referenceKey} from './planet-profiles.js?v=terrain-18';
+import {generateReference} from './terrain-data.js?v=terrain-18';
+import {prepareDetail,generateDetailTile} from './terrain-detail.js?v=terrain-18';
 const worlds=new Map();
 self.onmessage=({data:{id,seed,type,tx,tz,config,environment}})=>{try{
  const key=referenceKey(seed,config,environment);let data=worlds.get(key);if(!data){data=prepareDetail(generateReference(seed,{config,environment}));worlds.set(key,data);while(worlds.size>3)worlds.delete(worlds.keys().next().value);}

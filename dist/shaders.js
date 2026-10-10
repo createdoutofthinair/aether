@@ -1,14 +1,15 @@
-import {coastalGLSL} from './coastal.js?v=terrain-17';
-import {regionalMaterialGLSL} from './regional-material.js?v=terrain-17';
-import {ATLAS_WIDTH,ATLAS_HEIGHT,PAGE_COLUMNS,PAGE_ROWS,PAGE_SIZE,PAGE_STRIDE,TABLE_X,TABLE_Y,PARENT_X,PARENT_Y,REFERENCE_Y,CACHE_Y,COLOR_X,COLOR_Y,SURFACE_X,SURFACE_Y,NORMAL_X,NORMAL_Y} from './material-pages.js?v=terrain-17';
-import {skyGLSL} from './sky-light.js?v=terrain-17';
+import {pageScanGLSL} from './page-pbr.js?v=terrain-18';
+import {coastalGLSL} from './coastal.js?v=terrain-18';
+import {regionalMaterialGLSL} from './regional-material.js?v=terrain-18';
+import {ATLAS_WIDTH,ATLAS_HEIGHT,PAGE_COLUMNS,PAGE_ROWS,PAGE_SIZE,PAGE_STRIDE,TABLE_X,TABLE_Y,PARENT_X,PARENT_Y,REFERENCE_Y,CACHE_Y,COLOR_X,COLOR_Y,SURFACE_X,SURFACE_Y,NORMAL_X,NORMAL_Y} from './material-pages.js?v=terrain-18';
+import {skyGLSL} from './sky-light.js?v=terrain-18';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
  const outcrop=!!controls.outcropAnchor;if(outcrop)s.uniforms.outcropAnchor=controls.outcropAnchor;
- Object.assign(s.uniforms,controls.coastalUniforms||{coastalCenter:{value:[0,1,0]},coastalEast:{value:[1,0,0]},coastalNorth:{value:[0,0,1]},coastalActive:{value:0},coastalTime:{value:0},coastalReady:{value:0},coastalMix:{value:0}},{rockMap:{value:textures.rockGaussian||textures.rock},sandMap:{value:textures.sandGaussian||textures.sand},mudMap:{value:textures.mudGaussian||textures.mud},histogramLUT:{value:textures.histogram},histogramEnabled:{value:textures.histogram?1:0},normalMomentsEnabled:{value:textures.normalMoments?1:0},snowNormalMap:{value:textures.snowNormal},snowSurfaceMap:{value:textures.snowSurface},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},surfaceOrganic:controls.surfaceOrganic||{value:0},planetMaskSize:controls.planetMaskSize||{value:[0,0]},materialProfile:controls.materialProfile||{value:[0,6,1,1]},planetClimate:controls.planetClimate||{value:[18,1,1,1]},referenceMask:controls.referenceMask||{value:null},referenceEast:controls.referenceEast||{value:[1,0,0]},referenceNorth:controls.referenceNorth||{value:[0,0,1]},referenceActive:controls.referenceActive||{value:0},materialAtlas:controls.materialAtlas||{value:0},surfaceDebug:controls.surfaceDebug||{value:0}});
+ Object.assign(s.uniforms,controls.pageScanUniforms||{pageScansActive:{value:0},pageScanColor:{value:new Float32Array(12)},pageScanSurface:{value:new Float32Array([1,.5,0,0,1,.5,0,0,1,.5,0,0])}},controls.coastalUniforms||{coastalCenter:{value:[0,1,0]},coastalEast:{value:[1,0,0]},coastalNorth:{value:[0,0,1]},coastalActive:{value:0},coastalTime:{value:0},coastalReady:{value:0},coastalMix:{value:0}},{rockMap:{value:textures.rockGaussian||textures.rock},sandMap:{value:textures.sandGaussian||textures.sand},mudMap:{value:textures.mudGaussian||textures.mud},histogramLUT:{value:textures.histogram},histogramEnabled:{value:textures.histogram?1:0},normalMomentsEnabled:{value:textures.normalMoments?1:0},snowNormalMap:{value:textures.snowNormal},snowSurfaceMap:{value:textures.snowSurface},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},surfaceOrganic:controls.surfaceOrganic||{value:0},planetMaskSize:controls.planetMaskSize||{value:[0,0]},materialProfile:controls.materialProfile||{value:[0,6,1,1]},planetClimate:controls.planetClimate||{value:[18,1,1,1]},referenceMask:controls.referenceMask||{value:null},referenceEast:controls.referenceEast||{value:[1,0,0]},referenceNorth:controls.referenceNorth||{value:[0,0,1]},referenceActive:controls.referenceActive||{value:0},materialAtlas:controls.materialAtlas||{value:0},surfaceDebug:controls.surfaceDebug||{value:0}});
  s.vertexShader='attribute vec3 hydraulicData;varying vec3 vHydraulic;attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvHydraulic=hydraulicData;vBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
  if(outcrop){s.vertexShader='uniform vec3 outcropAnchor;\n'+s.vertexShader;s.vertexShader=s.vertexShader.replace('vPlanet=planetPosition;vGeoNormal=normal;','vPlanet=(instanceMatrix*vec4(position,1.)).xyz+outcropAnchor;mat3 cropMatrix=mat3(instanceMatrix);vec3 cropScale=vec3(dot(cropMatrix[0],cropMatrix[0]),dot(cropMatrix[1],cropMatrix[1]),dot(cropMatrix[2],cropMatrix[2]));vGeoNormal=normalize(cropMatrix*(normal/cropScale));');}
@@ -23,6 +24,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  ${coastalGLSL}
  ${noiseGLSL}
  ${regionalMaterialGLSL}
+ ${pageScanGLSL}
  vec4 maskCubic(vec4 a,vec4 b,vec4 c,vec4 d,float t){return b+.5*t*(c-a+t*(2.*a-5.*b+4.*c-d+t*(3.*(b-c)+d-a)));}
  vec4 parentMaskTexel(ivec2 p){ivec2 size=ivec2(planetMaskSize);if(p.y<0){p.y=-p.y;p.x+=size.x/2;}else if(p.y>=size.y){p.y=2*(size.y-1)-p.y;p.x+=size.x/2;}p.x=(p.x%size.x+size.x)%size.x;return texelFetch(referenceMask,p+ivec2(${PARENT_X},${PARENT_Y}),0);}
  vec4 parentGeology(vec2 uv){vec2 q=uv*vec2(planetMaskSize.x,planetMaskSize.y-1.),f=fract(q);ivec2 cell=ivec2(floor(q));vec4 rows[4];for(int y=0;y<4;y++)rows[y]=maskCubic(parentMaskTexel(cell+ivec2(-1,y-1)),parentMaskTexel(cell+ivec2(0,y-1)),parentMaskTexel(cell+ivec2(1,y-1)),parentMaskTexel(cell+ivec2(2,y-1)),f.x);return clamp(maskCubic(rows[0],rows[1],rows[2],rows[3],f.y),0.,1.);}
@@ -115,10 +117,11 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  }
  vec4 composedGeology=mix(globalGeology,geology,referenceBlend);
  regionalMaterial(radial,composedGeology,materialProfile,planetClimate,false,parentColor,parentSurface,unusedGradient,unusedDecal);
+ applyPageScans(radial,composedGeology,materialProfile,planetClimate,parentColor,parentSurface,unusedGradient);
  pageColor=parentColor;pageSurface=parentSurface;
  if(footprint<32.){
   if(materialResident>.5){vec4 bakedColor=texture2D(referenceMask,(pagePixel+vec2(${COLOR_X}.,${COLOR_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.));pageColor=bakedColor.rgb;pageDecal=bakedColor.a;pageSurface=texture2D(referenceMask,(pagePixel+vec2(${SURFACE_X}.,${SURFACE_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.)).rgb;pageGradient=(texture2D(referenceMask,(pagePixel+vec2(${NORMAL_X}.,${NORMAL_Y}.))/vec2(${ATLAS_WIDTH}.,${ATLAS_HEIGHT}.)).rgb*255.-128.)*(.125/127.);}
-  else regionalMaterial(radial,composedGeology,materialProfile,planetClimate,true,pageColor,pageSurface,pageGradient,pageDecal);
+  else {regionalMaterial(radial,composedGeology,materialProfile,planetClimate,true,pageColor,pageSurface,pageGradient,pageDecal);applyPageScans(radial,composedGeology,materialProfile,planetClimate,pageColor,pageSurface,pageGradient);}
  }
  float mesoDetail=1.-smoothstep(8.,32.,footprint);pageColor=mix(parentColor,pageColor,mesoDetail);pageSurface=mix(parentSurface,pageSurface,mesoDetail);pageGradient*=mesoDetail;
  float deposition=mix(globalGeology.r*vSurfaceData.b,geology.r,referenceBlend),bedrock=mix(globalGeology.g*vSurfaceData.b,geology.g,referenceBlend);
@@ -155,6 +158,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 broad=mix(regionalSoil,regionalRock,rockWeight);
  broad=pageColor;
  base*=mix(vec3(1.),clamp(pageColor/max(parentColor,vec3(.02)),vec3(.65),vec3(1.4)),mesoDetail);
+ base=mix(base,pageColor,pageDecal);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*(.96+.05*grain);
  // Mesoscale exposed beds and talus remain visible between scan and orbital scales.
  float meso=ns(vPlanet*.012+vec3(7.,3.,19.));
@@ -231,7 +235,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  diffuseColor.rgb*=mix(1.,.52,wetShore);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
- roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,pageSurface.r,1.-detailed+detailed*pageDecal*.5);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.98,meadow);roughnessFactor=mix(roughnessFactor,mix(snowData.r,.30,glacier),snowCover);roughnessFactor=mix(roughnessFactor,.26,wetShore);
+ roughnessFactor=clamp(dot(vec3(rockData.r,sandData.r,mudData.r),weights),.55,1.);roughnessFactor=mix(roughnessFactor,pageSurface.r,1.-detailed+detailed*pageDecal);roughnessFactor=mix(roughnessFactor,.84,vBiome.y);roughnessFactor=mix(roughnessFactor,.97,vBiome.z);roughnessFactor=mix(roughnessFactor,.98,meadow);roughnessFactor=mix(roughnessFactor,mix(snowData.r,.30,glacier),snowCover);roughnessFactor=mix(roughnessFactor,.26,wetShore);
  if(normalMomentsEnabled>.5){
   float variance=0.;
   if(weights.x>.01)variance+=normalVariance(rockNormal,rp,w,1./1.8)*weights.x;
@@ -247,7 +251,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
   if(weights.y>.01)gradient+=triGradient(sandNormal,sp,w,.5)*weights.y;
   if(weights.z>.01)gradient+=triGradient(mudNormal,mp,w,1./1.5)*weights.z;
  }
- gradient*=detailed;
+ gradient*=detailed*(1.-pageDecal);
  gradient-=pageGradient*${outcrop?'0.':'1.'};
 
  gradient*=1.-vBiome.z*.88;gradient*=1.-snowCover*.97;
@@ -264,7 +268,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <aomap_fragment>',`#include <aomap_fragment>
  float scannedAO=mix(dot(vec3(rockData.g,sandData.g,mudData.g),weights),1.,snowCover);
- reflectedLight.indirectDiffuse*=mix(1.,scannedAO,.70*detailed)*horizonVisibility*mix(1.,pageSurface.g,1.-detailed);
+ reflectedLight.indirectDiffuse*=mix(1.,scannedAO,.70*detailed*(1.-pageDecal))*horizonVisibility*mix(1.,pageSurface.g,1.-detailed+detailed*pageDecal);
  `);
  s.fragmentShader=s.fragmentShader.replace('#include <opaque_fragment>','if(surfaceDebug>.5)outgoingLight=debugColor;\n#include <opaque_fragment>');
  };}

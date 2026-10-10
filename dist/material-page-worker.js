@@ -1,3 +1,4 @@
-import {composeMaterialPage} from './material-pages.js?v=terrain-17';
-let world=null,reference=null,epoch=0;
-self.onmessage=({data})=>{if(data.type==='world'){world=data.data;reference=data.reference;epoch=data.epoch;return;}if(data.epoch!==epoch||!world)return;try{const result=composeMaterialPage(world,data.tx,data.ty,reference);self.postMessage({epoch,key:data.key,result},[result.pixels.buffer,result.color.buffer,result.surface.buffer,result.normal.buffer]);}catch(error){self.postMessage({epoch,key:data.key,error:String(error)});}};
+import {validatePageAssets,validateDecals} from './page-pbr.js?v=terrain-18';
+import {composeMaterialPage} from './material-pages.js?v=terrain-18';
+let world=null,reference=null,epoch=0,assets=[],decals=[];
+self.onmessage=({data})=>{if(data.type==='assets'){try{const nextAssets=validatePageAssets(data.assets),nextDecals=validateDecals(data.decals,nextAssets);assets=nextAssets;decals=nextDecals;}catch(error){self.postMessage({epoch,error:String(error)});}return;}if(data.type==='world'){world=data.data;reference=data.reference;epoch=data.epoch;return;}if(data.epoch!==epoch||!world)return;try{const started=performance.now(),result=composeMaterialPage(world,data.tx,data.ty,reference,assets,decals);result.cpuMs=performance.now()-started;self.postMessage({epoch,key:data.key,result},[result.pixels.buffer,result.color.buffer,result.surface.buffer,result.normal.buffer]);}catch(error){self.postMessage({epoch,key:data.key,error:String(error)});}};
