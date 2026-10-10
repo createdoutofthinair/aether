@@ -1,7 +1,7 @@
-import {featuredRegions,regionAt} from './regions.js?v=terrain-5';
+import {featuredRegions,regionAt} from './regions.js?v=terrain-6';
 import * as T from './vendor/three.module.js';
-import {world,environment,defaults,configureWorld,climate,mapDirection,mapUV,biomeColors} from './world.js?v=terrain-5';
-import {height,landing,surfaceNormal,surfaceClimate,regionLanding} from './terrain.js?v=terrain-5';
+import {world,environment,defaults,configureWorld,climate,mapDirection,mapUV,biomeColors} from './world.js?v=terrain-6';
+import {height,landing,surfaceNormal,surfaceClimate,regionLanding} from './terrain.js?v=terrain-6';
 export function createAtlas({onApply,onTravel,onReset}){
  const $=id=>document.getElementById(id),dialog=$('atlas'),canvas=$('biomeMap'),ctx=canvas.getContext('2d');
  let selected=landing.clone(),background;

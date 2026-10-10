@@ -113,3 +113,5 @@ LOD now measures every cell centre rather than nine samples, with a 1.15 pixel h
 The material bridge additionally samples stochastic scanned rock at 24 m and 120 m scales with separately filtered normals and luminance variation. High-quality mode uses up to 2× device pixel ratio and 16× anisotropy where supported. This increases GPU cost compared with the earlier 1.5× cap.
 
 Elevation material belts use latitude and a 6.5°C/km lapse rate, rainfall, atmospheric pressure and water availability. Temperate lowlands receive patchy grass surface color (no vegetation geometry); dry/hot/airless worlds retain mineral ground. Uplands expose cooler rock, with slope- and temperature-dependent snow accumulation and blue glacier ice. Climate uniforms update when changing planets or atlas settings.
+
+Snow uses a continuous temperature/slope cover rather than coarse noise islands. Glacier tint is limited to cold, low-slope deposition hollows; fine directional fractures replace enlarged rock-scan brightness. Snow suppresses underlying rock normals and uses subtle wind drift relief.

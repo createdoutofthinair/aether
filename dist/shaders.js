@@ -1,4 +1,4 @@
-import {skyGLSL} from './sky-light.js?v=terrain-5';
+import {skyGLSL} from './sky-light.js?v=terrain-6';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -93,7 +93,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 broad=mix(vec3(.24,.205,.165),vec3(.40,.325,.235),province);
  diffuseColor.rgb=mix(broad,base,detailed)*weathering*mix(1.,.95+.10*strata,weights.x)*(.92+.12*localVariation)*(.97+.06*grain);
  float scanRelief=clamp((mediumLuma-.28)*1.3,-.28,.36)*mediumVisibility+clamp((largeLuma-.28)*.85,-.18,.23)*largeVisibility;
- diffuseColor.rgb*=1.+scanRelief*(1.-detailed);
+ diffuseColor.rgb*=1.+scanRelief*(1.-detailed)*.25;
  // Mesoscale exposed beds and talus remain visible between scan and orbital scales.
  float meso=ns(vPlanet*.012+vec3(7.,3.,19.));
  float bedPhase=elevation*.018+ns(vPlanet*.0014)*2.;
@@ -134,12 +134,18 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  vec3 alpineRock=mix(vec3(.24,.25,.27),vec3(.42,.40,.35),macroRock);
  diffuseColor.rgb=mix(diffuseColor.rgb,alpineRock*(.75+surfaceLuma*.8),alpine*.68);
  // Wind strips steep faces; cold shaded gullies retain snow below the snowline.
- float snowTemperature=localTemp+(province-.5)*5.+slope*7.;
+ float snowTemperature=localTemp+slope*5.;
  float snowCover=planetClimate.w*(1.-smoothstep(-5.,2.,snowTemperature))*(1.-smoothstep(.14,.48,slope));
- float glacier=planetClimate.w*(1.-smoothstep(-19.,-8.,localTemp))*(1.-smoothstep(.18,.5,slope));
- vec3 snowColor=mix(vec3(.78,.84,.87),vec3(.93,.95,.96),grain);
- vec3 iceColor=mix(vec3(.30,.51,.61),vec3(.62,.76,.80),mediumLuma);
- diffuseColor.rgb=mix(diffuseColor.rgb,mix(snowColor,iceColor,glacier*.65),snowCover);
+ float glacier=planetClimate.w*(1.-smoothstep(-24.,-12.,localTemp))*(1.-smoothstep(.025,.13,slope))*smoothstep(.55,.9,deposition);
+ // Snow is an opaque blanket. Blue ice is confined to glacial accumulation
+ // hollows rather than painted with magnified rock-scan luminance.
+ float snowGrain=mix(ns(vPlanet*2.7),.5,smoothstep(.12,.7,footprint));
+ float snowDrift=ns(vPlanet*.035+vec3(3.,17.,5.));
+ float icePhase=dot(vPlanet,normalize(vec3(.31,.17,.93)))*.32+ns(vPlanet*.009)*1.8;
+ float iceCrack=(1.-smoothstep(.015,.065,abs(sin(icePhase))))*(1.-smoothstep(.6,3.,footprint));
+ vec3 snowColor=vec3(.86,.89,.91)*(.96+.06*snowGrain+.025*(snowDrift-.5));
+ vec3 iceColor=mix(vec3(.66,.78,.82),vec3(.26,.43,.50),iceCrack*.65);
+ diffuseColor.rgb=mix(diffuseColor.rgb,mix(snowColor,iceColor,glacier*.55),snowCover);
 
  float wetShore=surfaceWater*(1.-smoothstep(0.,2.2,elevation-seaLevel))*(1.-vBiome.x);
  diffuseColor.rgb*=mix(1.,.52,wetShore);
@@ -156,7 +162,10 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  gradient*=detailed;
  gradient+=triGradient(rockNormal,vPlanet/24.,w,1./24.)*.14*mediumVisibility*(1.-detailed);
  gradient+=triGradient(rockNormal,vPlanet/120.,w,1./120.)*.09*largeVisibility*(1.-detailed);
- gradient*=1.-vBiome.z*.88;gradient*=1.-snowCover*.78;
+ gradient*=1.-vBiome.z*.88;gradient*=1.-snowCover*.97;
+ vec3 driftDirection=normalize(vec3(.83,.12,.54));
+ float driftPhase=dot(vPlanet,driftDirection)*1.6+ns(vPlanet*.018)*3.;
+ gradient+=driftDirection*cos(driftPhase)*.018*snowCover*(1.-smoothstep(.25,1.5,footprint));
  vec3 wind=normalize(vec3(.88,.12,.47));
  float ripplePhase=dot(vPlanet,wind)*18.+ns(vPlanet*.06)*2.;
  wind-=gn*dot(wind,gn);
