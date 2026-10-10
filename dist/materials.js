@@ -1,7 +1,7 @@
-import {gaussianize} from './stochastic-material.js?v=terrain-8';
+import {gaussianize} from './stochastic-material.js?v=terrain-9';
 export async function prepareStochasticMaterials(T,textures){
  const lutData=new Float32Array(256*3*4);let worker;
- try{try{worker=typeof Worker!=='undefined'?new Worker(new URL('./material-worker.js?v=terrain-8',import.meta.url),{type:'module'}):null;}catch(error){console.warn('Material worker unavailable; preparing locally.',error.message);}
+ try{try{worker=typeof Worker!=='undefined'?new Worker(new URL('./material-worker.js?v=terrain-9',import.meta.url),{type:'module'}):null;}catch(error){console.warn('Material worker unavailable; preparing locally.',error.message);}
   for(const [row,key]of ['rock','sand','mud'].entries()){
    const source=textures[key],image=source.image,canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data;
    let data;

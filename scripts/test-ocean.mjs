@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {intersectSea} from '../dist/water.js';
 import {findCoast} from '../dist/inspection.js';
-import {world,defaults,configureWorld,configureEnvironment} from '../dist/world.js?v=terrain-8';
-import {height} from '../dist/terrain.js?v=terrain-8';
+import {world,defaults,configureWorld,configureEnvironment} from '../dist/world.js?v=terrain-9';
+import {height} from '../dist/terrain.js?v=terrain-9';
 
 for(const radius of [59000,60000,61000])for(const altitude of [.15,1,18,1000,75000]){
  const origin=[0,radius+altitude,0];

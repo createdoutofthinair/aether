@@ -1,12 +1,14 @@
-import {skyGLSL} from './sky-light.js?v=terrain-8';
+import {skyGLSL} from './sky-light.js?v=terrain-9';
 export const noiseGLSL=`
 float hash3(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
 float ns(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash3(i),hash3(i+vec3(1,0,0)),f.x),mix(hash3(i+vec3(0,1,0)),hash3(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash3(i+vec3(0,0,1)),hash3(i+vec3(1,0,1)),f.x),mix(hash3(i+vec3(0,1,1)),hash3(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 export function patchTerrain(material,textures,controls={sediment:{value:.65}}){material.onBeforeCompile=s=>{
+ const outcrop=!!controls.outcropAnchor;if(outcrop)s.uniforms.outcropAnchor=controls.outcropAnchor;
  Object.assign(s.uniforms,{rockMap:{value:textures.rockGaussian||textures.rock},sandMap:{value:textures.sandGaussian||textures.sand},mudMap:{value:textures.mudGaussian||textures.mud},histogramLUT:{value:textures.histogram},histogramEnabled:{value:textures.histogram?1:0},snowNormalMap:{value:textures.snowNormal},snowSurfaceMap:{value:textures.snowSurface},rockNormal:{value:textures.rn},sandNormal:{value:textures.sn},mudNormal:{value:textures.mn},rockSurface:{value:textures.rs},sandSurface:{value:textures.ss},mudSurface:{value:textures.ms},sedimentCover:controls.sediment,seaLevel:controls.seaLevel||{value:-180},surfaceWater:controls.surfaceWater||{value:0},planetClimate:controls.planetClimate||{value:[18,1,1,1]},referenceMask:controls.referenceMask||{value:null},referenceEast:controls.referenceEast||{value:[1,0,0]},referenceNorth:controls.referenceNorth||{value:[0,0,1]},referenceActive:controls.referenceActive||{value:0},surfaceDebug:controls.surfaceDebug||{value:0}});
  s.vertexShader='attribute vec3 biomeData;varying vec3 vBiome;attribute vec3 planetPosition;attribute vec3 surfaceData;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;\n'+s.vertexShader;
  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBiome=biomeData;vPlanet=planetPosition;vGeoNormal=normal;vSurfaceData=surfaceData;');
+ if(outcrop){s.vertexShader='uniform vec3 outcropAnchor;\n'+s.vertexShader;s.vertexShader=s.vertexShader.replace('vPlanet=planetPosition;vGeoNormal=normal;','vPlanet=(instanceMatrix*vec4(position,1.)).xyz+outcropAnchor;mat3 cropMatrix=mat3(instanceMatrix);vec3 cropScale=vec3(dot(cropMatrix[0],cropMatrix[0]),dot(cropMatrix[1],cropMatrix[1]),dot(cropMatrix[2],cropMatrix[2]));vGeoNormal=normalize(cropMatrix*(normal/cropScale));');}
  s.fragmentShader=`varying vec3 vBiome;varying vec3 vSurfaceData;varying vec3 vPlanet;varying vec3 vGeoNormal;
  uniform sampler2D rockMap,sandMap,mudMap,rockNormal,sandNormal,mudNormal,rockSurface,sandSurface,mudSurface;
  uniform sampler2D histogramLUT,snowNormalMap,snowSurfaceMap,referenceMask;
@@ -91,6 +93,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float rockWeight=clamp(exposed,0.,1.);
  rockWeight=mix(rockWeight,1.,vBiome.y);rockWeight*=1.-vBiome.z*.75;
  float mudWeight=(1.-rockWeight)*smoothstep(.30,.70,deposits)*mix(.3,.85,deposition)*(1.-smoothstep(.01,.08,slope));
+ ${outcrop?'rockWeight=1.;mudWeight=0.;deposition=0.;bedrock=1.;':''}
  vec3 weights=vec3(rockWeight,1.-rockWeight-mudWeight,mudWeight);
  vec3 rp=vPlanet/1.8,sp=vPlanet/2.,mp=vPlanet/1.5;
  vec3 rockData=vec3(.86,1.,.5),sandData=vec3(.92,1.,.5),mudData=vec3(.95,1.,.5);
@@ -148,6 +151,7 @@ export function patchTerrain(material,textures,controls={sediment:{value:.65}}){
  float meadow=life*smoothstep(.23,.65,moisture)*lowlands*(1.-smoothstep(.06,.25,slope))*(1.-vBiome.y)*(1.-vBiome.z);
  float coverPatch=ns(vPlanet*.007+vec3(13.,5.,23.));
  meadow*=mix(.55,1.,smoothstep(.25,.7,coverPatch));
+ ${outcrop?'meadow=0.;':''}
  vec3 grassColor=mix(vec3(.20,.19,.055),vec3(.065,.18,.045),moisture);
  grassColor=mix(grassColor,vec3(.27,.25,.09),smoothstep(19.,32.,localTemp)*.6);
  diffuseColor.rgb=mix(diffuseColor.rgb,grassColor*(.72+surfaceLuma*.8)*(.85+.3*grain),meadow*.94);

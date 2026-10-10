@@ -1,7 +1,7 @@
-import {referenceAt} from './terrain-cache.js?v=terrain-8';
-import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-8';
+import {referenceAt} from './terrain-cache.js?v=terrain-9';
+import {regionAt,regionHeight,regionDirection} from './regions.js?v=terrain-9';
 import * as T from './vendor/three.module.js';
-import {world,environment,climate,province} from './world.js?v=terrain-8';
+import {world,environment,climate,province} from './world.js?v=terrain-9';
 export const R=60000;
 export const landing=new T.Vector3(.27,.46,.846).normalize();
 const fract=x=>x-Math.floor(x),mix=(a,b,t)=>a+(b-a)*t;
@@ -28,6 +28,7 @@ export function height(n){
 const landingEast=new T.Vector3(0,1,0).cross(landing).normalize();
 const landingNorth=new T.Vector3().crossVectors(landing,landingEast).normalize();
 export function basinCoordinates(d){return{x:d.dot(landingEast)*R,z:d.dot(landingNorth)*R};}
+export function basinDirection(x,z){return landing.clone().multiplyScalar(Math.sqrt(Math.max(0,1-(x*x+z*z)/(R*R)))).addScaledVector(landingEast,x/R).addScaledVector(landingNorth,z/R).normalize();}
 function channelCenter(z){return 180*(noise(z/850+7,3,11)-.5)+65*(noise(z/230+9,8,2)-.5);}
 // Sparse, fixed tributary graph; a spatial index keeps per-vertex queries local.
 const drainageCells=new Map();
@@ -81,13 +82,13 @@ export function basinHeight(x,z){
   +(noise(x*.032,z*.032+world.seed,29)-.5)*.65*data.exposure;
  return data.weight>=1?data.height+fine:mix(legacyBasinHeight(x,z),data.height+fine,data.weight);
 }
-export function referenceGeology(d){const {x,z}=basinCoordinates(d);return environment.basin?referenceAt(world.seed,x,z):null;}
+export function referenceGeology(d){const {x,z}=basinCoordinates(d);return environment.basin?referenceAt(world.seed,x,z,false):null;}
 export function surfaceGeology(d){
  const region=regionAt(d);if(region?.id==='badlands'){const h=regionHeight(region),deposition=1-T.MathUtils.smoothstep(h,190,550);return[deposition,1-deposition,region.weight];}
  if(!environment.basin)return[0,0,0];
  const distance=R*Math.sqrt(Math.max(0,2-2*d.dot(landing))),regional=1-T.MathUtils.smoothstep(distance,4200,6500);
  if(regional===0)return[0,0,0];
- const {x,z}=basinCoordinates(d),p=basinProfile(x,z),eroded=referenceAt(world.seed,x,z);
+ const {x,z}=basinCoordinates(d),p=basinProfile(x,z),eroded=referenceAt(world.seed,x,z,false);
  const original=[Math.min(1,1-p.bank+p.drainage*p.bank*.85),p.bank*p.mesa*(1-p.drainage),regional];
  return eroded?original.map((v,i)=>mix(v,[eroded.soil,eroded.exposure,regional][i],eroded.weight)):original;
 }
@@ -110,7 +111,7 @@ export const faces=[[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,
 export function direction(face,u,v){return faces[face][0].clone().addScaledVector(faces[face][1],u).addScaledVector(faces[face][2],v).normalize();}
 const N=16;
 export class PlanetTerrain{
- constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
+ constructor(root,material){this.root=root;this.material=material;this.cache=new Map();this.contactLayers=new Set();this.queue=[];this.active=[];this.frame=0;this.quality='high';this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  node(f,l,x,y){const key=[f,l,x,y].join('/');if(this.cache.has(key))return this.cache.get(key);let size=2/2**l,u=-1+x*size,v=-1+y*size,n={key,f,l,x,y,size,u,v,center:direction(f,u+size/2,v+size/2),mesh:null,children:null,stamp:0};this.cache.set(key,n);return n;}
  build(n){const positions=[],normals=[],coords=[],geology=[],biomes=[],indices=[];n.anchor=n.center.clone().multiplyScalar(R);const pts=[];
  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){let d=direction(n.f,n.u+n.size*i/N,n.v+n.size*j/N),p=d.clone().multiplyScalar(R+height(d));pts.push(p);const climateData=surfaceClimate(d,p.length()-R);biomes.push(climateData.ice,climateData.volcanic,climateData.dunes);geology.push(...surfaceGeology(d));positions.push(p.x-n.anchor.x,p.y-n.anchor.y,p.z-n.anchor.z);coords.push(p.x,p.y,p.z);const sn=surfaceNormal(d,Math.max(.75,n.size*R/N*.65));normals.push(sn.x,sn.y,sn.z);}
@@ -229,7 +230,8 @@ export class PlanetTerrain{
  }
 
  // Contact is evaluated against the actual stitched triangles, never skirts.
- sample(p){
+ sample(p){let ground=this.sampleGround(p);for(const layer of this.contactLayers){const hit=layer.sample(p,ground);if(hit&&hit.point.lengthSq()>ground.point.lengthSq())ground=hit;}return ground;}
+ sampleGround(p){
   const d=p.clone().normalize();let f=0,den=-Infinity;
   for(let i=0;i<6;i++){const dot=d.dot(faces[i][0]);if(dot>den){den=dot;f=i;}}
   const u=d.dot(faces[f][1])/den,v=d.dot(faces[f][2])/den;
@@ -252,9 +254,9 @@ export class PlanetTerrain{
  }
 
  generate(){let t=performance.now(),count=0;while(this.queue.length&&count<4&&performance.now()-t<7){let {n}=this.queue.shift();if(!n.mesh){this.build(n);count++;}}return count;}
- contactRevision(p,radius){
+ contactRevision(p,radius,includeLayers=false){
   // Only patches intersecting the scatter footprint can move its foundations.
-  let signature='';for(const n of this.active){const b=n.mesh.geometry.boundingSphere,dx=n.anchor.x+b.center.x-p.x,dy=n.anchor.y+b.center.y-p.y,dz=n.anchor.z+b.center.z-p.z,reach=b.radius+radius;if(dx*dx+dy*dy+dz*dz<=reach*reach)signature+=n.key+':'+n.revision+';';}return signature;
+  let signature='';for(const n of this.active){const b=n.mesh.geometry.boundingSphere,dx=n.anchor.x+b.center.x-p.x,dy=n.anchor.y+b.center.y-p.y,dz=n.anchor.z+b.center.z-p.z,reach=b.radius+radius;if(dx*dx+dy*dy+dz*dz<=reach*reach)signature+=n.key+':'+n.revision+';';}if(includeLayers)for(const layer of this.contactLayers)signature+=layer.contactRevision?.(p,radius)||'';return signature;
  }
  reset(){this.stitchKey=null;this.stitchActive=null;for(const n of this.cache.values())if(n.mesh){this.root.remove(n.mesh);n.mesh.geometry.dispose();}this.cache.clear();this.queue=[];this.active=[];this.visibleNodes=new Map();this.frame++;this.roots=faces.map((_,f)=>this.node(f,0,0,0));for(const n of this.roots)this.build(n);}
  get count(){return this.active.length;}

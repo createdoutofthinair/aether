@@ -1,7 +1,7 @@
-import {regionAt} from './regions.js?v=terrain-8';
-import {world,environment,climate} from './world.js?v=terrain-8';
+import {regionAt} from './regions.js?v=terrain-9';
+import {world,environment,climate} from './world.js?v=terrain-9';
 import * as T from './vendor/three.module.js';
-import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=terrain-8';
+import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=terrain-9';
 const hash=(a,b,c)=>{const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);};
 // IDs and positions depend only on planet cells, not camera position or travel history.
 export function rockCandidates(p,radius=330,div=2048){
@@ -88,7 +88,7 @@ export class RockField{
   const visible=p.distanceTo(surface)<this.radius+10;for(const mesh of this.meshes)mesh.visible=visible;if(!visible)return;
   const moved=surface.distanceTo(this.center)>20;
   if(moved){this.center.copy(surface);this.items=rockCandidates(surface,this.radius,this.small?8192:2048);}
-  const revision=this.terrain.contactRevision?this.terrain.contactRevision(this.center,this.radius+25):this.terrain.frame;
+  const revision=this.terrain.contactRevision?this.terrain.contactRevision(this.center,this.radius+25,true):this.terrain.frame;
   if(!moved&&this.revision===revision)return;
   this.revision=revision;
   const dummy=new T.Object3D(),up=new T.Vector3(0,1,0),color=new T.Color();
