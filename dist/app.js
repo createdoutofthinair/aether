@@ -1,29 +1,30 @@
-import {CoastalSpray} from './coastal-spray.js?v=terrain-16';
-import {CoastalFlow} from './coastal-flow.js?v=terrain-16';
-import {encodeCoast,COAST_SIZE,COAST_STEP,COAST_X,COAST_Y} from './coastal.js?v=terrain-16';
-import {materialProfileIndex} from './regional-material.js?v=terrain-16';
-import {loadScannedOutcrop} from './scanned-outcrop.js?v=terrain-16';
-import {loadCompressedMaterials} from './compressed-materials.js?v=terrain-16';
-import {MaterialPageCache} from './material-pages.js?v=terrain-16';
-import {RenderMetrics,estimateTextureBytes} from './render-metrics.js?v=terrain-16';
-import {prepareNormalMoments} from './normal-moments.js?v=terrain-16';
-import {preparePlanetData,planetCacheState,getPlanetData} from './planet-cache.js?v=terrain-16';
-import {prepareReference,getReference,referenceMatches,prefetchDetail,detailCacheState} from './terrain-cache.js?v=terrain-16';
-import {OutcropField} from './outcrops.js?v=terrain-16';
-import {prepareStochasticMaterials,createSnowMaterial} from './materials.js?v=terrain-16';
-import {skyEnvironmentVertex,skyEnvironmentFragment} from './sky-light.js?v=terrain-16';
-import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-16';
-import {positionSunShadow} from './shadows.js?v=terrain-16';
-import {systemExplorer} from './system-ui.js?v=terrain-16';
-import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-16';
-import {createAtlas} from './atlas.js?v=terrain-16';
+import {CoastalCrests} from './coastal-crests.js?v=terrain-17';
+import {CoastalSpray} from './coastal-spray.js?v=terrain-17';
+import {CoastalFlow} from './coastal-flow.js?v=terrain-17';
+import {encodeCoast,COAST_SIZE,COAST_STEP,COAST_X,COAST_Y} from './coastal.js?v=terrain-17';
+import {materialProfileIndex} from './regional-material.js?v=terrain-17';
+import {loadScannedOutcrop} from './scanned-outcrop.js?v=terrain-17';
+import {loadCompressedMaterials} from './compressed-materials.js?v=terrain-17';
+import {MaterialPageCache} from './material-pages.js?v=terrain-17';
+import {RenderMetrics,estimateTextureBytes} from './render-metrics.js?v=terrain-17';
+import {prepareNormalMoments} from './normal-moments.js?v=terrain-17';
+import {preparePlanetData,planetCacheState,getPlanetData} from './planet-cache.js?v=terrain-17';
+import {prepareReference,getReference,referenceMatches,prefetchDetail,detailCacheState} from './terrain-cache.js?v=terrain-17';
+import {OutcropField} from './outcrops.js?v=terrain-17';
+import {prepareStochasticMaterials,createSnowMaterial} from './materials.js?v=terrain-17';
+import {skyEnvironmentVertex,skyEnvironmentFragment} from './sky-light.js?v=terrain-17';
+import {createOceanSpectrum} from './ocean-spectrum.js?v=terrain-17';
+import {positionSunShadow} from './shadows.js?v=terrain-17';
+import {systemExplorer} from './system-ui.js?v=terrain-17';
+import {world,climate,environment,configureWorld,configureEnvironment} from './world.js?v=terrain-17';
+import {createAtlas} from './atlas.js?v=terrain-17';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {R,landing,height,surface,basis,basinCoordinates,basinDirection,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-16';
-import {RockField,wheelLift} from './grounding.js?v=terrain-16';
-import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-16';
-import {waterVertex,waterFragment} from './water.js?v=terrain-16';
-import {findCoast} from './inspection.js?v=terrain-16';
+import {R,landing,height,surface,basis,basinCoordinates,basinDirection,PlanetTerrain,noise,surfaceClimate} from './terrain.js?v=terrain-17';
+import {RockField,wheelLift} from './grounding.js?v=terrain-17';
+import {patchTerrain,atmosphereVertex,atmosphereFragment} from './shaders.js?v=terrain-17';
+import {waterVertex,waterFragment} from './water.js?v=terrain-17';
+import {findCoast} from './inspection.js?v=terrain-17';
 const $=id=>document.getElementById(id),clamp=T.MathUtils.clamp;
 configureEnvironment(systemExplorer.getDefault().environment);
 $('loadText').textContent='Preparing the landscape…';
@@ -62,7 +63,7 @@ const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.Linea
 const waterTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,minFilter:T.LinearFilter,magFilter:T.LinearFilter,depthBuffer:true});waterTarget.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
 const spectralOcean=createOceanSpectrum(T);spectralOcean.update(0);
 const oceanState={...spectralOcean.uniforms,...coastalUniforms,referenceMask:surfaceControls.referenceMask,sceneColor:{value:target.texture},sceneDepth:{value:target.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},seaView:{value:camera.matrixWorldInverse},seaProjection:{value:camera.projectionMatrix},origin:{value:camPos},sunDir:{value:sunDir},sunColor:{value:sun.color},resolution:{value:new T.Vector2(1,1)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},seaRadius:{value:R+world.water},seaTemperature:{value:world.temperature},surfaceDebug:surfaceControls.surfaceDebug,time:{value:0},air:{value:world.pressure},sunIntensity:{value:sun.intensity},quality:{value:1},waterEnabled:{value:environment.waterEnabled},iceEnabled:{value:environment.iceEnabled}};
-const coastalSpray=new CoastalSpray(T,oceanState);coastalFlow.onFrame=data=>{if(data.emitters)coastalSpray.emit(data.emitters,data.time);};coastalFlow.onClear=()=>coastalSpray.clear();
+const coastalCrests=new CoastalCrests(T,oceanState),coastalSpray=new CoastalSpray(T,oceanState);coastalFlow.onFrame=data=>{if(data.emitters)coastalSpray.emit(data.emitters,data.time);if(data.crests)coastalCrests.emit(data.crests,data.time);};coastalFlow.onClear=()=>{coastalSpray.clear();coastalCrests.clear();};
 const waterScene=new T.Scene(),waterMaterial=new T.ShaderMaterial({uniforms:oceanState,vertexShader:waterVertex,fragmentShader:waterFragment,depthTest:true,depthFunc:T.AlwaysDepth,depthWrite:true});waterScene.add(new T.Mesh(new T.PlaneGeometry(2,2),waterMaterial));
 const uniforms={sceneColor:{value:waterTarget.texture},sceneDepth:{value:waterTarget.depthTexture},invProjection:{value:camera.projectionMatrixInverse},camWorld:{value:camera.matrixWorld},origin:{value:camPos},sunDir:{value:sunDir},cameraNear:{value:camera.near},cameraFar:{value:camera.far},resolution:{value:oceanState.resolution.value},air:{value:1},exposure:{value:1.1},surfaceDebug:surfaceControls.surfaceDebug,quality:{value:1}};
 const postScene=new T.Scene(),postCamera=new T.OrthographicCamera(-1,1,1,-1,0,1),postMaterial=new T.ShaderMaterial({uniforms,vertexShader:atmosphereVertex,fragmentShader:atmosphereFragment,depthTest:false,depthWrite:false});postScene.add(new T.Mesh(new T.PlaneGeometry(2,2),postMaterial));
@@ -180,10 +181,11 @@ let opening=0;function frame(now){requestAnimationFrame(frame);metrics.begin(now
  if(environment.waterEnabled&&(!environment.iceEnabled||world.temperature-58*coastalUniforms.coastalCenter.value.y**2>0))coastalFlow.update(oceanState.time.value);
  if(environment.waterEnabled)spectralOcean.update(oceanState.time.value);
  coastalSpray.update(oceanState.time.value,environment.waterEnabled&&surfaceControls.surfaceDebug.value===0&&coastalUniforms.coastalReady.value>.5&&(!environment.iceEnabled||world.temperature-58*coastalUniforms.coastalCenter.value.y**2>0));
- materialPages.flush(renderer);renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(waterTarget);renderer.clear();renderer.render(waterScene,postCamera);if(coastalSpray.mesh.visible){const clear=renderer.autoClear;renderer.autoClear=false;renderer.render(coastalSpray.scene,camera);renderer.autoClear=clear;}renderer.setRenderTarget(null);renderer.render(postScene,postCamera);metrics.end();
+ coastalCrests.update(oceanState.time.value,coastalSpray.uniforms.enabled.value>.5&&oceanState.quality.value===1);
+ materialPages.flush(renderer);renderer.setRenderTarget(target);renderer.setClearColor(0x000000,1);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(waterTarget);renderer.clear();renderer.render(waterScene,postCamera);if(coastalCrests.mesh.visible||coastalSpray.mesh.visible){const clear=renderer.autoClear;renderer.autoClear=false;if(coastalCrests.mesh.visible)renderer.render(coastalCrests.scene,camera);if(coastalSpray.mesh.visible)renderer.render(coastalSpray.scene,camera);renderer.autoClear=clear;}renderer.setRenderTarget(null);renderer.render(postScene,postCamera);metrics.end();
  opening+=dt;if(ready&&opening>1.5&&!$('loading').hidden){$('loading').style.opacity='0';setTimeout(()=>$('loading').hidden=true,600);}
  hudTimer+=dt;frames++;if(hudTimer>.3){fps=Math.round(frames/hudTimer);frames=0;hudTimer=0;let alt=mode==='rover'?roverPos.length()-surface(roverPos):altitude;$('alt').textContent=alt>=1000?(alt/1000).toFixed(1):Math.max(0,alt).toFixed(0);$('altUnit').textContent=alt>=1000?'KM':'M';$('speed').textContent=speed>=1000?(speed/1000).toFixed(1)+'k':speed.toFixed(0);let h=mode==='rover'?roverHeading:yaw;$('bearing').textContent=((Math.round(h*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'°';const p=(mode==='rover'?roverPos:camPos).clone().normalize();let lat=Math.asin(p.y)*180/Math.PI,lon=Math.atan2(p.x,p.z)*180/Math.PI;$('coords').textContent=Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' / '+Math.abs(lon).toFixed(2)+'° '+(lon>=0?'E':'W');document.querySelector('.world small').textContent=surfaceClimate(p,height(p)).biome.toUpperCase();$('tileInfo').textContent=terrain.count+' terrain patches · '+fps+' fps';}
 }label();orient(landing,yaw,pitch);requestAnimationFrame(frame);
-window.planetExplorer={performance:()=>metrics.report({surfaceTextureBytesEstimate:Object.values(textures).reduce((sum,t)=>sum+estimateTextureBytes(t),0),compressedMaterials:!!textures.compressed,ocean:spectralOcean.state(),camera:{position:camPos.toArray(),fov:camera.fov,mode,sunElevation:Number($('sun').value),quality:terrain.quality},planet:{...world},environment:{...environment},coastal:{active:!!coastalUniforms.coastalActive.value,sampling:coastBusy,extentMetres:508,...coastalFlow.state(),spray:coastalSpray.state(oceanState.time.value)},materialPages:materialPages.state(),planetCache:planetCacheState(),detailCache:detailCacheState()}),resetPerformance:()=>metrics.reset(),getState:()=>({mode,altitude:camPos.length()-surface(camPos),patches:terrain.count,outcrops:outcrops.count,coastal:{active:!!coastalUniforms.coastalActive.value,sampling:coastBusy,extentMetres:508,...coastalFlow.state(),spray:coastalSpray.state(oceanState.time.value)},materialPages:materialPages.state(),planetCache:planetCacheState(),detailCache:detailCacheState(),roverReady,paused,surfaceDebug:surfaceControls.surfaceDebug.value,reference:environment.basin?getReference()?.stats:null,resolution:renderer.getDrawingBufferSize(new T.Vector2()).toArray()}),land:startDescent,orbit:startAscent,freeFlight,inspectCoast,inspectTerrain,inspectOutcrops};
+window.planetExplorer={performance:()=>metrics.report({surfaceTextureBytesEstimate:Object.values(textures).reduce((sum,t)=>sum+estimateTextureBytes(t),0),compressedMaterials:!!textures.compressed,ocean:spectralOcean.state(),camera:{position:camPos.toArray(),fov:camera.fov,mode,sunElevation:Number($('sun').value),quality:terrain.quality},planet:{...world},environment:{...environment},coastal:{active:!!coastalUniforms.coastalActive.value,sampling:coastBusy,extentMetres:508,...coastalFlow.state(),spray:coastalSpray.state(oceanState.time.value),crests:coastalCrests.state(oceanState.time.value)},materialPages:materialPages.state(),planetCache:planetCacheState(),detailCache:detailCacheState()}),resetPerformance:()=>metrics.reset(),getState:()=>({mode,altitude:camPos.length()-surface(camPos),patches:terrain.count,outcrops:outcrops.count,coastal:{active:!!coastalUniforms.coastalActive.value,sampling:coastBusy,extentMetres:508,...coastalFlow.state(),spray:coastalSpray.state(oceanState.time.value),crests:coastalCrests.state(oceanState.time.value)},materialPages:materialPages.state(),planetCache:planetCacheState(),detailCache:detailCacheState(),roverReady,paused,surfaceDebug:surfaceControls.surfaceDebug.value,reference:environment.basin?getReference()?.stats:null,resolution:renderer.getDrawingBufferSize(new T.Vector2()).toArray()}),land:startDescent,orbit:startAscent,freeFlight,inspectCoast,inspectTerrain,inspectOutcrops};
 const inspectionView=new URLSearchParams(location.search).get('view');if(inspectionView==='coast')inspectCoast();else if(inspectionView==='terrain'||inspectionView==='outcrops'){const alt=Number(new URLSearchParams(location.search).get('altitude')||20);const allowed=[2,20,200,2000,75000];$('inspectionHeight').value=String(allowed.includes(alt)?alt:20);inspectionView==='outcrops'?inspectOutcrops():inspectTerrain();}
 if(document.modelContext?.registerTool){const lifecycle=new AbortController();for(const [name,fn,desc]of [['land_on_planet',startDescent,'Start a seamless guided descent and enter rover mode.'],['return_to_orbit',startAscent,'Start a seamless ascent to orbit.'],['enter_free_flight',freeFlight,'Switch to free flight at the current position.']]){try{Promise.resolve(document.modelContext.registerTool({name,description:desc,inputSchema:{type:'object',properties:{},additionalProperties:false},execute:input=>{if(input&&Object.keys(input).length)throw Error('No arguments expected');return fn();}},{signal:lifecycle.signal})).catch(console.warn);}catch(e){console.warn(e);}}addEventListener('pagehide',()=>lifecycle.abort(),{once:true});}

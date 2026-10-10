@@ -8,7 +8,7 @@ Replace the current reliance on procedural color noise with a coherent terrain d
 
 The recent shader changes improve individual symptoms but do not establish an AAA content pipeline. Higher output resolution, more noise, and more texture samples cannot invent missing landform structure. The audit below describes the recorded baseline; the architecture remains a staged roadmap.
 
-## Current implementation — terrain-16
+## Current implementation — terrain-17
 
 The reference/detail/formation pipeline now runs at the landing region on every landable solar-system planet. Shared rules select temperate catchments, dry mesas, volcanic shields/calderas, glacial troughs, or airless impact terrain. Hydraulic/thermal strengths and 2 m residual rules differ by profile; near-vacuum profiles do not run hydraulic droplets or carve subordinate water channels. Active volcanism can override the airless substrate. Each region retains its touchdown pad and the shared rendered contact path. Cache identity includes seed, temperature, pressure, activity, water and ice settings; same-seed profiles coexist in the worker. This generalizes representative regions, not metre-scale erosion over the entire sphere.
 
@@ -24,6 +24,10 @@ Two packed dynamic frames occupy unused 128² atlas rectangles below the static 
 
 The worker now selects up to **128 active shallow breaking emitters** from flow compression/Froude production, with stable strength ordering. Lingering foam, dry cells and depths above 4 m do not emit. Six-float emitter records add at most 3,072 transferred bytes per update. A bounded **2,048-instance** pool launches deterministic ballistic droplet bundles with flow-directed horizontal velocity, gravity, 6–18 mm sprite radii and lifetimes below 0.85 s. These sprites approximate unresolved spray; they are not an air/water simulation or physically sized individual drops. Reset/recentering clears particle history, frozen/debug views hide spray, and expired particles stop drawing. The spray pass runs after water in the same target with existing water/terrain depth tests, alpha blending and depth writes disabled. It adds no sampler or texture allocation; instance buffers total 81,920 bytes. All eleven shader programs link. Moving-camera visual appearance, blending/sorting and GPU cost remain unverified in a working WebGL browser.
 
+Active shallow breaking fronts also drive **parametric overturning sheets** in High quality. Selection requires positive compression production, moving shallow water (0.08–3 m depth) and water elevation above mean sea level greater than 35% of local water depth. Every cell is considered so a narrow wet front is not skipped. Up to 32 spatially separated sources (at least 12 m apart) supply position, water level, flow, breaking intensity and depth. A 48-sheet pool retains matching fronts across updates and animates each sheet through a 1.2 s growth/curl/collapse cycle. Radius is bounded by depth and 0.5 m; the cross-section folds past vertical, while its lateral edges taper back to the sampled coastal water surface. Analytic sheet tangents determine the normal, shared sky radiance supplies reflection, and the lip grades into a foam-like film. The existing atlas supplies current water height and wet coverage in the vertex stage. The sheets render after water and before spray, with depth tests/writes and double-sided alpha blending; frozen/debug/Low-quality views suppress them and world/recenter resets clear history. Each sheet has 384 triangles, capped at 18,432 triangles; source records add at most 896 bytes per worker update. All twelve shader programs link. A 60 s numerical beach run activated at most 20 simultaneous sheets within the fixed 48-sheet pool.
+
+These sheets are a bounded visual closure, not physically reconstructed overturning geometry from the Saint-Venant equations. They do not model impact volumes, entrained air or mass exchange with spray. Appearance, transparent ordering, transitions at the base and representative GPU cost still require browser visual acceptance. The fluid solver remains depth-averaged.
+
 | Gate | Latest evidence | Status |
 | --- | --- | --- |
 | Five detailed representative planet profiles | Distinct geometry, safe touchdown, boundary continuity, shared fine halos, rendered contacts, climate invalidation and production-worker cache isolation | Numerically passed |
@@ -31,11 +35,12 @@ The worker now selects up to **128 active shallow breaking emitters** from flow 
 | Horizontal ocean deformation and foam transport | Hermitian displacement, Jacobian compression, periodic edge transport, decay/rewind isolation and current/next texture scheduling | Numerically passed |
 | Coastal fluid region | Lake-at-rest balance, closed-domain volume, wave propagation, positivity, run-up, foam bounds, stored drying, worker/frame isolation and atlas uploads | Numerically passed |
 | Solver-driven spray | Active-breaking selection, dry/deep exclusion, deterministic pool bounds, ballistic lifetime, reset isolation and depth render state | Numerically passed |
-| GLSL compatibility | All eleven exported programs link; terrain/outcrops ≤16 samplers, water 15 | Passed |
+| Overturning sheet approximation | Source spacing, wet/shallow exclusion, lifecycle matching, pool bounds, folding cross-section, tapered edges and depth render state | Numerically passed |
+| GLSL compatibility | All twelve exported programs link; terrain/outcrops ≤16 samplers, water 15 | Passed |
 | Moving ground-to-orbit visual acceptance and representative GPU frame times | Available environment does not provide a working browser WebGL context | Open |
 | Shallow-water coastal solver | First-order depth-averaged solver, incident sponge, foam transport and stored wetness are implemented for one bounded region | Implemented; visual acceptance open |
 | Breaking-wave spray | Solver-driven ballistic droplet bundles implemented; visual acceptance remains open | Implemented; visual acceptance open |
-| Overturning/breaking surf geometry | Depth-averaged equations cannot represent overturning waves; compression/Froude foam and spray are approximations | Open |
+| Overturning/breaking surf geometry | Solver-driven parametric sheets implemented as a visual approximation; physically reconstructed overturning and impact volumes remain open | Visual approximation implemented; acceptance open |
 | Full scanned PBR and arbitrary decal-stack page baking | Regional procedural PBR/overlays are composed; fine scans remain shader evaluated | Open |
 | WebGPU/clipmap/CBT migration | Requires measurements identifying a bottleneck; no speculative backend migration | Deferred |
 
