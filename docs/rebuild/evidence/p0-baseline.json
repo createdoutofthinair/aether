@@ -1,0 +1,933 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T15:57:33.937Z",
+  "purpose": "P0 source and asset inventory; no rendered evidence",
+  "source": {
+    "repository": "https://github.com/createdoutofthinair/aether",
+    "commit": "0f3bf3d704ff301437e880eff2e6e5aa6c0c732c",
+    "branch": "rebuild/p0-audit",
+    "workingTreeDirty": true,
+    "runtimeWorkingTreeDirty": false,
+    "runtimeManifestHash": "ee9dafff476e939852416c1678169ec2b5f74490840b86d14bdd84928708ce50"
+  },
+  "executionEnvironment": {
+    "kind": "agent container, not the target computer",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v24.19.0"
+  },
+  "targetMachine": {
+    "gpu": null,
+    "vramGiB": null,
+    "cpu": null,
+    "ramGiB": null,
+    "os": null,
+    "driver": null,
+    "outputResolution": null
+  },
+  "dependencies": {
+    "threeRevision": "186",
+    "vite": "8.0.13",
+    "lockfileTracked": false
+  },
+  "assets": {
+    "count": 30,
+    "totalDownloadBytes": 94908343,
+    "manifestHash": "7171a783e00c4b49add576e31899f1f3bb9055416f5709caaf2b65142c9f1e3c",
+    "files": [
+      {
+        "path": "dist/compressed/mn.ktx2",
+        "bytes": 5143592,
+        "sha256": "0bc80bd83a21e5594061d3085308f8e001875d15c5d3d5bbe8587d7935f9dfd6",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/ms.ktx2",
+        "bytes": 1362711,
+        "sha256": "8b24df4c546c1f51793f90f712bf5212e23ced3e694fefc8e9b9d5a03607e37b",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11
+      },
+      {
+        "path": "dist/compressed/mud.ktx2",
+        "bytes": 937875,
+        "sha256": "941f4d8d17e044888ec4e29ae58cee4f9ea4ba7717ec9e75605de15abb8b227e",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/mudGaussian.ktx2",
+        "bytes": 5593120,
+        "sha256": "8e1b9fdb0560ba2a54d96a56a00f9e6bb05c703e8d379ff1e32782d73749440c",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/rn.ktx2",
+        "bytes": 4290082,
+        "sha256": "6e90c445f65b6a10d13090e9311f8ecf5d625b73e3a6954013babd963fa564ab",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/rock.ktx2",
+        "bytes": 928066,
+        "sha256": "473312d4180bba5b65290e245e39233cf2204f1cd9e9821051b3f90b8198a93e",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/rockGaussian.ktx2",
+        "bytes": 5554996,
+        "sha256": "11680c6847b60463e4c89344cea0864b81aa1a649d1a77f7a73cbbedde4999b5",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/rr.ktx2",
+        "bytes": 4499409,
+        "sha256": "f7a9cfbb8cdf9fc041045f7f5a1ed45c28d750edb3da06d7bf38b6d7a49ad81f",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/rs.ktx2",
+        "bytes": 1355826,
+        "sha256": "0536763b1178de3e72033d734303cae035a20bdf6dbdee2bfd85798a9b607031",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11
+      },
+      {
+        "path": "dist/compressed/sand.ktx2",
+        "bytes": 849123,
+        "sha256": "a16cffe1a4deccce1c0d948b064684360ffd7aecaab61887d91d6cbe1971ed7d",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/sandGaussian.ktx2",
+        "bytes": 5584490,
+        "sha256": "806c731b11e2ef2a02cc32d08f8252e433057792908207bc6b37a02f273cdd58",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/sn.ktx2",
+        "bytes": 4673447,
+        "sha256": "34ad30fc28ca3639b56a8ad490b68faf4c68a9da6eb028c4cfc5a7266cf762b5",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12
+      },
+      {
+        "path": "dist/compressed/ss.ktx2",
+        "bytes": 1305400,
+        "sha256": "559f4a232c01eba54bf8bccb77f0ee610f2ca9a9e51e66ea058907e99cb18dc7",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11
+      },
+      {
+        "path": "dist/mud_cracked_dry_03_diff.jpg",
+        "bytes": 3910412,
+        "sha256": "5f711035ea182d94791259b22576eb4f54912e3f1d56786dcc391982f6f764b4"
+      },
+      {
+        "path": "dist/mud_cracked_dry_03_nor_gl.jpg",
+        "bytes": 5026404,
+        "sha256": "cb3d9760fa63ff49406fd75d6494b7840e44ee9b75ba05a4d81e0b7300c12582"
+      },
+      {
+        "path": "dist/mud_cracked_dry_03_surface.png",
+        "bytes": 1788533,
+        "sha256": "1b646e4fe4185f2d8bec712b59e6d1c80e06921763a3e5542f78520ae834dabd",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "path": "dist/page-scans.bin",
+        "bytes": 656426,
+        "sha256": "f383b4a0dc7117a4dbc0b21316f868e93fd863c6d47a3446b66bd4304c054f9f"
+      },
+      {
+        "path": "dist/rock_boulder_dry_ao.jpg",
+        "bytes": 2182922,
+        "sha256": "cc27725b9bd4b3482823ced876ea5a4ff4cef8485a8193f6f071b56a3a2bb14d"
+      },
+      {
+        "path": "dist/rock_boulder_dry_diff.jpg",
+        "bytes": 3437626,
+        "sha256": "c66de7f7b48ef1ba542c17af780787ca6d43da2160a46ff3544dd9fcdf65ca30"
+      },
+      {
+        "path": "dist/rock_boulder_dry_nor_gl.jpg",
+        "bytes": 3307320,
+        "sha256": "72a3c96d563fc17ac36c568802e106222e6480512d98e07318e1f431cea33dd6"
+      },
+      {
+        "path": "dist/rock_boulder_dry_rough.jpg",
+        "bytes": 2706723,
+        "sha256": "63bb4105e6f60b5968da785afc292b94026a5afa6f18388e98b00232e9e2c433"
+      },
+      {
+        "path": "dist/rock_boulder_dry_surface.png",
+        "bytes": 1547632,
+        "sha256": "d35952012ca7b1cfd15b7d8a93bbc0976be6f886b506aba871d0ddf6d3417be5",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "path": "dist/rover.glb.gz",
+        "bytes": 11681313,
+        "sha256": "120135940fbb796496022642706b23c4cf5fa670adb9cf6ebc4e7efcfb607482"
+      },
+      {
+        "path": "dist/sandy_gravel_ao.jpg",
+        "bytes": 3601760,
+        "sha256": "e09d4b7bc141c5ad9aafd7b17642864e9b622fb99784820cac1b0918342ec69d"
+      },
+      {
+        "path": "dist/sandy_gravel_diff.jpg",
+        "bytes": 3591270,
+        "sha256": "4cc3886a5c346201a0b13ac70d556cb9eba58e4b8a1c7f169940808cca245ec9"
+      },
+      {
+        "path": "dist/sandy_gravel_nor_gl.jpg",
+        "bytes": 5102712,
+        "sha256": "5440c7681aca746d8b952c972b1daaef1b0a1c78c1ea6522d53ece26bf058cbe"
+      },
+      {
+        "path": "dist/sandy_gravel_rough.jpg",
+        "bytes": 1743127,
+        "sha256": "16e181b513988d8c8a5a30a054c4b40f9343603602dd71071d639273f9783e89"
+      },
+      {
+        "path": "dist/sandy_gravel_surface.png",
+        "bytes": 1874693,
+        "sha256": "7b94b9f88691a499f8610aa8f4f71a57623b009fddc96f94de0f0f613337d2ec",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "path": "dist/scans/rock-face-01.bin",
+        "bytes": 144000,
+        "sha256": "5ff8761c65d2b2c861d6f5f0eed2221e24f9cf26b1f5e33676851a37d597250d"
+      },
+      {
+        "path": "dist/vendor/basis/basis_transcoder.wasm",
+        "bytes": 527333,
+        "sha256": "6cf17dc889352c42e9acf8897107978d127005fe3386c36a0e3845e27967630a"
+      }
+    ]
+  },
+  "rover": {
+    "gzipBytes": 11681313,
+    "glbBytes": 15914940,
+    "asset": {
+      "generator": "Khronos glTF Blender I/O v4.3.47",
+      "version": "2.0"
+    },
+    "nodes": 7,
+    "meshes": 7,
+    "materials": 8,
+    "images": 10,
+    "wheelNodes": [
+      {
+        "name": "Wheel_L0",
+        "translation": [
+          -2.4200000762939453,
+          1.0299999713897705,
+          1.659999966621399
+        ]
+      },
+      {
+        "name": "Wheel_L1",
+        "translation": [
+          0.699999988079071,
+          1.0299999713897705,
+          1.659999966621399
+        ]
+      },
+      {
+        "name": "Wheel_L2",
+        "translation": [
+          2.619999885559082,
+          1.0299999713897705,
+          1.659999966621399
+        ]
+      },
+      {
+        "name": "Wheel_R0",
+        "translation": [
+          -2.4200000762939453,
+          1.0299999713897705,
+          -1.659999966621399
+        ]
+      },
+      {
+        "name": "Wheel_R1",
+        "translation": [
+          0.699999988079071,
+          1.0299999713897705,
+          -1.659999966621399
+        ]
+      },
+      {
+        "name": "Wheel_R2",
+        "translation": [
+          2.619999885559082,
+          1.0299999713897705,
+          -1.659999966621399
+        ]
+      }
+    ]
+  },
+  "controls": [
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "workspaceMenu",
+      "options": [
+        {
+          "value": "explorer",
+          "label": "Planet explorer",
+          "selected": false
+        },
+        {
+          "value": "materials",
+          "label": "Material editor",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "sun",
+      "type": "range",
+      "min": "-15",
+      "max": "85",
+      "value": "38"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "air",
+      "type": "range",
+      "min": "0",
+      "max": "200",
+      "value": "100"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "exposure",
+      "type": "range",
+      "min": "50",
+      "max": "200",
+      "value": "110"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "sediment",
+      "type": "range",
+      "min": "0",
+      "max": "100",
+      "value": "65"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "quality",
+      "options": [
+        {
+          "value": "high",
+          "label": "High",
+          "selected": false
+        },
+        {
+          "value": "balanced",
+          "label": "Balanced",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "inspectionHeight",
+      "options": [
+        {
+          "value": "2",
+          "label": "Ground · 2 m",
+          "selected": false
+        },
+        {
+          "value": "20",
+          "label": "Low flight · 20 m",
+          "selected": true
+        },
+        {
+          "value": "200",
+          "label": "Approach · 200 m",
+          "selected": false
+        },
+        {
+          "value": "2000",
+          "label": "High flight · 2 km",
+          "selected": false
+        },
+        {
+          "value": "75000",
+          "label": "Orbit · 75 km",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "surfaceView",
+      "options": [
+        {
+          "value": "0",
+          "label": "Natural",
+          "selected": false
+        },
+        {
+          "value": "1",
+          "label": "Materials",
+          "selected": false
+        },
+        {
+          "value": "2",
+          "label": "Drainage",
+          "selected": false
+        },
+        {
+          "value": "3",
+          "label": "Sediment / rock",
+          "selected": false
+        },
+        {
+          "value": "4",
+          "label": "Normals",
+          "selected": false
+        },
+        {
+          "value": "5",
+          "label": "Detail footprint",
+          "selected": false
+        },
+        {
+          "value": "6",
+          "label": "Snow cover",
+          "selected": false
+        },
+        {
+          "value": "7",
+          "label": "Sky visibility",
+          "selected": false
+        },
+        {
+          "value": "8",
+          "label": "Material residency",
+          "selected": false
+        },
+        {
+          "value": "9",
+          "label": "Geological overlays",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "terrainLayerMaterial",
+      "options": [
+        {
+          "value": "sand",
+          "label": "Sandy gravel",
+          "selected": false
+        },
+        {
+          "value": "mud",
+          "label": "Cracked mud",
+          "selected": false
+        },
+        {
+          "value": "rock",
+          "label": "Dry rock",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "terrainLayerWidth",
+      "type": "number",
+      "min": "16",
+      "max": "1024",
+      "value": "128"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "terrainLayerOpacity",
+      "type": "range",
+      "min": "0",
+      "max": "100",
+      "value": "75"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "terrainLayerHeight",
+      "type": "checkbox",
+      "checked": true
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "importTerrainLayers",
+      "type": "file",
+      "accept": ".json,application/json"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "systemTime",
+      "type": "range",
+      "min": "0",
+      "max": "10000",
+      "step": "1",
+      "value": "0"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "systemSeed",
+      "type": "number",
+      "min": "0",
+      "max": "999999",
+      "step": "1",
+      "value": "6"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "select",
+      "id": "starClass",
+      "options": [
+        {
+          "value": "M",
+          "label": "M · Red dwarf",
+          "selected": false
+        },
+        {
+          "value": "K",
+          "label": "K · Orange dwarf",
+          "selected": false
+        },
+        {
+          "value": "G",
+          "label": "G · Sun-like star",
+          "selected": true
+        },
+        {
+          "value": "F",
+          "label": "F · White-yellow star",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "siteLatitude",
+      "type": "number",
+      "min": "-90",
+      "max": "90",
+      "value": "27",
+      "step": ".1"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "siteLongitude",
+      "type": "number",
+      "min": "-180",
+      "max": "180",
+      "value": "18",
+      "step": ".1"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-seed",
+      "type": "number",
+      "min": "0",
+      "max": "999999",
+      "step": "1"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-relief",
+      "type": "number",
+      "min": ".25",
+      "max": "3",
+      "step": ".05"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-temperature",
+      "type": "number",
+      "min": "-240",
+      "max": "450",
+      "step": "1"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "surfaceWater",
+      "type": "checkbox",
+      "checked": true
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "surfaceIce",
+      "type": "checkbox",
+      "checked": true
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-water",
+      "type": "number",
+      "min": "-1000",
+      "max": "1000",
+      "step": "10"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-pressure",
+      "type": "number",
+      "min": "0",
+      "max": "2",
+      "step": ".05"
+    },
+    {
+      "page": "dist/index.html",
+      "tag": "input",
+      "id": "planet-activity",
+      "type": "number",
+      "min": "0",
+      "max": "1",
+      "step": ".05"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "workspaceMenu",
+      "options": [
+        {
+          "value": "explorer",
+          "label": "Planet explorer",
+          "selected": false
+        },
+        {
+          "value": "materials",
+          "label": "Material editor",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "mapView",
+      "options": [
+        {
+          "value": "color",
+          "label": "Base colour",
+          "selected": false
+        },
+        {
+          "value": "normal",
+          "label": "Normal",
+          "selected": false
+        },
+        {
+          "value": "roughness",
+          "label": "Roughness",
+          "selected": false
+        },
+        {
+          "value": "ao",
+          "label": "Ambient occlusion",
+          "selected": false
+        },
+        {
+          "value": "height",
+          "label": "Height",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "geometry",
+      "aria-label": "Preview shape",
+      "options": [
+        {
+          "value": "sphere",
+          "label": "Sphere",
+          "selected": false
+        },
+        {
+          "value": "plane",
+          "label": "Surface plane",
+          "selected": false
+        },
+        {
+          "value": "cube",
+          "label": "Sample block",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "previewMode",
+      "options": [
+        {
+          "value": "0",
+          "label": "Material result",
+          "selected": false
+        },
+        {
+          "value": "2",
+          "label": "Layer 2 mask",
+          "selected": false
+        },
+        {
+          "value": "3",
+          "label": "Layer 3 mask",
+          "selected": false
+        },
+        {
+          "value": "4",
+          "label": "Layer contributions · RGB",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "lightAngle",
+      "type": "range",
+      "min": "0",
+      "max": "360",
+      "value": "45"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "previewExposure",
+      "type": "range",
+      "min": ".4",
+      "max": "2",
+      "step": ".05",
+      "value": "1"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "composition",
+      "options": [
+        {
+          "value": "stack",
+          "label": "Layer stack · base + overlays",
+          "selected": false
+        },
+        {
+          "value": "weighted",
+          "label": "Weighted mixture · equal-priority materials",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "recipeName",
+      "maxlength": "80",
+      "value": "Moss on boulder"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "heightBlend",
+      "type": "range",
+      "min": "0",
+      "max": "1",
+      "step": ".01",
+      "value": ".35"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "normalStrength",
+      "type": "range",
+      "min": "0",
+      "max": "2",
+      "step": ".01",
+      "value": "1"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "roughness",
+      "type": "range",
+      "min": ".2",
+      "max": "1.5",
+      "step": ".01",
+      "value": "1"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "tint",
+      "type": "color",
+      "value": "#ffffff"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "input",
+      "id": "recipeFile",
+      "type": "file",
+      "accept": "application/json,.json"
+    },
+    {
+      "page": "dist/material-editor.html",
+      "tag": "select",
+      "id": "savedRecipes",
+      "options": [
+        {
+          "value": "",
+          "label": "Choose a saved mix…",
+          "selected": false
+        }
+      ]
+    }
+  ],
+  "validationInventory": {
+    "testScripts": [
+      "scripts/test-terrain.mjs",
+      "scripts/test-grounding.mjs",
+      "scripts/test-geology.mjs",
+      "scripts/test-world.mjs",
+      "scripts/test-solar.mjs",
+      "scripts/test-morph.mjs",
+      "scripts/test-regions.mjs",
+      "scripts/test-shadows.mjs",
+      "scripts/test-ocean.mjs",
+      "scripts/test-spectrum.mjs",
+      "scripts/test-reference.mjs",
+      "scripts/test-stochastic.mjs",
+      "scripts/test-detail.mjs",
+      "scripts/test-outcrops.mjs",
+      "scripts/test-material-mixer.mjs",
+      "scripts/test-material-masks.mjs",
+      "scripts/test-planet-data.mjs",
+      "scripts/test-normal-moments.mjs",
+      "scripts/test-material-pages.mjs",
+      "scripts/test-worker-pipelines.mjs",
+      "scripts/test-compressed-materials.mjs",
+      "scripts/test-scanned-outcrop.mjs",
+      "scripts/test-planet-profiles.mjs",
+      "scripts/test-regional-material.mjs",
+      "scripts/test-coastal.mjs",
+      "scripts/test-coastal-solver.mjs",
+      "scripts/test-coastal-flow.mjs",
+      "scripts/test-coastal-spray.mjs",
+      "scripts/test-coastal-crests.mjs",
+      "scripts/test-page-pbr.mjs"
+    ],
+    "syntaxModules": [
+      "dist/app.js",
+      "dist/terrain.js",
+      "dist/shaders.js",
+      "dist/grounding.js",
+      "dist/world.js",
+      "dist/atlas.js",
+      "dist/solar.js",
+      "dist/system-ui.js",
+      "dist/entry.js",
+      "dist/regions.js",
+      "dist/shadows.js",
+      "dist/water.js",
+      "dist/inspection.js",
+      "dist/ocean-spectrum.js",
+      "dist/sky-light.js",
+      "dist/terrain-data.js",
+      "dist/terrain-worker.js",
+      "dist/terrain-cache.js",
+      "dist/stochastic-material.js",
+      "dist/material-worker.js",
+      "dist/materials.js",
+      "dist/terrain-detail.js",
+      "dist/outcrops.js",
+      "dist/material-editor.js",
+      "dist/material-mixer.js",
+      "dist/navigation.js",
+      "dist/material-masks.js",
+      "dist/procedural-materials.js",
+      "dist/planet-data.js",
+      "dist/planet-cache.js",
+      "dist/planet-worker.js",
+      "dist/normal-moments.js",
+      "dist/material-pages.js",
+      "dist/material-page-worker.js",
+      "dist/render-metrics.js",
+      "dist/compressed-materials.js",
+      "dist/scanned-outcrop.js",
+      "dist/planet-profiles.js",
+      "dist/regional-material.js",
+      "dist/coastal.js",
+      "dist/coastal-solver.js",
+      "dist/coastal-worker.js",
+      "dist/coastal-flow.js",
+      "dist/coastal-spray.js",
+      "dist/coastal-crests.js",
+      "dist/page-pbr.js"
+    ]
+  },
+  "validation": {
+    "functional": "inventory only",
+    "visual": "blocked",
+    "performance": "blocked",
+    "acceptance": "open"
+  }
+}

@@ -26,6 +26,14 @@ Material scan scale: rock 1.8 m, gravel 2 m, cracked mud 1.5 m. A sediment-cover
 Three.js MIT licence in dist/vendor/THREE-LICENSE.txt.
 The Rover R06 asset comes from the user's prior project.
 
+## Planetary rebuild execution
+
+The expanded terrain, vegetation and native-runtime effort is tracked in
+[docs/rebuild/INDEX.md](docs/rebuild/INDEX.md). The initial audit includes source
+and asset inventories, reproducible CPU experiments, candidate inspection cases
+and the local manual-review handoff. See [STATUS.md](docs/rebuild/STATUS.md) for
+completed checks, unresolved hardware/platform gates and the next work package.
+
 ## Validation
 
 Run `npm run check && npm test` for shared-edge normals, same-level and coarse/fine edge alignment, cube-face transitions and skirt isolation, plus tyre clearance, deterministic rock/pebble placement, regional continuity, erosion repeatability, reference contact and stochastic contrast preservation. Fine-detail checks cover shared tile halos, gradient continuity, worker/fallback identity, bounded memory, embedded foundations and independent outcrop mesh raycasts. GitHub Actions compiles and links terrain with/without environment lighting, outcrops and their shadows, rock, shadow, water, atmosphere and sky-environment GLSL before deployment.
