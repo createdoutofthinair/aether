@@ -256,10 +256,6 @@ The worker now composes linear albedo and packed roughness/occlusion/blend-heigh
 
 This is regional substrate composition, not complete scanned PBR/decal baking: cached normals, decal inventories, detailed erosion across all planetary profiles, advanced surf, and browser GPU/visual acceptance remain open.
 
-### Repeatable visual/GPU validation harness
+### Visual review
 
-Implemented a fixed-seed five-profile validation harness with ground-to-orbit-to-ground, close terrain movement, and liquid-water coastline routes. Camera movement is scripted; terrain-drive does **not** validate rover wheel physics. Checkpoints stop simulation time before canvas capture. Asynchronous worker completion can still differ across machines; inspect loading/cache state in each report.
-
-GitHub Actions uploads PNGs, per-profile JSON measurements and the Playwright report as commit-labelled artifacts retained for 30 days. CI explicitly uses SwiftShader and is a rendering smoke test, not real-device GPU acceptance. Automated pixel-baseline comparisons are not enabled until reference images have been reviewed. Visual acceptance remains open.
-
-See `docs/visual-validation.md` for local hardware runs and review criteria.
+Automated screenshot capture and the GitHub visual-validation workflow were removed at the user’s request. Visual review will be performed manually. Existing inspection controls and the manual render-measurements export remain available; visual/GPU acceptance is still open.
