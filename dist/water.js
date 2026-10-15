@@ -1,5 +1,5 @@
-import {coastalGLSL} from './coastal.js?v=terrain-19';
-import {skyGLSL} from './sky-light.js?v=terrain-19';
+import {coastalGLSL} from './coastal.js?v=foundation-1';
+import {skyGLSL} from './sky-light.js?v=foundation-1';
 // The opaque scene is resolved first. Water reads that scene, then writes a
 // separate colour/depth target for the atmosphere; there is no feedback loop.
 export const waterVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;

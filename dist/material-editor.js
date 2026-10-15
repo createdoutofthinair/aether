@@ -1,7 +1,7 @@
 import {createGrowthMaterial} from './procedural-materials.js?v=editor-2';
 import {defaultMask,maskTypes,proceduralMask,stackWeights} from './material-masks.js?v=editor-2';
 import * as T from './vendor/three.module.js';
-import {createSnowMaterial} from './materials.js?v=terrain-19';
+import {createSnowMaterial} from './materials.js?v=foundation-1';
 import {materialCatalog,defaultRecipe,validateRecipe,patchMixer} from './material-mixer.js?v=editor-2';
 const $=id=>document.getElementById(id),message=text=>{$('editorMessage').textContent=text;};
 let recipe=defaultRecipe(),assets={},updatePreview=()=>{},saved=[],selected=-1;

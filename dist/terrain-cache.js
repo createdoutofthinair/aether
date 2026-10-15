@@ -1,7 +1,7 @@
-import {referenceKey} from './planet-profiles.js?v=terrain-19';
-import {world,environment} from './world.js?v=terrain-19';
-import {generateReference,referenceSample} from './terrain-data.js?v=terrain-19';
-import {prepareDetail,prepareDetailIndex,DETAIL_EXTENT,emptyDetailTile,sampleDetailTile} from './terrain-detail.js?v=terrain-19';
+import {referenceKey} from './planet-profiles.js?v=foundation-1';
+import {world,environment} from './world.js?v=foundation-1';
+import {generateReference,referenceSample} from './terrain-data.js?v=foundation-1';
+import {prepareDetail,prepareDetailIndex,DETAIL_EXTENT,emptyDetailTile,sampleDetailTile} from './terrain-detail.js?v=foundation-1';
 const cache=new Map(),inflight=new Map();let active=null,worker,serial=0,requestedKey;const pending=new Map();
 function retain(data){cache.delete(data.key);cache.set(data.key,data);while(cache.size>3)cache.delete(cache.keys().next().value);return data;}
 const detailCaches=new WeakMap();
@@ -33,7 +33,7 @@ export async function prepareReference(seed=6,config=world,env=environment){
  const snapshot={...config},environmentSnapshot={...env},key=referenceKey(seed,snapshot,environmentSnapshot);requestedKey=key;
  if(cache.has(key))return installReference(cache.get(key));
  if(typeof Worker==='undefined')return installReference(generateReference(seed,{config:snapshot,environment:environmentSnapshot}));
- if(!worker){try{worker=new Worker(new URL('./terrain-worker.js?v=terrain-19',import.meta.url),{type:'module'});}catch(error){console.warn('Landscape worker unavailable; generating locally.',error.message);return installReference(generateReference(seed,{config:snapshot,environment:environmentSnapshot}));}worker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.result);};worker.onerror=e=>{for(const job of pending.values())job.reject(Error(e.message));pending.clear();worker.terminate();worker=null;};}
+ if(!worker){try{worker=new Worker(new URL('./terrain-worker.js?v=foundation-1',import.meta.url),{type:'module'});}catch(error){console.warn('Landscape worker unavailable; generating locally.',error.message);return installReference(generateReference(seed,{config:snapshot,environment:environmentSnapshot}));}worker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.result);};worker.onerror=e=>{for(const job of pending.values())job.reject(Error(e.message));pending.clear();worker.terminate();worker=null;};}
  if(!inflight.has(key)){
   const job=new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});worker.postMessage({id,seed,key,config:snapshot,environment:environmentSnapshot});}).catch(error=>{console.warn('Landscape worker unavailable; generating locally.',error.message);return generateReference(seed,{config:snapshot,environment:environmentSnapshot});}).finally(()=>inflight.delete(key));
   inflight.set(key,job);

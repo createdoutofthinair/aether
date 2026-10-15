@@ -1,4 +1,4 @@
-import {geologicalProfile} from './planet-profiles.js?v=terrain-19';
+import {geologicalProfile} from './planet-profiles.js?v=foundation-1';
 export const MATERIAL_PROFILES=['temperate','dry','volcanic','glacial','airless'];
 export const materialProfileIndex=(config,environment)=>MATERIAL_PROFILES.indexOf(geologicalProfile(config,environment));
 const clamp=x=>Math.max(0,Math.min(1,x)),mix=(a,b,t)=>a+(b-a)*t;

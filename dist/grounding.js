@@ -1,7 +1,8 @@
-import {regionAt} from './regions.js?v=terrain-19';
-import {world,environment,climate} from './world.js?v=terrain-19';
+import {tyreSupport,wheelClearance} from './domain/contact.js';
+import {regionAt} from './regions.js?v=foundation-1';
+import {world,environment,climate} from './world.js?v=foundation-1';
 import * as T from './vendor/three.module.js';
-import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=terrain-19';
+import {R,faces,direction,noise,landing,basinCoordinates,basinProfile,surfaceClimate,referenceGeology} from './terrain.js?v=foundation-1';
 const hash=(a,b,c)=>{const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);};
 // IDs and positions depend only on planet cells, not camera position or travel history.
 export function rockCandidates(p,radius=330,div=2048){
@@ -25,14 +26,8 @@ export function rockCandidates(p,radius=330,div=2048){
  return result;
 }
 // Conservative support of a tyre cylinder against the local contact plane.
-export function tyreSupport(radius,halfWidth,axle,normal){
- const axial=Math.min(1,Math.abs(axle.dot(normal)));
- return radius*Math.sqrt(Math.max(0,1-axial*axial))+halfWidth*axial;
-}
-export function wheelLift(center,up,axle,radius,halfWidth,terrain){
- const {point,normal}=terrain.sample(center);
- return (tyreSupport(radius,halfWidth,axle,normal)+.015-center.clone().sub(point).dot(normal))/Math.max(.2,up.dot(normal));
-}
+export {tyreSupport};
+export function wheelLift(center,up,axle,radius,halfWidth,terrain){return wheelClearance(center,up,axle,radius,halfWidth,p=>terrain.sample(p));}
 // Eight stable silhouettes, rather than rotations of one rounded boulder.
 export function createRockGeometry(variant,detail=3){
  const geometry=new T.IcosahedronGeometry(1,detail),positions=geometry.attributes.position,seed=variant*17;

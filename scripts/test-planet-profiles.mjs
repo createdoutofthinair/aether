@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import * as T from '../dist/vendor/three.module.js';
-import {defaults,configureWorld,configureEnvironment} from '../dist/world.js?v=terrain-19';
-import {geologicalProfile} from '../dist/planet-profiles.js?v=terrain-19';
-import {generateReference} from '../dist/terrain-data.js?v=terrain-19';
-import {prepareDetail,generateDetailTile,emptyDetailTile,sampleDetailTile,DETAIL_SIZE} from '../dist/terrain-detail.js?v=terrain-19';
-import {installReference,referenceAt,installDetailTile} from '../dist/terrain-cache.js?v=terrain-19';
-import {PlanetTerrain,landing,R,height,basis,surfaceNormal} from '../dist/terrain.js?v=terrain-19';
+import {defaults,configureWorld,configureEnvironment} from '../dist/world.js?v=foundation-1';
+import {geologicalProfile} from '../dist/planet-profiles.js?v=foundation-1';
+import {generateReference} from '../dist/terrain-data.js?v=foundation-1';
+import {prepareDetail,generateDetailTile,emptyDetailTile,sampleDetailTile,DETAIL_SIZE} from '../dist/terrain-detail.js?v=foundation-1';
+import {installReference,referenceAt,installDetailTile} from '../dist/terrain-cache.js?v=foundation-1';
+import {PlanetTerrain,landing,R,height,basis,surfaceNormal} from '../dist/terrain.js?v=foundation-1';
 const profiles={temperate:[{},{}],dry:[{temperature:55,pressure:.3},{waterEnabled:false}],volcanic:[{temperature:30,activity:.9},{}],glacial:[{temperature:-70,pressure:.02},{}],airless:[{temperature:40,pressure:0},{waterEnabled:false,iceEnabled:false}]};
 const signatures=new Set(),keys=new Set();let oldTile;
 for(const [name,[config,env]] of Object.entries(profiles)){

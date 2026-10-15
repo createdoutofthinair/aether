@@ -340,3 +340,7 @@ Accessed 15 October 2026. Re-check API details against the pinned Three.js relea
 4. Three.js migration guide: https://github.com/mrdoob/three.js/wiki/Migration-Guide
 
 Related project documents: [Terrain rendering research](terrain-rendering-research.md) and [Terrain page authoring](terrain-page-authoring.md).
+
+## Execution progress
+
+See [the execution log](webgpu-execution-log.md) and [ADR 0001](adr/0001-webgpu-foundation.md) for the delivered foundation and remaining gates.

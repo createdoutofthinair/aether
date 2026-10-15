@@ -1,0 +1,19 @@
+{
+  "threeRevision": "186",
+  "license": "dist/vendor/THREE-LICENSE.txt",
+  "files": {
+    "dist/vendor/BufferGeometryUtils.js": "3de832095679e56578beddf70f3e90846a47ec8a886fa8eb21c973cdaef88922",
+    "dist/vendor/ColorSpaces.js": "9fb4b47ea2c416a02fe6787c94e79c54a2edf7c2d32e059031d0aba0b639959c",
+    "dist/vendor/GLTFLoader.js": "458b025b12213713958b07012b48aa5e84aebb562c92cfe53ea82d41bda2fd42",
+    "dist/vendor/KTX2Loader.js": "040afd7f027f31f5676619c4f53982304512cf06939d318034bf7453889ca259",
+    "dist/vendor/THREE-LICENSE.txt": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454",
+    "dist/vendor/WorkerPool.js": "5ac7095fd566bc9ae48376055fd66edf27cb9ebbf9e1269dc206bfd4933ae9eb",
+    "dist/vendor/basis/LICENSE.txt": "065fcf48d6af21c0b75e23be5ed5753aee75c892e1c2cf178fa6736305614a5c",
+    "dist/vendor/basis/basis_transcoder.js": "8478b5b6d6b74e7d3082b89f6417321d8d1dc0307f2b30d4484bb11b441696a1",
+    "dist/vendor/basis/basis_transcoder.wasm": "6cf17dc889352c42e9acf8897107978d127005fe3386c36a0e3845e27967630a",
+    "dist/vendor/ktx-parse.module.js": "f40c491f6c44dde511268121f778a0050e73b1a15fd844c1ae2c78c73213eafc",
+    "dist/vendor/three.core.js": "9edde002b066a9a05676a6127f67735b62baf399bdea529f2f7e31657da769e6",
+    "dist/vendor/three.module.js": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea",
+    "dist/vendor/zstddec.module.js": "5cbf818e842628a4464e748594a6deae18ceddda3c2f541e7b3a0ff5fc7611e2"
+  }
+}
