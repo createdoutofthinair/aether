@@ -1,2 +1,5 @@
 node_modules/
 .sites-runtime/
+
+# Rebuilt from the exact npm package during build/deploy
+dist/vendor-gpu/

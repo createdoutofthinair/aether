@@ -8,6 +8,6 @@ function visit(url){const key=url.pathname;if(seen.has(key))return;seen.add(key)
  const imports=[...source.matchAll(/(?:from\s*|import\s*\(|new URL\s*\()(['"])(\.[^'"]+)\1/g)].map(m=>m[2]);
  for(const name of imports)visit(new URL(name,url));
 }
-visit(new URL('entry.js',base));visit(new URL('navigation.js',base));
+visit(new URL('entry.js',base));visit(new URL('navigation.js',base));visit(new URL('render/webgpu/bootstrap.js',base));
 assert.ok(seen.has('/aether/domain/terrain.js'));assert.ok(seen.has('/aether/domain/world.js'));assert.ok(seen.has('/aether/terrain-worker.js'));
 console.log(`Pages /aether/ module and worker URLs resolve: ${seen.size} files`);

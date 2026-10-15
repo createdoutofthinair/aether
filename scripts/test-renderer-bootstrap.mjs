@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {BackendSession} from '../src/render/backend-session.js';
+import {sceneSnapshot,validateTilePayload,assertSceneTileEpoch} from '../src/domain/render-contracts.js';
+import {previewTile} from '../src/render/webgpu/terrain-preview.js';
+import * as T from 'three/webgpu';
+const descriptor=sceneSnapshot({epoch:0,origin:[1,2,3],camera:{position:[4,5,6],target:[0,0,0]},material:{roughness:.8}});
+assert.ok(Object.isFrozen(descriptor.camera.position));assert.throws(()=>sceneSnapshot({...descriptor,epoch:-1}));assert.throws(()=>sceneSnapshot({...descriptor,material:{roughness:2}}));
+const tile=previewTile();assert.throws(()=>assertSceneTileEpoch(descriptor,tile),/origin/);assert.throws(()=>assertSceneTileEpoch({...descriptor,epoch:1},tile),/epoch/);assert.equal(tile.positions.length,49*49*3);assert.throws(()=>validateTilePayload({...tile,indices:new Uint16Array([65535,0,1])}));
+const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(tile.positions,3));geometry.setIndex(new T.BufferAttribute(tile.indices,1));geometry.computeVertexNormals();assert.ok(geometry.attributes.normal.array.filter((_,i)=>i%3===1).every(y=>y>0),'Terrain winding faces upward');geometry.dispose();
+const material=new T.MeshStandardNodeMaterial();assert.ok(material.isNodeMaterial);material.dispose();assert.equal(T.REVISION,'186');
+let disposed=0,applied=0,renders=0;
+const backend=()=>({initialize:async()=>{},dispose:async()=>{disposed++;},applyScene:()=>applied++,resize:()=>{},render:()=>renders++,capabilities:()=>({actual:'mock'})});
+const session=new BackendSession(async()=>backend());await session.initialize({});session.applyScene(descriptor);session.render();assert.equal(applied,1);assert.equal(renders,1);await session.initialize({});assert.equal(disposed,1);await session.dispose();assert.equal(disposed,2);assert.throws(()=>session.applyScene(descriptor));
+let release;const pending=new BackendSession(async()=>({...backend(),initialize:()=>new Promise(resolve=>release=resolve)}));const init=pending.initialize({});await new Promise(resolve=>setImmediate(resolve));await pending.dispose();release();assert.equal(await init,false);assert.equal(pending.state,'disposed');
+const failed=new BackendSession(async()=>({...backend(),initialize:async()=>{throw Error('init failure');}}));await assert.rejects(failed.initialize({}),/init failure/);assert.equal(failed.state,'failed');
+console.log('Renderer bootstrap: immutable controls, tile bounds/winding, r186 node materials, lifecycle races, cleanup and initialization failures passed');

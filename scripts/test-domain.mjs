@@ -12,7 +12,7 @@ const up={x:0,y:1,z:0},axle={x:1,y:0,z:0};
 assert.equal(tyreSupport(1,.2,axle,up),1);
 assert.ok(Math.abs(wheelClearance({x:0,y:1.015,z:0},up,axle,1,.2,()=>({point:{x:0,y:0,z:0},normal:up})))<1e-12);
 // Source domain modules must remain free of renderer/framework/platform imports.
-for(const name of ['terrain','world','contact','vector']){
+for(const name of ['terrain','world','contact','vector','render-contracts']){
  const code=readFileSync(`src/domain/${name}.js`,'utf8');assert.ok(!/\b(document|window|Worker|WebGLRenderer|ShaderMaterial)\b/.test(code));
  assert.ok(!/from\s+['"][^'"]*(three|vendor|dist)/.test(code));
  assert.equal(readFileSync(`dist/domain/${name}.js`,'utf8'),code,'Build output differs from authoritative source');
