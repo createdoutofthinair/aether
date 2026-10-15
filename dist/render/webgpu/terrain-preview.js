@@ -14,3 +14,9 @@ export function previewTile(epoch=0,cells=48){
  let k=0;for(let y=0;y<cells;y++)for(let x=0;x<cells;x++){const a=y*(cells+1)+x,b=a+cells+1;indices.set([a,a+1,b,a+1,b+1,b],k);k+=6;}
  return validateTilePayload({schema:1,epoch,id:'preview/landing',origin:origin.toArray(),positions,indices});
 }
+
+export function previewSurface(){
+ const domain=createTerrainDomain({world,environment,climate,province,planetAt:()=>null,referenceAt:()=>null,regionAt:()=>null,regionHeight:()=>0,regionDirection:()=>({x:0,y:1,z:0})});
+ const center=domain.basinDirection(700,250),origin=center.clone().multiplyScalar(domain.R+domain.height(center)),frame=domain.basis(center);
+ return{origin:origin.toArray(),sample(x,z){const direction=domain.basinDirection(700+x,250+z),normal=domain.surfaceNormal(direction),point=direction.clone().multiplyScalar(domain.R+domain.height(direction)),delta={x:point.x-origin.x,y:point.y-origin.y,z:point.z-origin.z};return{position:[frame.east.dot(delta),center.dot(delta),-frame.north.dot(delta)],normal:[frame.east.dot(normal),center.dot(normal),-frame.north.dot(normal)]};}};
+}

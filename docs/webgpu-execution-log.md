@@ -32,3 +32,13 @@ Phase 3 implementation is available for user inspection, but its runtime accepta
 Manual inspection URLs after deployment: `webgpu-preview.html` (GPU preferred) and `webgpu-preview.html?backend=webgl` (explicit new-renderer WebGL fallback). Ordinary `index.html` remains the legacy explorer.
 
 See [ADR 0002](adr/0002-webgpu-bootstrap.md).
+
+## Regional LOD increment — 15 October 2026
+
+- Replaced the fixed preview mesh with sixteen shared-domain patches over a 3.6 km region and four camera-distance detail levels.
+- Added hysteresis, bounded incremental generation, old-level coverage during loading, 32-payload maximum residency and renderer geometry cleanup.
+- Added coordinated refinement/coarsening through interpolated coarse triangles, using identical shared position/normal boundaries.
+- Added live loading/LOD status and CPU/GPU geometry estimates in the manual diagnostics.
+- Tests cover nonlinear shared borders throughout transitions, cancellation, generation/residency caps and convergence in both directions.
+
+Phase 4 is still partial: no planetary quadtree/SSE, mixed-level neighbors, streamed eroded tiles, global travel/origin shifts or contact integration have been added to the preview. Browser visuals and representative GPU performance remain pending. See [ADR 0003](adr/0003-regional-lod.md).

@@ -6,7 +6,7 @@ for(const [path,expected]of Object.entries(manifest.files)){
  if(actual!==expected)throw Error(`Vendored dependency integrity mismatch: ${path}`);
 }
 await mkdir('dist/domain',{recursive:true});
-for(const name of ['vector','world','terrain','contact','render-contracts'])await copyFile(`src/domain/${name}.js`,`dist/domain/${name}.js`);
+for(const name of ['vector','world','terrain','contact','render-contracts','regional-lod'])await copyFile(`src/domain/${name}.js`,`dist/domain/${name}.js`);
 await writeFile('dist/foundation-manifest.json',JSON.stringify({schema:1,threeRevision:manifest.threeRevision,backend:'webgl',domainSource:'src/domain',vendorManifest:manifest.files},null,2)+'\n');
 console.log('Foundation source synchronized; pinned vendor integrity passed');
 
