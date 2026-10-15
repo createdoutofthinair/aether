@@ -259,3 +259,7 @@ This is regional substrate composition, not complete scanned PBR/decal baking: c
 ### Visual review
 
 Automated screenshot capture and the GitHub visual-validation workflow were removed at the user’s request. Visual review will be performed manually. Existing inspection controls and the manual render-measurements export remain available; visual/GPU acceptance is still open.
+
+## WebGPU migration plan
+
+See [the complete WebGPU migration plan](webgpu-migration-plan.md) for architecture, subsystem porting, compute experiments, performance budgets, manual acceptance and rollout. Migration does not close the visual or fidelity gates in this roadmap.
