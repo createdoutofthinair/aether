@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "sourceBaselineCommit": "0f3bf3d704ff301437e880eff2e6e5aa6c0c732c",
+  "run": {
+    "id": 38147002852,
+    "url": "https://github.com/createdoutofthinair/aether/actions/runs/38147002852",
+    "conclusion": "success"
+  },
+  "jobs": [
+    {
+      "name": "test",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check JavaScript",
+          "conclusion": "success"
+        },
+        {
+          "name": "Test terrain continuity",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile terrain and atmosphere shaders",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify rover asset",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "deploy",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/configure-pages@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-pages-artifact@v3",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy to GitHub Pages",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "scope": "GitHub Actions metadata inspected; no local GPU/visual result or per-program compiler output claimed."
+}

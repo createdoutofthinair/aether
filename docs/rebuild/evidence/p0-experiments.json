@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T15:36:03.059Z",
+  "kind": "CPU-only audit experiments",
+  "experiments": [
+    {
+      "id": "E-P0-CACHE",
+      "observed": "Eviction removes the mesh but retains its original/render typed arrays and node entry.",
+      "cacheNodes": 1566,
+      "evictedMesh": true,
+      "payloadBytesBefore": 40032,
+      "payloadBytesAfter": 40032,
+      "limitation": "One eviction fixture; this is not a long traversal memory trace."
+    },
+    {
+      "id": "E-P0-CONTACT",
+      "observed": "The same body direction is sampled on the selected LOD triangles.",
+      "locations": [
+        {
+          "referenceMetres": [
+            0,
+            0
+          ],
+          "samples": [
+            {
+              "level": 5,
+              "heightMetres": 132.49347769329324
+            },
+            {
+              "level": 10,
+              "heightMetres": 120.03889341109607
+            },
+            {
+              "level": 13,
+              "heightMetres": 120.02303733326698
+            }
+          ],
+          "rangeMetres": 12.47044036002626
+        },
+        {
+          "referenceMetres": [
+            700,
+            250
+          ],
+          "samples": [
+            {
+              "level": 5,
+              "heightMetres": 510.31912463111803
+            },
+            {
+              "level": 10,
+              "heightMetres": 522.8823825796644
+            },
+            {
+              "level": 13,
+              "heightMetres": 523.4495716835518
+            }
+          ],
+          "rangeMetres": 13.130447052433738
+        },
+        {
+          "referenceMetres": [
+            1100,
+            800
+          ],
+          "samples": [
+            {
+              "level": 5,
+              "heightMetres": 613.2125049874521
+            },
+            {
+              "level": 10,
+              "heightMetres": 603.0476339176166
+            },
+            {
+              "level": 13,
+              "heightMetres": 602.344195316764
+            }
+          ],
+          "rangeMetres": 10.868309670688177
+        }
+      ],
+      "limitation": "Selected static patches; no vehicle drive, camera, or GPU was observed. Differences do not diagnose the reported sinking-wheel symptom."
+    },
+    {
+      "id": "E-P0-METRICS",
+      "observed": "A query created before reset can enter the GPU sample buffer after reset.",
+      "pendingAfterReset": 1,
+      "gpuSamplesAfterReset": [
+        7,
+        23
+      ],
+      "limitation": "Fake WebGL query fixture for bookkeeping only; values are synthetic, not GPU timings."
+    }
+  ],
+  "functionalStatus": "pass",
+  "visualStatus": "blocked",
+  "performanceStatus": "blocked"
+}

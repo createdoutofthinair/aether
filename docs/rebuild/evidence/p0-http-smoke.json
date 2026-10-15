@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T15:36:03.534Z",
+  "kind": "same-process loopback Vite HTTP smoke",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html",
+      "servedBytes": 11674
+    },
+    {
+      "path": "/entry.js",
+      "status": 200,
+      "contentType": "text/javascript",
+      "servedBytes": 1747
+    },
+    {
+      "path": "/terrain-worker.js?v=terrain-19",
+      "status": 200,
+      "contentType": "text/javascript",
+      "servedBytes": 4134
+    },
+    {
+      "path": "/material-page-worker.js?v=terrain-19",
+      "status": 200,
+      "contentType": "text/javascript",
+      "servedBytes": 4600
+    },
+    {
+      "path": "/material-editor.html",
+      "status": 200,
+      "contentType": "text/html",
+      "servedBytes": 4826
+    },
+    {
+      "path": "/compressed/manifest.json",
+      "status": 200,
+      "contentType": "application/json",
+      "servedBytes": 1326
+    },
+    {
+      "path": "/vendor/basis/basis_transcoder.wasm",
+      "status": 200,
+      "contentType": "application/wasm",
+      "servedBytes": 527333
+    },
+    {
+      "path": "/rover.glb.gz",
+      "status": 200,
+      "contentType": "model/gltf-binary",
+      "servedBytes": 15914940
+    }
+  ],
+  "functionalStatus": "pass",
+  "visualStatus": "not applicable",
+  "performanceStatus": "not applicable",
+  "limitations": [
+    "Delivery checks only; no renderer launched or GPU observed."
+  ]
+}

@@ -1,0 +1,61 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> check
+> node --check dist/app.js && node --check dist/terrain.js && node --check dist/shaders.js && node --check dist/grounding.js && node --check dist/world.js && node --check dist/atlas.js && node --check dist/solar.js && node --check dist/system-ui.js && node --check dist/entry.js && node --check dist/regions.js && node --check dist/shadows.js && node --check dist/water.js && node --check dist/inspection.js && node --check dist/ocean-spectrum.js && node --check dist/sky-light.js && node --check dist/terrain-data.js && node --check dist/terrain-worker.js && node --check dist/terrain-cache.js && node --check dist/stochastic-material.js && node --check dist/material-worker.js && node --check dist/materials.js && node --check dist/terrain-detail.js && node --check dist/outcrops.js && node --check dist/material-editor.js && node --check dist/material-mixer.js && node --check dist/navigation.js && node --check dist/material-masks.js && node --check dist/procedural-materials.js && node --check dist/planet-data.js && node --check dist/planet-cache.js && node --check dist/planet-worker.js && node --check dist/normal-moments.js && node --check dist/material-pages.js && node --check dist/material-page-worker.js && node --check dist/render-metrics.js && node --check dist/compressed-materials.js && node --check dist/scanned-outcrop.js && node --check dist/planet-profiles.js && node --check dist/regional-material.js && node --check dist/coastal.js && node --check dist/coastal-solver.js && node --check dist/coastal-worker.js && node --check dist/coastal-flow.js && node --check dist/coastal-spray.js && node --check dist/coastal-crests.js && node --check dist/page-pbr.js
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test
+> node scripts/test-terrain.mjs && node scripts/test-grounding.mjs && node scripts/test-geology.mjs && node scripts/test-world.mjs && node scripts/test-solar.mjs && node scripts/test-morph.mjs && node scripts/test-regions.mjs && node scripts/test-shadows.mjs && node scripts/test-ocean.mjs && node scripts/test-spectrum.mjs && node scripts/test-reference.mjs && node scripts/test-stochastic.mjs && node scripts/test-detail.mjs && node scripts/test-outcrops.mjs && node scripts/test-material-mixer.mjs && node scripts/test-material-masks.mjs && node scripts/test-planet-data.mjs && node scripts/test-normal-moments.mjs && node scripts/test-material-pages.mjs && node scripts/test-worker-pipelines.mjs && node scripts/test-compressed-materials.mjs && node scripts/test-scanned-outcrop.mjs && node scripts/test-planet-profiles.mjs && node scripts/test-regional-material.mjs && node scripts/test-coastal.mjs && node scripts/test-coastal-solver.mjs && node scripts/test-coastal-flow.mjs && node scripts/test-coastal-spray.mjs && node scripts/test-coastal-crests.mjs && node scripts/test-page-pbr.mjs
+
+{"sameLevelNormalError":0,"sameLevelPositionErrorMetres":0.00004721245695890035,"coarseFineEdges":"pass","cubeFaceEdges":"pass","isolatedSkirts":"pass"}
+Ground contact, tyre clearance, persistent rock cells and shadow fading: pass
+Eight distinct rock silhouettes and stable variant assignment: pass
+Regional relief 235.6 m; smooth planet transition, safe touchdown, persistent pebbles and PBR assets: pass
+Geological material masks and tributary continuity: pass
+World seeds, climate, all six regions, map coordinates, sea level and terrain regeneration: pass
+Solar systems: deterministic generation, Kepler periods, closed/nonintersecting orbits, world profiles, climate limits and giant landing guards pass
+LOD morph: continuous split/merge handoffs, intermediate geometry, shared edges and rendered-surface contact pass
+Selective buffer uploads and local scatter invalidation: pass
+Distinct regional geometry, safe sites, boundary continuity, seed repeatability and sparse dune scatter: pass
+{"badlands":{"min":149.3933059021046,"max":1233.6068621403165,"relief":1084.2135562382118,"std":300.0278960929966,"meanSlope":0.6116104774597971,"p95Slope":1.8206238595462207},"volcanic":{"min":353.64628251176595,"max":1761.7810557047571,"relief":1408.1347731929911,"std":284.3713257470185,"meanSlope":0.28960910816329877,"p95Slope":1.1697253116907742},"dunes":{"min":174.76701147514822,"max":306.9768102345861,"relief":132.20979875943786,"std":27.779574278462686,"meanSlope":0.2408670187147416,"p95Slope":0.3985319975867517}}
+Stable floating-origin shadow grid and polar sun basis: pass
+Planet-scale water intersection precision, grazing rays, underwater exit, and actual coastline inspection: pass
+FFT roundtrip, deterministic waves, real-valued output, wave energy and mean sea level: pass
+Ocean slope variance: monotonic unresolved energy; foam: bounded persistence/decay pass
+Ocean deformation: real horizontal fields, compression Jacobian, periodic transport, bounded foam and rewind isolation pass
+Ocean texture scheduling: current/next displacement and foam stay synchronized, including skipped ticks pass
+{"referenceReliefMetres":584,"erosion":{"profile":"temperate","droplets":100000,"maxFlow":3932.3916015625,"meanChange":6.951397325813124,"detailStep":2,"subchannels":18446,"outcrops":290},"preparationAndTestsMs":2289,"continuity":"pass","contact":"pass","determinism":"pass"}
+{"sourceContrast":0.2931788351037512,"ordinaryBlend":0.16932630148628214,"preservedBlend":0.2930346093955414,"reconstructionRMSE":0.0025500016613805455}
+{"detailStepMetres":2,"localReliefMetres":4.11,"threeTilePreparationMs":31,"seams":"pass","workerProtocol":"pass","residentContactParity":"pass","cacheBytes":3447552}
+{"formations":290,"independentRaycastContacts":11,"contactAndTyres":"pass","embeddedFoundations":"pass","initialPlacementCpuMs":133}
+Bundled material maps, recipe roundtrip, isolated imports, zero weights and malformed recipe rejection: pass
+Mask endpoints, monotonic coverage, inversion, slope placement, ordered opacity conservation, seeded procedural maps and normals: pass
+Planetary drainage: deterministic, longitude/pole seams, airless routing, reference preservation, cache identity/bounds and vertex data pass
+Normal moments: flat surfaces, opposing slopes, variance persistence and mean normal pass
+Material pages: shared halos, longitude continuity, bounded residency, eviction invalidation and world reset pass
+Material uploads: four page rectangles and one mapping, with no full-atlas page refresh pass
+Material composition: local eroded reference masks participate alongside the planetary parent pass
+Planet worker: production module graph, full-resolution routing and transferred typed arrays pass
+Material worker: production composition and four transferred channels pass
+{"compressedMaterials":13,"downloadBytes":42078137,"mipChains":"pass","normalMomentMipChains":"pass","dependencyImports":"pass"}
+Scanned outcrop: source provenance, bounded geometry, simplification error and finite unit normals pass
+Five detailed profiles: distinct geometry, dry/airless rules, shared halos, fallback parity, cache isolation, touchdown and rendered contacts pass
+Regional PBR: distinct profiles, analytic relief normals, liquid gating, geological overlays and bounded channels pass
+Coastal bathymetry, signed distance, atlas allocation, advancing/receding wash and drying passed
+Coastal solver: lake-at-rest balance, closed volume, wave propagation, positivity, run-up, foam bounds and stored drying passed
+Coastal solver failed: test failure
+Coastal worker/flow: bounded requests, two-frame interpolation, transfers, stale epoch rejection, history continuity and reset isolation passed
+Coastal spray: active-breaking emission, dry/deep exclusion, bounded deterministic pool, ballistic lifetime, reset isolation and render depth state passed
+Coastal crests: active wet/shallow front selection, spacing, bounded pool, lifecycle matching, overturning section, tapered edges and depth render state passed
+Page PBR: real scan pyramids, normal moments, filtered averages, ordered/height-aware decals, validation, shared halos and isolated cache edits passed
+Orbital layers: filtered coverage, resident atlas updates and removal passed
+
+CPU fixtures and shader export:
+{"patches":196,"movingPatches":4,"medianCpuMs":0.516,"attributeUpdates":2250,"frames":30}
+{"formations":290,"initializationFrames":24,"placementCpuMedianMs":4.246,"placementCpuP95Ms":4.533,"cache":{"step":2,"tiles":192,"prepared":0,"limit":192,"bytes":3447552,"pending":0}}
+Exported terrain, environment, rock, shadow, water and atmosphere shaders
+/usr/local/bin/apt-get
+/usr/bin/apt-cache
+/usr/bin/c++
+/usr/bin/g++
