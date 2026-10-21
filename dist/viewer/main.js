@@ -1,0 +1,24 @@
+import * as T from 'three/webgpu';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {ObjectViewer} from './object-viewer.js';
+import {createEmblem} from './emblem.js';
+const $=id=>document.getElementById(id),message=$('message');
+// Deterministic fine directional machining: tangent-space normal + roughness.
+function brushedTextures(){const size=512,normal=new Uint8Array(size*size*4),rough=new Uint8Array(size*size*4);let seed=481;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};for(let y=0;y<size;y++){const line=random();for(let x=0;x<size;x++){const i=(y*size+x)*4;normal[i]=128;normal[i+1]=128+Math.round((line-.5)*65+(random()-.5)*12);normal[i+2]=251;normal[i+3]=255;const r=175+line*65+random()*10;rough.set([r,r,r,255],i);}}const texture=data=>{const t=new T.DataTexture(data,size,size);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(3,3);t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;};return{normal:texture(normal),rough:texture(rough)};}
+try{
+ const viewer=await new ObjectViewer().initialize($('viewport'));viewer.onError=m=>message.textContent=m;
+ const textures=brushedTextures();const metal=new T.MeshPhysicalMaterial({color:0xb9c6d0,metalness:1,roughness:.28,normalMap:textures.normal,normalScale:new T.Vector2(.15,.15),roughnessMap:textures.rough,clearcoat:.18,clearcoatRoughness:.24});
+ const emblem=createEmblem(metal);const finishes=[];emblem.traverse(o=>{if(o.isMesh&&o.material.metalness>.8)finishes.push(o.material);});const sphere=new T.Mesh(new T.SphereGeometry(1.65,96,64),metal);let imported=null,current='logo';viewer.setObject(emblem);$('backend').textContent='● WEBGPU ACTIVE';message.textContent='';
+ function apply(){const value=id=>Number($(id).value);for(const id of ['key','azimuth','rim','environment','exposure','roughness','metalness','brush','glow'])$(id+'Out').textContent=$(id).value;
+ viewer.key.intensity=value('key')/10;const a=T.MathUtils.degToRad(value('azimuth'));viewer.key.position.set(Math.sin(a)*5,3,Math.cos(a)*5);viewer.rim.intensity=value('rim')/10;viewer.scene.environmentIntensity=value('environment');viewer.renderer.toneMappingExposure=value('exposure');
+ for(const m of finishes){m.roughness=value('roughness');m.metalness=value('metalness');m.normalScale?.setScalar(value('brush'));}metal.roughness=value('roughness');metal.metalness=value('metalness');metal.normalScale.setScalar(value('brush'));emblem.userData.emissive.emissiveIntensity=value('glow');viewer.controls.autoRotate=$('rotate').checked;
+ }
+ document.querySelectorAll('input[type=range],#rotate').forEach(el=>el.addEventListener('input',apply));apply();
+ const presets={eclipse:{key:65,rim:90,environment:.7,exposure:1,azimuth:-40,keyColor:0xe8f1ff,rimColor:0x79cfff},warm:{key:80,rim:65,environment:.65,exposure:1,azimuth:45,keyColor:0xffd9ad,rimColor:0x779eff},gallery:{key:45,rim:40,environment:1.25,exposure:1.1,azimuth:-25,keyColor:0xffffff,rimColor:0xdfeaff}};
+ $('preset').onchange=()=>{const p=presets[$('preset').value];for(const id of ['key','rim','environment','exposure','azimuth'])$(id).value=p[id];viewer.key.color.set(p.keyColor);viewer.rim.color.set(p.rimColor);apply();};
+ $('reference').onchange=()=>{$('referenceCard').hidden=!$('reference').checked;};$('reset').onclick=()=>viewer.frame();$('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{message.textContent='Fullscreen is unavailable in this browser.';}};
+ $('collapse').onclick=()=>{const hidden=!$('controls').hidden;$('controls').hidden=hidden;$('collapse').textContent=hidden?'+':'−';$('collapse').setAttribute('aria-expanded',String(!hidden));};
+ $('object').onchange=()=>{if($('object').value==='import'){$('file').click();$('object').value=current;return;}current=$('object').value;viewer.setObject(current==='logo'?emblem:sphere);message.textContent='';};
+ $('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;if(file.size>100*1024*1024){message.textContent='Please choose a GLB smaller than 100 MB.';return;}message.textContent='Loading '+file.name+'…';const url=URL.createObjectURL(file);try{const gltf=await new GLTFLoader().loadAsync(url);if(!gltf.scene.children.length)throw Error('No visible scene in this file');if(imported){viewer.scene.remove(imported);viewer.disposeObject(imported);}imported=gltf.scene;viewer.setObject(imported);current='import';$('object').value='import';message.textContent=file.name+' · original materials preserved';}catch(error){message.textContent='Could not load GLB: '+error.message;}finally{URL.revokeObjectURL(url);$('file').value='';}};
+ window.addEventListener('pagehide',()=>viewer.dispose(),{once:true});
+}catch(error){$('backend').textContent='WEBGPU UNAVAILABLE';message.textContent=error.message;console.error(error);}

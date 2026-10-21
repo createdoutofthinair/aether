@@ -24,3 +24,9 @@ await mkdir('dist/render/webgpu',{recursive:true});
 await copyFile('src/render/backend-session.js','dist/render/backend-session.js');
 for(const name of ['bootstrap','preview-backend','terrain-preview'])await copyFile(`src/render/webgpu/${name}.js`,`dist/render/webgpu/${name}.js`);
 console.log('Pinned WebGPU modules and opt-in preview synchronized');
+// Reusable WebGPU object studio: self-host matching official addons.
+for(const relative of ['controls/OrbitControls.js','environments/RoomEnvironment.js','loaders/GLTFLoader.js','utils/BufferGeometryUtils.js','utils/SkeletonUtils.js','tsl/display/BloomNode.js']){
+ const target=`dist/vendor-gpu/addons/${relative}`;
+ await mkdir(target.slice(0,target.lastIndexOf('/')),{recursive:true});
+ await copyFile(`node_modules/three/examples/jsm/${relative}`,target);
+}
