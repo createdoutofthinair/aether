@@ -23,3 +23,20 @@ for(const [w,h]of [[3440,1290],[2560,930],[1920,930],[1440,750],[1280,874],[1024
 }
 assert.equal(fitHudFrame(0,0).scale,0);
 console.log('HUD layout: shared aspect ratio, contained frame and stable centre across ultrawide, tall and short viewports passed');
+
+// Prevent accidentally publishing an opaque replacement for the cockpit cutout.
+const {readFileSync}=await import('node:fs');
+const foreground=readFileSync(new URL('../dist/hud/assets/cockpit-foreground.webp',import.meta.url));
+assert.equal(foreground.toString('ascii',0,4),'RIFF');assert.equal(foreground.toString('ascii',8,12),'WEBP');
+let lossless=false;
+for(let offset=12;offset+8<=foreground.length;){
+ const length=foreground.readUInt32LE(offset+4),kind=foreground.toString('ascii',offset,offset+4);
+ if(kind==='VP8L'){
+  assert.equal(foreground[offset+8],0x2f);const bits=foreground.readUInt32LE(offset+9);
+  assert.equal((bits&0x3fff)+1,1678);assert.equal(((bits>>>14)&0x3fff)+1,937);
+  assert.equal((bits>>>28)&1,1,'Cockpit foreground must contain alpha');lossless=true;
+ }
+ offset+=8+length+(length%2);
+}
+assert.ok(lossless,'Cockpit foreground must use lossless WebP');
+console.log('HUD cockpit: lossless foreground dimensions and alpha channel passed');
