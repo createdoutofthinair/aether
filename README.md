@@ -171,3 +171,8 @@ python scripts/compress-materials.py /path/to/basisu /tmp/aether-material-input
 ```
 
 The scan metadata records its source, author, CC0 license and simplification error. The terrain material is applied to the captured shape; the original scan UV texture set is not used.
+
+
+## HUD design lab
+
+Open **DEV → HUD design** or `hud-design.html` for the independent interactive cockpit prototype. **Run demo** tours cruise, targeting, an emergency and approach. The inspector provides live colour, scale, contrast and motion controls. See [HUD design, controls, principles and integration boundary](docs/hud-design-lab.md). Telemetry is simulated; this page does not control the planet renderer.
