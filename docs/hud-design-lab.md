@@ -65,3 +65,8 @@ Editing prompt: “Clean background plate for an interactive spacecraft cockpit 
 - [W3C WCAG 2.2: Pause, Stop, Hide](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide)
 
 This prototype is not a WCAG conformance claim and is not affiliated with Star Citizen or Cloud Imperium Games.
+
+
+## Aspect ratio stability
+
+The desktop cockpit uses a single 1678 × 937 design frame matching the art plate. A ResizeObserver uniformly fits and centres the entire frame inside the available viewport; the artwork, compass, instruments, projected contacts and radar therefore share exactly the same transform. Spare space stays outside the frame instead of cropping cockpit controls. The central flight display is anchored by the actual SVG reticle at (360,237), including when the HUD scale changes. Independent width caps and viewport-height sizing no longer move HUD components relative to one another. Portrait windows up to 900 px wide use the existing reflow layout; short landscape windows retain the fitted cockpit and compact outer toolbars.

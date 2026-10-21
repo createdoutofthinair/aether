@@ -1,5 +1,7 @@
 import {createState,scenarios,contacts,setScenario,allocatePower,selectContact,tick} from './state.js';
 import {createCanvases} from './canvas.js';
+import {mountHudLayout} from './layout.js';
+mountHudLayout(document.getElementById('cockpit'),document.getElementById('cockpitScene'));
 const $=id=>document.getElementById(id),$$=q=>[...document.querySelectorAll(q)];
 const state=createState(),canvases=createCanvases($('space'),$('radar'));
 const defaults={theme:'cyan',scale:100,opacity:90,glass:45,exposure:75,safeArea:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,highContrast:false};
