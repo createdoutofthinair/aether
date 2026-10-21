@@ -1,12 +1,16 @@
+import {getAudioManager} from '../audio/audio-manager.js';
+import {creditsPlaylist} from '../audio/playlists.js';
+const soundtrack=getAudioManager();
+soundtrack.setPlaylist(creditsPlaylist,{loop:true});
 const roll=document.querySelector('#roll'),viewport=document.querySelector('#viewport');
 const pause=document.querySelector('#pause'),progress=document.querySelector('#progress'),status=document.querySelector('#status');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let running=!reduced,position=0,last=0,end=1,speed=48;
 function measure(){end=Math.max(1,roll.scrollHeight-viewport.clientHeight+60);position=Math.min(position,end);paint();}
 function paint(){roll.style.transform=`translateY(${-position}px)`;progress.value=String(Math.round(position/end*1000));}
-function update(){pause.textContent=running?'Ⅱ Pause':'▶ Play';pause.setAttribute('aria-label',running?'Pause credits':'Play credits');status.textContent=position>=end?'COMPLETE':running?'ROLLING':'PAUSED';}
+function update(){soundtrack.setPlaying(running);pause.textContent=running?'Ⅱ Pause':'▶ Play';pause.setAttribute('aria-label',running?'Pause credits':'Play credits');status.textContent=position>=end?'COMPLETE':running?'ROLLING':'PAUSED';}
 function seek(value){position=Math.max(0,Math.min(end,value));if(position>=end)running=false;paint();update();}
-function restart(){position=0;running=true;last=0;paint();update();}
+function restart(){soundtrack.restart();position=0;running=true;last=0;paint();update();}
 pause.addEventListener('click',()=>{if(position>=end){restart();return;}running=!running;last=0;update();});
 document.querySelector('#restart').addEventListener('click',restart);document.querySelector('#replay').addEventListener('click',restart);
 document.querySelector('#speed').addEventListener('change',e=>{speed=Number(e.target.value);});
@@ -23,3 +27,8 @@ document.addEventListener('visibilitychange',()=>{last=0;});
 new ResizeObserver(measure).observe(roll);window.addEventListener('resize',measure);
 function frame(now){if(last&&running&&!document.hidden){position=Math.min(end,position+Math.min((now-last)/1000,.1)*speed);paint();if(position>=end){running=false;update();}}last=now;requestAnimationFrame(frame);}
 measure();update();requestAnimationFrame(frame);
+
+window.addEventListener('pagehide',()=>soundtrack.pause());
+window.addEventListener('pageshow',()=>soundtrack.setPlaying(running));
+// Non-blocking diagnostics: audio failure never interrupts the credit roll.
+soundtrack.addEventListener('error',event=>console.warn('Aether soundtrack unavailable',event.detail));
