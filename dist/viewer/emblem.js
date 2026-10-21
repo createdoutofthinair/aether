@@ -1,4 +1,5 @@
 import * as T from 'three/webgpu';
+import {createOrbit} from './orbit.js';
 // Actual beveled solids based on the supplied image, not an image plane.
 export function createEmblem(metal){
  const root=new T.Group(), body=new T.Group();root.add(body);
@@ -12,10 +13,7 @@ export function createEmblem(metal){
  plate([[.04,1.78],[.35,.14],[.94,-.90],[.14,.36]],dark,.28);
  const tube=(points,r,mat,parent=body)=>{const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p)));const mesh=new T.Mesh(new T.TubeGeometry(curve,100,r,8,false),mat);parent.add(mesh);return mesh;};
  for(const sign of [-1,1])tube([[sign*.06,1.86,.155],[sign*.16,.40,.155],[sign*.95,-.94,.155]],.009,cyan);
- const orbit=new T.Group();orbit.rotation.set(.36,.12,-.32);orbit.position.y=.1;body.add(orbit);
- const ring=new T.Mesh(new T.TorusGeometry(1.98,.022,12,256),metal.clone());ring.scale.y=.39;orbit.add(ring);
- const angle=.58;const planet=new T.Mesh(new T.SphereGeometry(.115,48,32),new T.MeshPhysicalMaterial({color:0x4f91b6,metalness:.45,roughness:.25,clearcoat:1,emissive:0x174764,emissiveIntensity:.7}));planet.position.set(Math.cos(angle)*1.98,Math.sin(angle)*1.98*.39,0);orbit.add(planet);
- const atmosphere=new T.Mesh(new T.SphereGeometry(.127,40,24),new T.MeshBasicMaterial({color:0x79dfff,transparent:true,opacity:.16,side:T.BackSide,blending:T.AdditiveBlending,depthWrite:false}));planet.add(atmosphere);
+ const orbit=createOrbit(metal);body.add(orbit.group);root.userData.update=orbit.update;
  // Geometric wordmark keeps it sharp at every camera distance.
  const letters=[[[0,0],[.22,.4],[.44,0]],[[.40,.4],[0,.4],[0,0],[.40,0]],[[0,.4],[.44,.4]],[[0,0],[0,.4]],[[.4,.4],[0,.4],[0,0],[.4,0]],[[0,0],[0,.4],[.31,.4],[.4,.32],[.31,.22],[0,.22],[.42,0]]];
  const word=new T.Group();root.add(word);const stroke=.025;
