@@ -42,3 +42,14 @@ See [ADR 0002](adr/0002-webgpu-bootstrap.md).
 - Tests cover nonlinear shared borders throughout transitions, cancellation, generation/residency caps and convergence in both directions.
 
 Phase 4 is still partial: no planetary quadtree/SSE, mixed-level neighbors, streamed eroded tiles, global travel/origin shifts or contact integration have been added to the preview. Browser visuals and representative GPU performance remain pending. See [ADR 0003](adr/0003-regional-lod.md).
+
+## Adaptive regional LOD — 22 October 2026
+
+- Completed the previously local, unpublished adaptive regional work and connected it to the preview.
+- Each patch independently selects detail using projected coarse midpoint error, viewport scale and hysteresis. Neighbor targets and transitions preserve a 2:1 displayed topology.
+- Canonical shared edge profiles align mixed-resolution positions and normal interpolation throughout refinement and coarsening.
+- Retained generation/residency caps, current-level fallback and stale-request cancellation.
+- Added Shift-drag focus movement for inspecting different parts of the region.
+- New tests check nonlinear and actual shared-terrain edges, convergence and resource bounds. Visual/GPU acceptance remains pending.
+
+This supersedes the earlier regional milestone's “no mixed-level neighbors” limitation. Planetary quadtree, streamed eroded terrain and global/origin/contact integration remain open. See [ADR 0004](adr/0004-adaptive-regional-lod.md).
