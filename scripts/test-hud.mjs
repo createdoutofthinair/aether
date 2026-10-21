@@ -11,3 +11,15 @@ const run=(s,seconds)=>{for(let t=0;t<seconds;t+=.05)tick(s,.05);};
 const moving=createState();moving.power=[100,0,0];moving.throttle=100;run(moving,30);assert.ok(moving.speed>500);moving.mode='SCM';run(moving,30);assert.ok(Math.abs(moving.speed-200)<.01);moving.throttle=0;run(moving,30);assert.ok(moving.speed<.01);
 const cooling=createState();setScenario(cooling,'emergency');allocatePower(cooling,1,100);run(cooling,60);assert.ok(cooling.heat<80);assert.ok(Number.isFinite(cooling.speed));
 console.log('HUD: conserved power, scan/pause lifecycle, scenario isolation, throttle response, SCM speed limit and thermal response passed');
+
+// Every aspect ratio fits the same cockpit frame, with symmetric spare space.
+const {fitHudFrame,HUD_FRAME}=await import('../dist/hud/layout.js');
+for(const [w,h]of [[3440,1290],[2560,930],[1920,930],[1440,750],[1280,874],[1024,618],[844,284],[390,900]]){
+ const f=fitHudFrame(w,h);
+ assert.ok(f.width<=w+1e-8&&f.height<=h+1e-8);
+ assert.ok(Math.abs(f.left+f.width/2-w/2)<1e-8);
+ assert.ok(Math.abs(f.top+f.height/2-h/2)<1e-8);
+ assert.ok(Math.abs(f.width/f.height-HUD_FRAME.width/HUD_FRAME.height)<1e-8);
+}
+assert.equal(fitHudFrame(0,0).scale,0);
+console.log('HUD layout: shared aspect ratio, contained frame and stable centre across ultrawide, tall and short viewports passed');
