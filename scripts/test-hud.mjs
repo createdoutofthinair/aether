@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {createState,allocatePower,setScenario,selectContact,tick} from '../dist/hud/state.js';
+const s=createState();
+// Arbitrary redistribution always conserves the finite power budget.
+for(let i=0;i<3;i++)for(const v of [-30,0,1,29,50,99,100,150]){allocatePower(s,i,v);assert.equal(s.power.reduce((a,b)=>a+b,0),100);assert.ok(s.power.every(n=>Number.isInteger(n)&&n>=0&&n<=100));}
+s.power=[100,0,0];allocatePower(s,0,0);assert.deepEqual(s.power,[0,50,50]);
+selectContact(s,'unknown');s.scanning=true;tick(s,2);assert.equal(s.scan,50);s.paused=true;tick(s,8);assert.equal(s.scan,50);s.paused=false;tick(s,3);assert.equal(s.scan,100);assert.equal(s.scanning,false);
+selectContact(s,'port');assert.equal(s.scan,0);assert.equal(s.locked,false);assert.equal(selectContact(s,'missing'),false);assert.equal(s.selected,'port');
+s.acknowledged=true;setScenario(s,'emergency');assert.ok(s.shield<35);assert.ok(s.warning);assert.equal(s.acknowledged,false);assert.equal(s.selected,null);assert.equal(setScenario(s,'missing'),false);
+const run=(s,seconds)=>{for(let t=0;t<seconds;t+=.05)tick(s,.05);};
+const moving=createState();moving.power=[100,0,0];moving.throttle=100;run(moving,30);assert.ok(moving.speed>500);moving.mode='SCM';run(moving,30);assert.ok(Math.abs(moving.speed-200)<.01);moving.throttle=0;run(moving,30);assert.ok(moving.speed<.01);
+const cooling=createState();setScenario(cooling,'emergency');allocatePower(cooling,1,100);run(cooling,60);assert.ok(cooling.heat<80);assert.ok(Number.isFinite(cooling.speed));
+console.log('HUD: conserved power, scan/pause lifecycle, scenario isolation, throttle response, SCM speed limit and thermal response passed');
