@@ -5,3 +5,45 @@
 /* The hero occupies the visible credit viewport; the same vector scrolls with the roll. */
 .opening{padding-top:0;max-width:none}.title-stage{height:calc(100svh - 154px);min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;--solid:0;--vector:0;--draw:1;--flare:0}.title-art{position:relative;width:min(540px,76vw,calc(100svh - 245px));aspect-ratio:1}.title-solid,.title-vector{position:absolute;inset:0;width:100%;height:100%}.title-solid{opacity:var(--solid);filter:drop-shadow(0 0 25px #3896ce44)}.title-solid canvas{display:block;width:100%;height:100%}.title-vector{opacity:var(--vector);fill:none;stroke:#c2e9fa;stroke-width:.85;filter:drop-shadow(0 0 5px #70d3ff99)}.title-vector path{stroke-dasharray:1;stroke-dashoffset:var(--draw);vector-effect:non-scaling-stroke}.title-vector ellipse{stroke-dasharray:1;stroke-dashoffset:var(--draw)}.title-flare{position:absolute;top:48%;left:-15%;right:-15%;height:2px;opacity:var(--flare);background:linear-gradient(90deg,transparent,#4cceff,#fff,#4cceff,transparent);box-shadow:0 0 22px 5px #55cfff66;transform:rotate(-12deg);pointer-events:none}.title-caption{position:absolute;bottom:5%;margin:0;opacity:calc(.35 + var(--vector)*.65)}.title-resolved .title-solid{visibility:hidden}.title-resolved .title-vector{filter:drop-shadow(0 0 3px #70d3ff55)}@media(prefers-reduced-motion:reduce){.title-flare{display:none}}
 
+
+/* Grand end-title typography: display captions / readable production text. */
+:root{font-family:'Exo 2',sans-serif;font-size:20px}
+h1,h2,h3,.eyebrow,.subtitle,.brand,.final-title,.technology-grid strong{font-family:'Orbitron',sans-serif}
+section{max-width:1120px;padding:115px 0}
+h2{font-size:clamp(30px,4.4vw,52px);font-weight:500;line-height:1.5;letter-spacing:.09em}
+.hero-name{font-size:clamp(38px,6.5vw,76px);font-weight:500;line-height:1.45;letter-spacing:.055em}
+.eyebrow{font-size:clamp(14px,1.25vw,18px);font-weight:500;letter-spacing:.24em;line-height:1.9;color:#bed2e3}
+.subtitle{font-size:clamp(14px,1.5vw,20px);letter-spacing:.24em;line-height:1.9}
+p,.columns p{font-size:clamp(19px,1.7vw,24px);line-height:1.85;margin:14px 0;letter-spacing:.035em}
+h3{font-size:clamp(14px,1.25vw,18px);line-height:1.9;font-weight:500;letter-spacing:.15em;color:#c0d7e9;margin-bottom:32px}
+.columns{max-width:1040px;gap:70px;margin:60px auto}
+.columns>div{min-width:0}
+.statement{font-size:clamp(25px,3.1vw,36px);line-height:1.65;margin-top:50px}
+.muted{font-size:clamp(18px,1.55vw,22px);line-height:1.9;color:#adbdcc}
+.narrow{max-width:780px;margin:45px auto}
+.technology-grid{max-width:920px;gap:65px}
+.technology-grid strong,.compact strong{font-size:clamp(25px,3.1vw,40px);line-height:1.5}
+.technology-grid small{font-size:14px;line-height:1.8;letter-spacing:.12em}
+.tech-title h2{font-size:clamp(36px,5vw,58px)}
+.wordmark{font-size:66px}.wordmark.small{font-size:32px}
+.final-title{font-size:clamp(42px,7vw,90px);letter-spacing:.28em;padding-left:.28em}
+section>a{font-size:19px;line-height:1.9}
+.title-caption{max-width:90%;font-size:clamp(12px,1.3vw,18px);line-height:1.8}
+.title-vector text{font-family:'Orbitron',sans-serif}
+.opening{padding-top:0;max-width:none}
+.closing{padding-bottom:65px}
+@media(max-width:650px){
+ #roll{padding:0 20px}
+ section{padding:85px 0}
+ .columns{grid-template-columns:1fr;gap:55px;margin:48px auto}
+ .columns p{font-size:20px}
+ .columns h3{font-size:15px;line-height:1.8}
+ .technology-grid{gap:45px 20px}
+ .technology-grid strong{font-size:23px}
+ .technology-grid small{font-size:12px;letter-spacing:.08em}
+ .hero-name{font-size:clamp(30px,8vw,44px);overflow-wrap:normal}
+ .title-caption{font-size:11px;letter-spacing:.13em}
+ .subtitle{letter-spacing:.14em}
+ .controls{font-size:12px}
+ .speed{font-size:0}
+}
