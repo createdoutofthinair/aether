@@ -1,0 +1,33 @@
+name: Full regression and dependency audit
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['package.json', 'package-lock.json']
+  pull_request:
+    paths: ['package.json', 'package-lock.json']
+permissions:
+  contents: read
+concurrency:
+  group: aether-full-regression
+  cancel-in-progress: true
+jobs:
+  regression:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: true
+      publish: false
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Audit locked dependencies separately from deployment
+        run: npm audit --package-lock-only --audit-level=high

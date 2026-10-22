@@ -1,0 +1,154 @@
+name: Aether selective checks
+on:
+  workflow_call:
+    outputs:
+      deploy:
+        value: ${{ jobs.changes.outputs.deploy }}
+    inputs:
+      full:
+        type: boolean
+        default: false
+      publish:
+        type: boolean
+        default: false
+      base:
+        type: string
+        default: ''
+      head:
+        type: string
+        default: ''
+permissions:
+  contents: read
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      groups: ${{ steps.plan.outputs.groups }}
+      shaders: ${{ steps.plan.outputs.shaders }}
+      rover: ${{ steps.plan.outputs.rover }}
+      build: ${{ steps.plan.outputs.build }}
+      deploy: ${{ steps.plan.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: plan
+        name: Select affected checks
+        env:
+          CI_FULL: ${{ inputs.full }}
+          CI_BASE: ${{ inputs.base }}
+          CI_HEAD: ${{ inputs.head }}
+        run: node scripts/ci/plan.mjs
+      - name: Verify selection rules
+        run: node scripts/test-ci-plan.mjs
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies without inline audit
+        run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Build once and check JavaScript
+        run: |
+          npm run build
+          npm run check
+          node --check scripts/ci/plan.mjs
+          node --check scripts/ci/run-tests.mjs
+      - name: Share generated foundation for checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation
+          retention-days: 1
+          path: |
+            dist/domain/
+            dist/render/
+            dist/vendor-gpu/
+            dist/foundation-manifest.json
+          if-no-files-found: error
+      - name: Package Pages artifact once
+        if: inputs.publish && needs.changes.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  suites:
+    name: ${{ matrix.group }} tests
+    needs: [changes, build]
+    if: needs.changes.outputs.groups != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJSON(needs.changes.outputs.groups) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies without inline audit
+        run: npm ci --prefer-offline --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: foundation
+          path: dist
+      - name: Run selected suite with per-test timings
+        run: node scripts/ci/run-tests.mjs '${{ matrix.group }}'
+
+  shaders:
+    needs: changes
+    if: needs.changes.outputs.shaders == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile terrain and atmosphere shaders
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+          node scripts/export-shaders.mjs /tmp/aether-shaders
+          node scripts/check-shaders.mjs /tmp/aether-shaders
+
+  rover:
+    needs: changes
+    if: needs.changes.outputs.rover == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify rover asset
+        run: node scripts/ci/verify-rover.mjs
+
+  test:
+    name: test
+    needs: [changes, build, suites, shaders, rover]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every selected check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          const results=JSON.parse(process.env.RESULTS);
+          if(results.changes.result!=='success')throw Error('Change selection failed');
+          for(const [name,job]of Object.entries(results)){
+            if(!['success','skipped'].includes(job.result))throw Error(`${name}: ${job.result}`);
+          }
+          const selected=results.changes.outputs;
+          for(const [name,required]of [['build',selected.build==='true'],['suites',selected.groups!=='[]'],['shaders',selected.shaders==='true'],['rover',selected.rover==='true']]){
+            if(required&&results[name].result!=='success')throw Error(`Required check ${name} did not pass`);
+          }
+          console.log('All selected checks passed');
+          NODE
+

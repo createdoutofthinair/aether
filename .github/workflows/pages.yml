@@ -1,54 +1,29 @@
 name: Test and deploy Aether
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: aether-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Install pinned build dependencies
-        run: npm ci
-      - name: Build domain foundation
-        run: npm run build
-      - name: Check JavaScript
-        run: npm run check
-      - name: Test terrain continuity
-        run: npm test
-      - name: Compile terrain and atmosphere shaders
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq glslang-tools
-          node scripts/export-shaders.mjs /tmp/aether-shaders
-          node scripts/check-shaders.mjs /tmp/aether-shaders
-      - name: Verify rover asset
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          import { gunzipSync } from 'node:zlib';
-          import assert from 'node:assert/strict';
-          const glb = gunzipSync(readFileSync('dist/rover.glb.gz'));
-          assert.equal(glb.toString('ascii', 0, 4), 'glTF');
-          assert.equal(glb.readUInt32LE(4), 2);
-          assert.equal(glb.readUInt32LE(8), glb.length);
-          console.log('Rover GLB verified');
-          NODE
+  checks:
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: ${{ github.event_name == 'workflow_dispatch' }}
+      publish: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+      base: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      head: ${{ github.event.pull_request.head.sha || github.sha }}
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: test
+    needs: checks
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.checks.outputs.deploy == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pages: write
@@ -60,19 +35,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Install pinned build dependencies
-        run: npm ci
-      - name: Build renderer preview
-        run: npm run build
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-      - name: Deploy to GitHub Pages
+      - name: Publish the already tested artifact
         id: deployment
         uses: actions/deploy-pages@v4
-
