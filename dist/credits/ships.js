@@ -18,11 +18,12 @@ export function createCreditsShips(canvas){
  const resize=new ResizeObserver(fit);resize.observe(canvas);
  function fail(error){failed=true;ready=false;canvas.hidden=true;console.info('Aether ship flybys unavailable:',error?.message||error);}
  const api={tick(dt=0){if(disposed||failed||reduced.matches||document.hidden)return;clock+=Math.min(Math.max(dt,0),.1);if(!ready||pending||clock-lastDraw<1/30)return;
-  const flights=activeFlights(clock,camera.aspect),ids=new Set(flights.map(f=>f.index));for(const [index,ship]of cache)if(!ids.has(index)){scene.remove(ship);disposeShip(ship);cache.delete(index);}
-  for(const f of flights){let ship=cache.get(f.index);if(!ship){let plan=blueprint(f.seed);for(let n=1;plan.count>4&&n<=64;n++)plan=blueprint(f.seed+'-'+n);ship=batchShip(shipModel(plan,{roughness:Math.max(.42,plan.appearance.roughness)}));cache.set(f.index,ship);scene.add(ship);}
-   const halfHeight=-f.z*Math.tan(T.MathUtils.degToRad(camera.fov/2));ship.position.set(f.x*halfHeight*camera.aspect,f.y*halfHeight,f.z);ship.scale.setScalar(f.scale);
-   // Nose follows the diagonal flight, with a restrained banking angle.
-   ship.rotation.set(.15,f.side>0?Math.PI*.65:-Math.PI*.65,f.side*.18);ship.traverse(o=>{if(o.material)o.material.opacity=f.opacity;});
+  const flights=activeFlights(clock),ids=new Set(flights.map(f=>f.index));for(const [index,ship]of cache)if(!ids.has(index)){scene.remove(ship);disposeShip(ship);cache.delete(index);}
+  for(const f of flights){let ship=cache.get(f.index);if(!ship){let plan=blueprint(f.seed);for(let n=1;plan.count>4&&n<=64;n++)plan=blueprint(f.seed+'-'+n);const model=shipModel(plan,{roughness:Math.max(.42,plan.appearance.roughness)});model.rotation.set(0,0,0);ship=batchShip(model);cache.set(f.index,ship);scene.add(ship);}
+   ship.position.set(f.x,f.y,f.z);ship.scale.setScalar(f.scale);
+   // Kit nose is -Z: remove the studio display rotation before batching, then
+   // keep every hull aligned with the shared forward flight direction.
+   ship.rotation.set(0,0,0);ship.traverse(o=>{if(o.material)o.material.opacity=f.opacity;});
   }
   try{renderer.render(scene,camera);lastDraw=clock;pending=true;renderer.backend.device.queue.onSubmittedWorkDone().then(()=>{pending=false;},fail);}catch(error){fail(error);}
  },restart(){clock=0;lastDraw=-1;for(const ship of cache.values()){scene?.remove(ship);disposeShip(ship);}cache.clear();},dispose(){if(disposed)return;disposed=true;ready=false;resize.disconnect();for(const ship of cache.values())disposeShip(ship);cache.clear();environment?.dispose();pmrem?.dispose();renderer?.dispose();}};
