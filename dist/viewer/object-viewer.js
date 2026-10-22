@@ -20,7 +20,7 @@ export class ObjectViewer{
   this.resize=new ResizeObserver(()=>{const {width,height}=container.getBoundingClientRect();if(!width||!height)return;this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);});this.resize.observe(container);
   this.pipeline=new T.RenderPipeline(this.renderer);const scenePass=pass(this.scene,this.camera);const color=scenePass.getTextureNode('output');this.bloom=bloom(color,.18,.35,1.3);this.pipeline.outputNode=color.add(this.bloom);
   let previousTime;
-  this.renderer.setAnimationLoop(time=>{const dt=previousTime===undefined?0:Math.min((time-previousTime)/1000,.05);previousTime=time;if(!document.hidden)this.object?.userData.update?.(dt);this.controls.update(dt);this.pipeline.render();});
+  this.renderer.setAnimationLoop(time=>{const dt=previousTime===undefined?0:Math.min((time-previousTime)/1000,.05);previousTime=time;if(document.hidden||this.paused)return;if(!document.hidden)this.object?.userData.update?.(dt);this.controls.update(dt);this.pipeline.render();});
   this.renderer.backend.device.lost.then(info=>{if(info.reason!=='destroyed')this.onError?.('The WebGPU device was lost. Reload this page to restart the studio.');});
   return this;
  }

@@ -1,13 +1,16 @@
 import * as T from 'three/webgpu';
 import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {random} from './blueprint.js';
-export function shipModel(plan,{explode=0,roughness=plan.appearance.roughness,finish=plan.appearance.finish,single=null}={}){
- const root=new T.Group(),steel=new T.MeshStandardMaterial({color:finish==='dark'?0x3b4651:0xaeb7bf,metalness:plan.appearance.metalness,roughness}),dark=new T.MeshStandardMaterial({color:0x202832,metalness:.8,roughness:.4}),copper=new T.MeshStandardMaterial({color:0x9b674a,metalness:.82,roughness:.32}),glass=new T.MeshPhysicalMaterial({color:0x15354b,metalness:.5,roughness:.13,clearcoat:1}),blue=new T.MeshStandardMaterial({color:0x206eae,metalness:.6,roughness:.3}),glow=new T.MeshStandardMaterial({color:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissive:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissiveIntensity:4}),amber=new T.MeshStandardMaterial({color:0xffad52,emissive:0xff6219,emissiveIntensity:2});
- function mesh(g,m,p,x=0,y=0,z=0){const o=new T.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o;}
+import {bakeSurface} from '../hull/surface.js';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {seededHull,metricUV,hullMaterial} from '../hull/material.js';
+export function shipModel(plan,{explode=0,roughness=plan.appearance.roughness,finish=plan.appearance.finish,single=null,hull=null,detailSize=128}={}){
+ const root=new T.Group(),steel=hull||seededHull(plan.seed??plan.parts[0]?.detailSeed,{finish,roughness,size:detailSize}),dark=hullMaterial(bakeSurface({preset:'engine',seed:String(plan.seed),substrate:'#343c48',heat:.5},Math.min(detailSize,128))),copper=new T.MeshStandardMaterial({color:0x9b674a,metalness:.82,roughness:.32}),glass=new T.MeshPhysicalMaterial({color:0x15354b,metalness:.5,roughness:.13,clearcoat:1}),blue=new T.MeshStandardMaterial({color:0x206eae,metalness:.6,roughness:.3}),glow=new T.MeshStandardMaterial({color:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissive:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissiveIntensity:4}),amber=new T.MeshStandardMaterial({color:0xffad52,emissive:0xff6219,emissiveIntensity:2});
+ function mesh(g,m,p,x=0,y=0,z=0){metricUV(g,m.userData.recipe?.tileMeters??2);const o=new T.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o;}
  function cylinder(p,r,l,m,z=0,r2=r,open=false){const o=mesh(new T.CylinderGeometry(r,r2,l,48,1,open),m,p,0,0,z);o.rotation.x=Math.PI/2;return o;}
  function shell(p,r,l,m,shape){if(shape==='box')return box(p,r*2,r*2,l,m);if(shape==='octagonal'){const o=mesh(new T.CylinderGeometry(r*1.08,r*1.08,l,8),m,p);o.rotation.x=Math.PI/2;return o;}return cylinder(p,r,l,m);}
  function ring(p,r,z,m=dark,t=.04){return mesh(new T.TorusGeometry(r,t,8,48),m,p,0,0,z);}
- function box(p,w,h,d,m,x=0,y=0,z=0){return mesh(new T.BoxGeometry(w,h,d),m,p,x,y,z);}
+ function box(p,w,h,d,m,x=0,y=0,z=0){return mesh((detailSize>128&&Math.max(w,h,d)>.5?mergeVertices(new RoundedBoxGeometry(w,h,d,2,Math.min(w,h,d)*.12)):new T.BoxGeometry(w,h,d)),m,p,x,y,z);}
  for(const part of plan.parts.filter(p=>!single||p.type===single)){
  const p=new T.Group();p.userData.part=part;p.position.set(part.x*(1+explode),part.y*(1+explode),part.z*(1+explode*.3));root.add(p);const l=part.length,r=part.radius,rng=random(part.detailSeed);
  if(part.type==='collar'){cylinder(p,r*1.1,l,steel);ring(p,r*.95,0,copper,.035);}
