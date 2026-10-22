@@ -1,4 +1,4 @@
-import {createCreditsNebula} from './space-background.js';
+import {createCreditsNebula} from './space-background.js?v=brighter-7';
 import {Starfield} from '../space/starfield.js';
 import {createTitleSequence} from './title-sequence.js';
 import {getAudioManager} from '../audio/audio-manager.js';
@@ -8,7 +8,7 @@ soundtrack.audio.preload='auto';
 soundtrack.setPlaylist(creditsPlaylist,{loop:true});
 const roll=document.querySelector('#roll'),viewport=document.querySelector('#viewport');
 const pause=document.querySelector('#pause'),progress=document.querySelector('#progress'),status=document.querySelector('#status');
-const stars=new Starfield(document.querySelector('#creditStars'));
+const stars=new Starfield(document.querySelector('#creditStars'),{brightness:.75});
 const nebula=createCreditsNebula(document.querySelector('#creditNebula'));
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let running=false,started=false,titleReady=false,pageDisposed=false,position=0,last=0,end=1,speed=48,introTime=reduced?7.2:0;

@@ -52,8 +52,8 @@ section>a{font-size:19px;line-height:1.9}
 canvas.stars{width:100%;height:100%;background-image:none;opacity:1;pointer-events:none;z-index:0}.halo{pointer-events:none}#viewport{z-index:1}
 
 /* Nebula light stays behind the stars and falls away across the credit column. */
-#creditNebula{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0;transition:opacity 2s ease;mask-image:radial-gradient(ellipse 34% 65% at 50% 50%,#0006 0%,#0009 50%,#000 100%)}
-#creditNebula.ready{opacity:.75}
+#creditNebula{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0;transition:opacity 2s ease;mask-image:radial-gradient(ellipse 34% 65% at 50% 50%,#0009 0%,#000b 50%,#000 100%)}
+#creditNebula.ready{opacity:1}
 #creditNebula[hidden]{display:none}
 .halo{background:radial-gradient(ellipse at 50% 50%,#03050933,transparent 75%)}
 @media(prefers-reduced-motion:reduce){#creditNebula{transition:none}}

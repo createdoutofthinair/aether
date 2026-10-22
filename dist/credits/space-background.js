@@ -3,7 +3,7 @@ import {NebulaRenderer,presets} from '../nebula/renderer.js?v=credit-space-5';
 export function createCreditsNebula(canvas){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  let renderer,ready=false,disposed=false,clock=0,lastDraw=-1,dirty=true;
- const settings={...presets.veil,view:'flight',cycleLooks:true,stars:false,steps:40,density:.72,emission:.7,travel:0};
+ const settings={...presets.veil,view:'flight',cycleLooks:true,stars:false,steps:40,density:.72,emission:1.35,travel:0};
  const resize=new ResizeObserver(()=>{const box=canvas.getBoundingClientRect();const scale=Math.min(.5,720/Math.max(box.width,1));canvas.width=Math.max(1,Math.round(box.width*scale));canvas.height=Math.max(1,Math.round(box.height*scale));dirty=true;});resize.observe(canvas);
  function disable(error){ready=false;canvas.hidden=true;console.info('Aether keeps the starfield background:',error?.message||error);renderer?.dispose();}
  const api={
