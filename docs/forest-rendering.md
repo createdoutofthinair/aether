@@ -104,3 +104,16 @@ paths. Numerical tests cannot assess actual WebGPU image quality or frame times.
 - NVIDIA SpeedTree LOD coverage: https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-4-next-generation-speedtree-rendering
 - Epic hemisphere/full-sphere impostors: https://dev.epicgames.com/documentation/en-us/unreal-engine/impostor-baker-plugin-in-unreal-engine
 - Ryan Brucks octahedral impostors: https://shaderbits.com/blog/octahedral-impostors
+
+### Distant silhouette correction
+
+The atlas currently uses linear base-level sampling: ordinary whole-atlas mipmaps
+average away small leaves and mix adjacent capture tiles. Coverage-preserving,
+per-tile mipmaps remain a future improvement; base-level sampling can alias on
+very distant foliage. Sampling now clamps to texel centres without shrinking the
+capture image. Three-view radiance still blends, while silhouette coverage uses
+the strongest weighted contribution divided by the strongest view weight. This
+preserves coverage when neighbouring captures disagree without a hard view switch.
+Parallax samples that leave the capture or land in empty texels fall back to the
+unwarped capture (including its plane depth), rather than deleting the fragment.
+The alpha cutoff is 0.01; MSAA coverage handles the remaining leaf edges.

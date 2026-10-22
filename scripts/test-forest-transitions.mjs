@@ -10,3 +10,15 @@ const t={lod:-1};assert.equal(advanceLOD(t,2,0),1);advanceLOD(t,3,.01);advanceLO
 const anchor=snappedShadowAnchor([10,2,3],[50,80,30]);assert.deepEqual(anchor,snappedShadowAnchor([10,2,3],[50,80,30]));assert.ok(anchor.every(Number.isFinite));const d=[50,80,30],n=Math.hypot(...d),right=[d[2],0,-d[0]],rl=Math.hypot(...right);for(let i=0;i<3;i++)right[i]/=rl;const target=anchor.reduce((s,v,i)=>s+v*right[i],0)/(60/2048);assert.ok(Math.abs(target-Math.round(target))<1e-9,'Shadow anchor lies on light-space texel grid');
 const source=readFileSync('dist/forest/main.js','utf8');assert.ok(source.includes('mesh.layers.set(1)'));assert.ok(source.includes('light.shadow.camera.layers.set(1)'));assert.ok(source.includes('b.castShadow=l.castShadow=false'));const shader=readFileSync('dist/forest/impostor.js','utf8');assert.ok(shader.includes('cameraWorldMatrix'));assert.ok(shader.includes('m.vertexNode='));assert.ok(shader.includes('depth.mul(parallax)'));
 console.log('Forest stability: hemi-octahedral directions, 3-view weights, pole bases, depth-ray reprojection, complementary coverage, dwell/locked LOD transitions, snapped shadow coordinates and LOD-independent shadow layers passed.');
+
+// Sparse silhouettes must retain coverage at equal view weights, including
+// when a leaf exists in just one capture. No discontinuity at a zero weight.
+const silhouette=(alpha,w)=>Math.max(...alpha.map((a,i)=>a*w[i]))/Math.max(...w);
+assert.equal(silhouette([1,0,0],[1/3,1/3,1/3]),1);
+assert.equal(silhouette([.3,.3,.3],[.2,.3,.5]),.3);
+assert.equal(silhouette([1,0,0],[0,.5,.5]),0);
+assert.ok(silhouette([1,0,0],[.00001,.5,.49999])<.0001);
+assert.ok(shader.includes('generateMipmaps:false'));
+assert.ok(shader.includes('useWarp.select(warped,c0.mul(baseValid))'));
+assert.ok(shader.includes('t:useWarp.select(t,t0)'));
+assert.ok(shader.includes('alphaTest:.01'));
