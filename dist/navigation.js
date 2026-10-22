@@ -7,8 +7,9 @@ const pages = {
 };
 const file = location.pathname.split('/').pop();
 const route = pages[file] || 'explorer';
+const captureCredits=file==='credits.html'&&new URLSearchParams(location.search).has('capture');
 if (window === window.top) {
- location.replace('./index.html#/' + route);
+ if(!captureCredits)location.replace('./index.html#/' + route);
 } else {
  document.addEventListener('click', event => {
   const link = event.target.closest('a[href]');
