@@ -19,7 +19,7 @@ for(let i=0;i<8;i++){const original=shipModel(blueprint('batch-'+i));original.up
 console.log('Credits ships: deterministic three-ship formations, 24-second overlapping waves, bounded fleet, distant-only smooth fades, parallel velocity, opaque close hulls, and mesh batching preserve bounds/triangles at <=7 draws per ship.');
 
 import {sampleNebulaLighting,NEBULA_TRAVEL_SPEED} from '../dist/credits/nebula-lighting.js';
-import {applyShipLighting} from './dist/credits/ship-lighting.js';
+import {applyShipLighting} from '../dist/credits/ship-lighting.js';
 const energy=s=>s.reduce((v,l)=>v+l.color.reduce((a,b)=>a+b,0),0);
 const evaluate=s=>s.reduce((c,l)=>c.map((v,i)=>v+l.color[i]*Math.exp((l.direction[0]-1)*3)),[0,0,0]);
 for(let clock=0;clock<600;clock+=.113){
