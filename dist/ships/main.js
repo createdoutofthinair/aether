@@ -1,0 +1,13 @@
+import {ObjectViewer} from '../viewer/object-viewer.js';
+import {blueprint,TYPES} from './blueprint.js';
+import {shipModel} from './model.js';
+const $=id=>document.getElementById(id);let viewer,plan;
+for(const type of TYPES){const o=document.createElement('option');o.value=type;o.textContent=type[0].toUpperCase()+type.slice(1)+' modules';$('part').append(o);}
+const params=new URLSearchParams(location.search);for(const id of ['seed','role','count'])if(params.has(id))$(id).value=params.get(id);
+function rebuild(preserveCamera=false){if(!viewer)return;plan=blueprint($('seed').value,$('role').value,Number($('count').value));$('countOut').value=$('count').value;const camera=viewer.camera.position.clone(),target=viewer.controls.target.clone();viewer.setObject(shipModel(plan,{explode:Number($('explode').value),roughness:Number($('roughness').value),finish:$('finish').value,single:$('part').value}),{disposePrevious:true});if(preserveCamera){viewer.camera.position.copy(camera);viewer.controls.target.copy(target);viewer.controls.update();}$('stats').textContent=`${plan.parts.length} modules · ${plan.role} · blueprint v${plan.version}`;const url=new URL(location.href);for(const id of ['seed','role','count'])url.searchParams.set(id,$(id).value);history.replaceState(null,'',url);}
+$('generate').onclick=()=>rebuild();for(const id of ['role','count','part','finish'])$(id).onchange=()=>rebuild();for(const id of ['explode','roughness'])$(id).oninput=()=>rebuild(true);
+$('seed').onkeydown=e=>{if(e.key==='Enter')rebuild();};$('random').onclick=()=>{$('seed').value='AE-'+crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase();rebuild();};
+$('rotate').onchange=()=>{if(viewer)viewer.controls.autoRotate=$('rotate').checked;};$('frame').onclick=()=>viewer?.frame();$('exposure').oninput=()=>{if(viewer)viewer.renderer.toneMappingExposure=Number($('exposure').value);};$('light').oninput=()=>{if(viewer){const a=Number($('light').value)*Math.PI/180;viewer.key.position.set(Math.sin(a)*6,4,Math.cos(a)*6);}};
+$('reference').onclick=()=>$('referenceDialog').showModal();$('close').onclick=()=>$('referenceDialog').close();$('export').onclick=()=>{if(!plan)return;const url=URL.createObjectURL(new Blob([JSON.stringify(plan,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='aether-ship-blueprint.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+try{viewer=await new ObjectViewer().initialize($('viewport'));viewer.controls.autoRotate=true;viewer.scene.environmentIntensity=.65;rebuild();}catch(e){$('error').hidden=false;$('error').textContent=e.message;$('stats').textContent='WebGPU initialization failed';viewer?.dispose();}
+window.addEventListener('pagehide',()=>viewer?.dispose());

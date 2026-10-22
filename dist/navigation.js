@@ -1,4 +1,5 @@
 const pages = {
+ 'spaceship-studio.html':'ships',
  'nature-studio.html':'nature', 'index.html':'explorer', 'explorer.html':'explorer', 'material-editor.html':'materials',
  'hud-design.html':'hud', 'logo-design.html':'studio', 'webgpu-preview.html':'renderer',
  'nebula-generator.html':'nebula', 'credits.html':'credits'
