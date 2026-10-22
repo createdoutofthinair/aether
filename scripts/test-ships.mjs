@@ -20,3 +20,14 @@ for(let i=0;i<1000;i++){
 assert.equal(values.role.size,3);assert.equal(values.count.size,7);assert.equal(values.finish.size,2);assert.equal(values.attachment.size,3);assert.equal(values.radius.size,1000);
 assert.equal(values.family.size,6);assert.equal(values.shape.size,3);assert.equal(values.engine.size,3);for(const type of ['tank','truss','hangar','delta','ring-drive'])assert.ok(values.module.has(type));
 console.log('1000 seeded blueprints: six silhouette families, three hull profiles, three engine styles, new module coverage, full-design variation, determinism, socket fit and symmetry passed. 50 mesh assemblies: parent bounds, structural socket extents, finite vertices and catalog spacing passed.');
+// Rear-view rays through exhaust centers must hit recessed cavity faces, not
+// stacked jacket/plate caps. This catches the coplanar cluster regression.
+for(const engineStyle of ['cluster','bell']){
+ const plan=blueprint('engine-face-regression');plan.parts=[{id:0,type:'engine',engineStyle,length:2.8,radius:1,x:0,y:0,z:0,variant:0,detailSeed:1}];
+ const model=shipModel(plan);model.rotation.set(0,0,0);model.updateMatrixWorld(true);
+ assert.equal(model.children[0].children[0].geometry.parameters.openEnded,true);
+ for(const [x,y]of engineStyle==='cluster'?[[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]]:[[0,0]]){
+ const ray=new T.Raycaster(new T.Vector3(x,y,3),new T.Vector3(0,0,-1));const hits=ray.intersectObject(model,true);assert.ok(hits.length);assert.equal(hits[0].object.userData.engineFace,'recess');assert.ok(hits[0].point.z<1.4-.15);
+ }dispose(model);
+}
+console.log('Engine rear faces: open jackets, perforated cluster plates and recessed exhaust ray tests passed.');

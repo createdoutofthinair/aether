@@ -4,7 +4,7 @@ import {random} from './blueprint.js';
 export function shipModel(plan,{explode=0,roughness=plan.appearance.roughness,finish=plan.appearance.finish,single=null}={}){
  const root=new T.Group(),steel=new T.MeshStandardMaterial({color:finish==='dark'?0x3b4651:0xaeb7bf,metalness:plan.appearance.metalness,roughness}),dark=new T.MeshStandardMaterial({color:0x202832,metalness:.8,roughness:.4}),copper=new T.MeshStandardMaterial({color:0x9b674a,metalness:.82,roughness:.32}),glass=new T.MeshPhysicalMaterial({color:0x15354b,metalness:.5,roughness:.13,clearcoat:1}),blue=new T.MeshStandardMaterial({color:0x206eae,metalness:.6,roughness:.3}),glow=new T.MeshStandardMaterial({color:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissive:new T.Color().setHSL(plan.appearance.hue,.7,.6),emissiveIntensity:4}),amber=new T.MeshStandardMaterial({color:0xffad52,emissive:0xff6219,emissiveIntensity:2});
  function mesh(g,m,p,x=0,y=0,z=0){const o=new T.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o;}
- function cylinder(p,r,l,m,z=0,r2=r){const o=mesh(new T.CylinderGeometry(r,r2,l,48),m,p,0,0,z);o.rotation.x=Math.PI/2;return o;}
+ function cylinder(p,r,l,m,z=0,r2=r,open=false){const o=mesh(new T.CylinderGeometry(r,r2,l,48,1,open),m,p,0,0,z);o.rotation.x=Math.PI/2;return o;}
  function shell(p,r,l,m,shape){if(shape==='box')return box(p,r*2,r*2,l,m);if(shape==='octagonal'){const o=mesh(new T.CylinderGeometry(r*1.08,r*1.08,l,8),m,p);o.rotation.x=Math.PI/2;return o;}return cylinder(p,r,l,m);}
  function ring(p,r,z,m=dark,t=.04){return mesh(new T.TorusGeometry(r,t,8,48),m,p,0,0,z);}
  function box(p,w,h,d,m,x=0,y=0,z=0){return mesh(new T.BoxGeometry(w,h,d),m,p,x,y,z);}
@@ -13,10 +13,15 @@ export function shipModel(plan,{explode=0,roughness=plan.appearance.roughness,fi
  if(part.type==='collar'){cylinder(p,r*1.1,l,steel);ring(p,r*.95,0,copper,.035);}
  else if(part.type==='engine'){
  // Continuous jacket reaches both socket planes. Nozzle and ribs attach to it.
- cylinder(p,r*.82,l,dark);cylinder(p,r*.97,.24,steel,-l/2+.12);
- if(part.engineStyle==='cluster'){cylinder(p,r,.16,steel,l/2-.08);for(const [x,y]of [[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]]){const nozzle=new T.Group();nozzle.position.set(x*r,y*r,l/2);p.add(nozzle);cylinder(nozzle,r*.25,.32,dark,-.16);ring(nozzle,r*.19,.006,glow,.035);}}
+ cylinder(p,r*.82,l,dark,0,r*.82,true);cylinder(p,r*.97,.24,steel,-l/2+.12);
+ if(part.engineStyle==='cluster'){
+ const plate=new T.Shape();plate.absarc(0,0,r,0,Math.PI*2,false);
+ for(const [x,y]of [[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]]){const hole=new T.Path();hole.absarc(x*r,y*r,r*.28,0,Math.PI*2,true);plate.holes.push(hole);}
+ const face=mesh(mergeVertices(new T.ExtrudeGeometry(plate,{depth:.16,bevelEnabled:false,curveSegments:24})),steel,p,0,0,l/2-.16);face.userData.engineFace='perforated-cluster';
+ for(const [x,y]of [[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]]){const nozzle=new T.Group();nozzle.position.set(x*r,y*r,l/2);p.add(nozzle);cylinder(nozzle,r*.25,.32,dark,-.16,r*.25,true);ring(nozzle,r*.26,.015,steel,r*.04);ring(nozzle,r*.19,-.045,glow,.025);const recess=mesh(new T.CircleGeometry(r*.25,32),dark,nozzle,0,0,-.30);recess.userData.engineFace='recess';}}
+
  else if(part.engineStyle==='slotted'){box(p,r*1.85,r*1.3,l*.3,steel,0,0,l*.35);for(const y of [-.35,0,.35])box(p,r*1.5,r*.12,.03,glow,0,y*r,l/2+.005);}
- else{cylinder(p,r*1.08,l*.34,steel,l*.33,r*.78);cylinder(p,r*.94,.026,dark,l/2-.025);ring(p,r*.75,l/2-.008,glow,.07);}
+ else{cylinder(p,r*.78,l*.34,steel,l*.33,r*1.08,true);const recess=mesh(new T.CircleGeometry(r,48),dark,p,0,0,l/2-.18);recess.userData.engineFace='recess';ring(p,r*1.08,l/2,steel,.045);ring(p,r*.97,l/2-.06,glow,.045);}
  const n=12+part.variant*2;for(let i=0;i<n;i++){const a=i*Math.PI*2/n;box(p,.055,.07,l*.65,copper,Math.cos(a)*r*.83,Math.sin(a)*r*.83,-l*.1);}
  }else if(part.type==='cockpit'){
  if(part.shape!=='round'){shell(p,r,l*.43,steel,part.shape).position.z=l*.285;const nose=new T.BoxGeometry(r*2,r*2,l*.57),pos=nose.attributes.position;for(let i=0;i<pos.count;i++)if(pos.getZ(i)<0){pos.setX(i,pos.getX(i)*.22);pos.setY(i,pos.getY(i)*.22);}nose.computeVertexNormals();mesh(nose,steel,p,0,0,-l*.215);box(p,r*1.3,.03,l*.27,glass,0,r+.01,l*.27);}
