@@ -57,3 +57,17 @@ canvas.stars{width:100%;height:100%;background-image:none;opacity:1;pointer-even
 #creditNebula[hidden]{display:none}
 .halo{background:radial-gradient(ellipse at 50% 50%,#03050933,transparent 75%)}
 @media(prefers-reduced-motion:reduce){#creditNebula{transition:none}}
+
+/* A deliberate user gesture starts sound and the full opening from frame zero. */
+.credit-start{position:fixed;inset:76px 0 78px;z-index:4;max-width:none;margin:0;padding:30px 24px;display:grid;place-items:center;text-align:center;background:radial-gradient(ellipse,#030509f5 15%,#030509d9 70%,#03050999)}
+.credit-start[hidden]{display:none}
+.credit-start>div{max-width:850px}
+.credit-start h1{font-size:clamp(42px,8vw,94px);letter-spacing:.18em;padding-left:.18em}
+.start-subtitle{font:500 14px Orbitron,sans-serif;letter-spacing:.3em;color:#b7d3e4;margin:20px 0 36px}
+#playCredits{font:500 clamp(16px,2vw,21px) Orbitron,sans-serif;padding:20px 32px;border-color:#8bbdd2;background:#152c3a;box-shadow:0 0 45px #5db9e51a;min-height:64px}
+#playCredits:hover{background:#244657}
+#playCredits:disabled{opacity:.5;cursor:wait}
+#startNote{font-size:16px;color:#bdd0de;margin-top:24px}
+.credit-start .start-music{font-size:14px;color:#8ca5b8;margin-top:35px}
+.awaiting-credits .controls{visibility:hidden}
+@media(max-width:650px){.credit-start .eyebrow{font-size:11px;letter-spacing:.14em}.credit-start .start-music{font-size:12px}.credit-start h1{font-size:clamp(34px,9vw,58px)}}
