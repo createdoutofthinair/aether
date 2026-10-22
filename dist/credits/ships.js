@@ -18,7 +18,8 @@ export function createCreditsShips(canvas,{onProgress=()=>{}}={}){
  function fit(){if(!renderer||disposed)return;const {width,height}=canvas.getBoundingClientRect();if(!width||!height)return;renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();}
  const resize=new ResizeObserver(fit);resize.observe(canvas);
  function fail(error){if(disposed)return;failed=true;ready=false;canvas.hidden=true;resolveReady(false);pool?.dispose();worker?.terminate();console.info('Aether ship flybys unavailable:',error?.message||error);}
- const api={ready:readiness,metrics,tick(dt=0){if(disposed||failed||reduced.matches||document.hidden)return;clock+=Math.min(Math.max(dt,0),.1);// Follow the presentation clock; a 30 Hz cutoff causes uneven frame skipping.
+ const api={ready:readiness,metrics,tick(dt=0){if(disposed||failed||reduced.matches||document.hidden)return;clock+=Math.min(Math.max(dt,0),.1);
+  // Follow the presentation clock; a 30 Hz cutoff causes uneven frame skipping.
   // Two in-flight submissions tolerate completion callback latency without an unbounded queue.
   if(!ready||pending>=2)return;
   const flights=activeFlights(clock),ids=new Set(flights.map(f=>f.index));for(const [index]of cache)if(!ids.has(index)){pool.release(index);cache.delete(index);}
