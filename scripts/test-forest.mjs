@@ -4,7 +4,7 @@ import {readFileSync,existsSync} from 'node:fs';
 import {scatterForest,groundHeight,habitat,selectTreeLOD,projectedPixels,VARIANTS,atlasUV,forestTreeOptions} from '../dist/forest/ecology.js';
 import {OCT_GRID} from '../dist/forest/octahedral.js';
 import {generateTree} from '../dist/nature/tree-model.js';
-import {makeVariant,instanceBucket} from '../dist/forest/assets.js';
+import {makeVariant,instanceBucket,uploadBucket} from '../dist/forest/assets.js';
 import {impostorMaterial} from '../dist/forest/impostor.js';
 import * as T from 'three/webgpu';
 import {uniform} from 'three/tsl';
@@ -22,7 +22,7 @@ for(const [px,lod]of [[500,0],[150,1],[60,2],[10,3]])assert.equal(selectTreeLOD(
 const workerURL=new URL('../dist/forest/worker.js',import.meta.url).href,worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`import {parentPort} from 'node:worker_threads';globalThis.self={postMessage:(d,t)=>parentPort.postMessage(d,t)};await import(${JSON.stringify(workerURL)});parentPort.on('message',data=>self.onmessage({data}));parentPort.postMessage({ready:true});`)));
 try{await new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);});for(const variant of [0,3,6]){const promise=new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);});worker.postMessage({id:variant,type:'variant',variant,seed:481});const d=await promise;assert.equal(d.error,undefined);assert.equal(d.lods.length,3);assert.ok(d.lods[0].bark.indices.length>d.lods[2].bark.indices.length);assert.ok(d.lods[0].leaves.indices.length>d.lods[2].leaves.indices.length);
  for(const lod of d.lods)for(const part of Object.values(lod)){assert.ok(part.positions.length>0&&part.positions.every(Number.isFinite));assert.ok(part.indices.every(i=>i<part.positions.length/3));assert.equal(part.positions.length,part.normals.length);}
- const wind=uniform(.3),debug=uniform(0),v=makeVariant(d,{wind,debug});v.setup();const mesh=instanceBucket(v.lods[0][0],v.barkMaterial,200);assert.equal(mesh.count,0);assert.equal(mesh.instanceMatrix.count,200);assert.ok(mesh.geometry.attributes.forestCenter.isInstancedBufferAttribute);assert.ok(mesh.geometry.attributes.forestFade);assert.equal(v.barkMaterial.alphaHash,false);assert.ok(v.barkMaterial.maskNode);assert.ok(v.barkMaterial.positionNode);const atlas={span:12,tile:128,color:{texture:new T.Texture()},normal:{texture:new T.Texture()}},material=impostorMaterial(atlas,{sun:uniform(new T.Vector3(0,1,0)),debug});assert.equal(material.depthNode,null);assert.equal(material.vertexNode,null);assert.ok(material.isSpriteNodeMaterial&&material.positionNode&&material.scaleNode&&material.opacityNode&&material.colorNode);assert.equal(material.alphaToCoverage,true);assert.equal(material.alphaHash,false);material.dispose();mesh.geometry.dispose();mesh.dispose();v.lods.flat().forEach(g=>g.dispose());v.maps.forEach(t=>t.dispose());v.barkMaterial.dispose();v.leafMaterial.dispose();
+ const wind=uniform(.3),debug=uniform(0),v=makeVariant(d,{wind,debug});v.setup();const mesh=instanceBucket(v.lods[0][0],v.barkMaterial,200);assert.equal(mesh.count,0);assert.equal(mesh.instanceMatrix.count,200);assert.ok(mesh.geometry.attributes.forestCenter.data.isInstancedInterleavedBuffer);assert.ok(mesh.geometry.attributes.forestFade);assert.equal(v.barkMaterial.alphaHash,false);assert.ok(v.barkMaterial.maskNode);assert.ok(v.barkMaterial.positionNode);const atlas={span:12,tile:128,color:{texture:new T.Texture()},normal:{texture:new T.Texture()}},material=impostorMaterial(atlas,{sun:uniform(new T.Vector3(0,1,0)),debug});assert.equal(material.depthNode,null);assert.equal(material.vertexNode,null);assert.ok(material.isSpriteNodeMaterial&&material.positionNode&&material.scaleNode&&material.opacityNode&&material.colorNode);assert.equal(material.alphaToCoverage,true);assert.equal(material.alphaHash,false);material.dispose();mesh.geometry.dispose();mesh.dispose();v.lods.flat().forEach(g=>g.dispose());v.maps.forEach(t=>t.dispose());v.barkMaterial.dispose();v.leafMaterial.dispose();
  }}finally{await worker.terminate();}
 const seen=new Set();function visit(url){if(seen.has(url.href))return;seen.add(url.href);assert.ok(existsSync(url));const code=readFileSync(url,'utf8');for(const m of code.matchAll(/(?:^|\n)\s*import\s+(?:[^;]*?\s+from\s*)?(['"])([^'"\n]+)\1/g)){assert.ok(m[2].startsWith('.'),'Forest workers cannot inherit import maps');visit(new URL(m[2],url));}}visit(new URL('../dist/forest/worker.js',import.meta.url));
 const shell=readFileSync('dist/shell.js','utf8'),html=readFileSync('dist/index.html','utf8');assert.ok(shell.includes("forest: ['forest-lab.html'"));assert.ok(html.includes('data-route="forest"'));
@@ -44,5 +44,30 @@ shaderMaterial.setParallaxDepth(true);assert.equal(shaderParallax.value,1);
 assert.ok(buildShader().fragmentShader.includes('@builtin( frag_depth )'));
 shaderMaterial.setParallaxDepth(false);assert.equal(shaderParallax.value,0);
 assert.ok(!buildShader().fragmentShader.includes('@builtin( frag_depth )'));
-shaderMesh.geometry.dispose();shaderMesh.dispose();shaderMaterial.dispose();
+
 console.log('Forest WGSL: built-in instanced sprite transform; raster depth by default; custom fragment depth only with explicit experimental parallax.');
+
+// Use Three.js's real WebGPU layout builder. Attribute count alone does not
+// detect this failure: WebGPU limits separately bound buffers to eight.
+function vertexLayouts(builder,mesh){
+ const attributes=builder.attributes.map(a=>a.node?.attribute||mesh.geometry.getAttribute(a.name)).filter(Boolean);
+ return renderer.backend.attributeUtils.createShaderVertexBuffers({getAttributes:()=>attributes});
+}
+const packedLayouts=vertexLayouts(built,shaderMesh);
+assert.ok(packedLayouts.length<=8,`Forest draw needs ${packedLayouts.length} vertex buffers; portable maximum is 8`);
+assert.equal(packedLayouts.filter(l=>l.stepMode==='instance').length,1,'All per-tree fields must share one binding');
+assert.equal(packedLayouts.find(l=>l.stepMode==='instance').arrayStride,11*4);
+const packed=shaderMesh.userData.forestData,oldVersion=packed.version;
+shaderMesh.geometry.attributes.forestScale.setX(1,2);
+shaderMesh.geometry.attributes.forestCenter.setXYZ(1,10,20,30);
+assert.deepEqual(Array.from(packed.array.subarray(11,15)),[10,20,30,2]);
+assert.equal(shaderMesh.geometry.attributes.forestScale.getX(0),0,'Writing one tree cannot overwrite its neighbour');
+uploadBucket(shaderMesh);assert.equal(packed.version,oldVersion+1,'Upload the shared buffer once per bucket update');
+const legacy=shaderMesh.geometry.clone();
+for(const [key,a]of Object.entries(legacy.attributes))if(a.isInterleavedBufferAttribute){const separate=new T.InstancedBufferAttribute(new Float32Array(a.count*a.itemSize),a.itemSize);legacy.setAttribute(key,separate);}
+const oldMesh=new T.InstancedMesh(legacy,shaderMaterial,5),oldBuilder=new T.WGSLNodeBuilder(oldMesh,renderer);oldBuilder.scene=new T.Scene();oldBuilder.camera=new T.PerspectiveCamera(55,1,.1,1000);oldBuilder.context.material=shaderMaterial;oldBuilder.build();
+assert.ok(vertexLayouts(oldBuilder,oldMesh).length>8,'The regression must reproduce the original invalid layout');
+legacy.dispose();oldMesh.dispose();
+console.log(`Forest GPU binding regression: ${packedLayouts.length} bound vertex buffers, one shared instance buffer; legacy layout exceeds the eight-buffer device limit.`);
+
+shaderMesh.geometry.dispose();shaderMesh.dispose();shaderMaterial.dispose();

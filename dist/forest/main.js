@@ -3,7 +3,7 @@ import {uniform,vec3} from 'three/tsl';
 import {advanceLOD,snappedShadowAnchor} from './lod-policy.js';
 import {OCT_GRID} from './octahedral.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {makeVariant,instanceBucket} from './assets.js';
+import {makeVariant,instanceBucket,uploadBucket} from './assets.js';
 import {bakeImpostor,impostorMaterial} from './impostor.js';
 import {VARIANTS,SPECIES,groundHeight,projectedPixels,selectTreeLOD} from './ecology.js';
 const $=id=>document.getElementById(id),status=text=>{$('status').textContent=text;},wind=uniform(.35),parallax=uniform(0),debug=uniform(0),sun=uniform(new T.Vector3(.5,.8,.3).normalize());
@@ -37,16 +37,16 @@ function updateForest(now){for(const vs of groups)for(const bucket of vs)for(con
  if(mode!=='mesh')while(desired<3&&used[desired]>=budget[desired])desired++;if(desired<3)used[desired]++;
  const blend=advanceLOD(t,desired,now);if(t.from!==t.lod&&blend<1){put(t,t.from,1-blend,1);put(t,t.lod,blend);transitioning=true;}else put(t,t.lod,1);
  }
- for(const vs of groups)for(const bucket of vs)for(const mesh of bucket){mesh.visible=mesh.count>0;if(mesh.count){mesh.instanceMatrix.needsUpdate=true;for(const a of Object.values(mesh.geometry.attributes))if(a.isInstancedBufferAttribute)a.needsUpdate=true;}}
+ for(const vs of groups)for(const bucket of vs)for(const mesh of bucket){mesh.visible=mesh.count>0;if(mesh.count){uploadBucket(mesh);}}
  for(const pair of shadowGroups)for(const mesh of pair)mesh.count=0;
  if($('shadows').checked){const casters=(inspection?[inspection]:layout.trees).filter(t=>Math.hypot(t.x-camera.position.x,t.z-camera.position.z)<65).sort((a,b)=>Math.hypot(a.x-camera.position.x,a.z-camera.position.z)-Math.hypot(b.x-camera.position.x,b.z-camera.position.z)).slice(0,128);for(const t of casters)put(t,2,1,0,true);}
- for(const pair of shadowGroups)for(const mesh of pair){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;for(const a of Object.values(mesh.geometry.attributes))if(a.isInstancedBufferAttribute)a.needsUpdate=true;}
+ for(const pair of shadowGroups)for(const mesh of pair){mesh.visible=mesh.count>0;uploadBucket(mesh);}
  $('counts').textContent=`Near ${counts[0]} · Mid ${counts[1]} · Low ${counts[2]} · Impostors ${counts[3]} · Atlases ${variants.filter(v=>v.atlas?.coverage).length}/${VARIANTS}`;
 }
 function cleanup(){if(disposed)return;disposed=true;renderer?.setAnimationLoop(null);worker?.terminate();for(const job of waiting.values())job.reject(Error('Forest closed'));waiting.clear();observer?.disconnect();controls?.dispose();destroyGroups();for(const v of variants){v.lods.flat().forEach(g=>g.dispose());v.maps.forEach(t=>t.dispose());v.barkMaterial.dispose();v.leafMaterial.dispose();v.impostorMaterial?.dispose();v.atlas?.color.dispose();v.atlas?.normal.dispose();}ground?.geometry.dispose();ground?.material.dispose();renderer?.dispose();}
 window.addEventListener('pagehide',cleanup);
 try{
- if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw Error('Forest Lab requires WebGPU hardware acceleration.');renderer=new T.WebGPURenderer({antialias:true});await renderer.init();renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.toneMapping=T.ACESFilmicToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;$('viewport').append(renderer.domElement);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.maxDistance=900;controls.minDistance=2;
+ if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw Error('Forest Lab requires WebGPU hardware acceleration.');renderer=new T.WebGPURenderer({antialias:true});await renderer.init();renderer.backend.device.addEventListener('uncapturederror',event=>status('Forest GPU drawing failed: '+event.error.message));renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.toneMapping=T.ACESFilmicToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;$('viewport').append(renderer.domElement);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.maxDistance=900;controls.minDistance=2;
  observer=new ResizeObserver(()=>{const r=$('viewport').getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();lastUpdate=-1;});observer.observe($('viewport'));
  worker=new Worker(new URL('./worker.js',import.meta.url),{type:'module'});worker.onmessage=({data})=>{const job=waiting.get(data.id);if(!job)return;waiting.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data);};worker.onerror=e=>{for(const job of waiting.values())job.reject(Error(e.message));waiting.clear();};
  $('scatter').disabled=true;

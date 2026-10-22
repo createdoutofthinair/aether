@@ -138,3 +138,28 @@ user toggle; switching it off removes `frag_depth` entirely. The forest test
 builds the actual WGSL for both settings and checks this contract. This checks
 shader generation, not rendered GPU pixels; screenshot parity still needs a
 WebGPU device.
+
+### Missing impostors: vertex-buffer limit
+
+The reproduced cause of the missing distant trees was a rejected WebGPU render
+pipeline: the impostor material bound ten separate vertex buffers, while the
+device exposed the standard eight-buffer limit. Atlas captures were valid;
+none of those impostor instances could be drawn. Alpha and depth changes did
+not correct this binding failure.
+
+Every forest bucket now packs the centre, scale, width, yaw, wind phase, tint,
+LOD fade, level and outgoing flag into one 44-byte instanced interleaved buffer.
+The impostor layout uses four vertex buffers in total (position, normal, UV and
+packed instance data). Shared data receives one version update per bucket fill,
+including shadow buckets. This does not raise device limits or add draw calls.
+Uncaptured GPU validation errors are surfaced in the forest status.
+
+The regular forest regression uses Three.js's actual WebGPU vertex-layout builder
+to prove the old layout exceeds eight buffers and the packed layout fits. It also
+checks row offsets and shared-buffer uploads. `node scripts/check-forest-gpu.mjs`
+is an optional local rendering check: it bakes 25 views, draws 25 instances into
+an MSAA target, checks actual pixel coverage and then moves the instances to
+verify the packed buffer update. Set `FOREST_GPU_PLAYWRIGHT` to the Playwright
+module path and `FOREST_GPU_CHROMIUM` to a browser executable when needed;
+`FOREST_GPU_BROWSER_ARGS` accepts a JSON argument array. This is not a CI
+screenshot pipeline and has no production dependency.

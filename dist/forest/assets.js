@@ -16,4 +16,13 @@ export function makeVariant(data,{wind,debug}){
  }};
  return{...data,lods,barkMaterial:bark,leafMaterial:leaf,source,setup,maps:[...barkMaps,...leafMaps]};
 }
-export function instanceBucket(g,material,capacity){const geometry=g.clone();for(const key of ['forestFade','forestLevel','forestScale','forestWidth','forestOutgoing'])geometry.setAttribute(key,new T.InstancedBufferAttribute(new Float32Array(capacity),1));geometry.setAttribute('forestCenter',new T.InstancedBufferAttribute(new Float32Array(capacity*3),3));geometry.setAttribute('forestPhase',new T.InstancedBufferAttribute(new Float32Array(capacity),1));geometry.setAttribute('forestTint',new T.InstancedBufferAttribute(new Float32Array(capacity),1));geometry.setAttribute('forestYaw',new T.InstancedBufferAttribute(new Float32Array(capacity),1));const mesh=new T.InstancedMesh(geometry,material,capacity);mesh.count=0;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);return mesh;}
+// WebGPU guarantees eight vertex-buffer slots. Keep all per-tree data in one
+// interleaved slot rather than consuming one slot per scalar attribute.
+export const FOREST_INSTANCE_STRIDE=11;
+export function instanceBucket(g,material,capacity){
+ const geometry=g.clone(),data=new T.InstancedInterleavedBuffer(new Float32Array(capacity*FOREST_INSTANCE_STRIDE),FOREST_INSTANCE_STRIDE);
+ data.setUsage(T.DynamicDrawUsage);
+ for(const [name,size,offset] of [['forestCenter',3,0],['forestScale',1,3],['forestWidth',1,4],['forestYaw',1,5],['forestPhase',1,6],['forestTint',1,7],['forestFade',1,8],['forestLevel',1,9],['forestOutgoing',1,10]])geometry.setAttribute(name,new T.InterleavedBufferAttribute(data,size,offset));
+ const mesh=new T.InstancedMesh(geometry,material,capacity);mesh.userData.forestData=data;mesh.count=0;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);return mesh;
+}
+export function uploadBucket(mesh){mesh.instanceMatrix.needsUpdate=true;mesh.userData.forestData.needsUpdate=true;}
