@@ -10,3 +10,10 @@ for(const path of ['package.json','dist/shell.js','.github/workflows/pages.yml']
 assert.deepEqual(plan([],{full:true}).groups,groups);assert.equal(plan(['dist/rover.glb.gz']).rover,true);assert.equal(plan(['README.md']).deploy,false);
 const tests=JSON.parse(readFileSync('package.json','utf8')).scripts.test.split(/\s*&&\s*/).map(s=>/^node (scripts\/[\w-]+\.mjs)$/.exec(s)?.[1]);assert.ok(tests.every(Boolean));assert.equal(new Set(tests).size,tests.length);for(const t of tests)assert.ok(groups.includes(testGroup(t)));
 console.log(`CI planner: focused/shared/unknown/docs changes, full regression and all ${tests.length} test assignments passed`);
+
+for(const paths of [['dist/ships/model.js'],['dist/spaceship-studio.html'],['dist/credits/ships.js','dist/credits/style.css'],['dist/nebula-generator.html'],['scripts/test-credit-ships.mjs']]){
+ const selection=plan(paths);assert.deepEqual(selection.groups,['site']);assert.equal(selection.siteOnly,true);assert.equal(selection.shaders,false);assert.equal(selection.rover,false);
+}
+assert.equal(plan(['dist/ships/model.js','dist/terrain.js']).siteOnly,false);
+assert.equal(plan(['package-lock.json']).siteOnly,false);
+assert.equal(plan([]).siteOnly,false);

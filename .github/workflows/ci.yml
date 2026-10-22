@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       groups: ${{ steps.plan.outputs.groups }}
+      siteOnly: ${{ steps.plan.outputs.siteOnly }}
       shaders: ${{ steps.plan.outputs.shaders }}
       rover: ${{ steps.plan.outputs.rover }}
       build: ${{ steps.plan.outputs.build }}
@@ -32,14 +33,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - id: plan
         name: Select affected checks
         env:
           CI_FULL: ${{ inputs.full }}
           CI_BASE: ${{ inputs.base }}
           CI_HEAD: ${{ inputs.head }}
-        run: node scripts/ci/plan.mjs
+        run: |
+          if [[ -n "$CI_BASE" && ! "$CI_BASE" =~ ^0+$ ]]; then
+            git cat-file -e "$CI_BASE^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$CI_BASE" || export CI_FULL=true
+          fi
+          node scripts/ci/plan.mjs
       - name: Verify selection rules
         run: node scripts/test-ci-plan.mjs
 
@@ -62,7 +67,11 @@ jobs:
           npm run check
           node --check scripts/ci/plan.mjs
           node --check scripts/ci/run-tests.mjs
+      - name: Run focused ship and presentation checks in the build job
+        if: needs.changes.outputs.siteOnly == 'true'
+        run: node scripts/ci/run-tests.mjs site
       - name: Share generated foundation for checks
+        if: needs.changes.outputs.siteOnly != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: foundation
@@ -82,7 +91,7 @@ jobs:
   suites:
     name: ${{ matrix.group }} tests
     needs: [changes, build]
-    if: needs.changes.outputs.groups != '[]'
+    if: needs.changes.outputs.groups != '[]' && needs.changes.outputs.siteOnly != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -146,7 +155,7 @@ jobs:
             if(!['success','skipped'].includes(job.result))throw Error(`${name}: ${job.result}`);
           }
           const selected=results.changes.outputs;
-          for(const [name,required]of [['build',selected.build==='true'],['suites',selected.groups!=='[]'],['shaders',selected.shaders==='true'],['rover',selected.rover==='true']]){
+          for(const [name,required]of [['build',selected.build==='true'],['suites',selected.groups!=='[]'&&selected.siteOnly!=='true'],['shaders',selected.shaders==='true'],['rover',selected.rover==='true']]){
             if(required&&results[name].result!=='success')throw Error(`Required check ${name} did not pass`);
           }
           console.log('All selected checks passed');
