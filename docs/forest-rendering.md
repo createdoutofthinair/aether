@@ -17,7 +17,8 @@ same growth, branch skin, leaf and bark generators.
 - Worker-built connected branch skins and merged foliage are shared across
   tree instances. Each variant/LOD has bark and foliage instance batches. Leaves
   are merged once per prototype; there is no leaf Object3D per tree in the forest.
-- Screen-size LODs use hysteresis and a 0.35-second stochastic coverage transition.
+- Screen-size LODs use hysteresis and a 0.55-second complementary screen-pixel coverage transition with a target dwell
+  period and no mid-transition reversal.
   Three mesh levels progress to a two-triangle directional impostor. The normal
   mode caps mesh trees at 24 near, 96 middle and 192 low-detail records, with
   temporarily overlapping LOD representations during transitions. Mesh-only
@@ -29,8 +30,10 @@ same growth, branch skin, leaf and bark generators.
   not imply a measured frame-rate guarantee.
 - Wind is vertex-shader driven with a shared tree bend function and instance
   phase. It does not run growth or CPU branch simulation every frame.
-- Only the highest mesh LOD casts dynamic shadows. A local shadow camera follows
-  the observer. Far impostors do not cast full canopy shadows.
+- Dedicated low-detail instanced shadow proxies occupy a shadow-only layer,
+  independent of visual LOD and fade. Up to 128 nearby trees cast shadows. The
+  local shadow camera snaps its projection to a light-space texel grid. Visual
+  meshes do not duplicate these shadow casters; far canopy shadows remain limited.
 
 ## Actual directional impostors
 
@@ -40,25 +43,33 @@ variation. The atlas sampler flips V inside each tile to convert plane UVs to
 WebGPU capture coordinates, keeping elevation rows unchanged. Inspect selected
 tree isolates a full-detail forest instance for specimen comparison.
 
-Startup captures each generated tree from 24 upper-hemisphere directions (eight
-azimuths × three elevations) to 128-pixel tiles. Albedo and normal/depth atlases
-remain on the GPU. The normal/depth capture uses a custom fragment output so
-opaque-material alpha forcing cannot overwrite the stored depth channel.
+Startup captures each generated tree at a 5×5 hemi-octahedral lattice (25 views)
+to 128-pixel tiles, including stable capture bases at the zenith. Albedo and
+half-float normal/depth atlases stay on the GPU, reducing depth quantization
+compared with the previous 8-bit capture. The custom normal/depth fragment output
+preserves the depth channel independently of opaque alpha handling.
 
-Runtime interpolates adjacent azimuth captures, rotates decoded normals with the
-instance yaw for directional relighting and writes an approximate reconstructed
-surface depth. Elevation rows use nearest selection; interpolation between those
-rows, octahedral sampling and parallax-correct UV reprojection are future quality
-improvements. These are multiview hemispherical impostors, not a claim of a
-complete octahedral/parallax implementation. Billboard transforms and atlas-frame
-selection currently update with the culling pass; that cadence is inspectable
-in camera movement and can be increased if profiling allows.
+Runtime view selection is on the GPU: the local camera direction maps into the
+octahedral lattice and selects three neighboring captures with barycentric
+weights. Each sample projects the current camera ray into its capture plane,
+reads depth, and reprojects the ray once before fetching albedo and normals.
+Surface depth is reconstructed from the weighted ray intersections. This is a
+single-step depth parallax approximation, not iterative volumetric ray tracing.
+A checkbox toggles depth parallax for comparison.
 
-Masked stochastic coverage avoids ordinary blended transparency sorting. Atlas
-UVs inset samples inside tiles, and mip filtering reduces distant detail. GPU
-validation must still assess silhouette blending, tile borders, overhead views,
-LOD changes, alpha grain and normal/depth reconstruction. Captures are generated
-again when opening the lab; persistent atlas caching is not yet implemented.
+The shader also constructs camera-facing vertices directly from the current
+camera basis every frame. The CPU still updates population/culling buffers at
+10 Hz; it no longer controls impostor orientation or atlas view selection.
+
+Visual transitions share complementary screen-pixel masks. Outgoing and incoming
+representations cover opposite parts of the same threshold field rather than
+using independent alpha hashes, which had created holes and overlap. Impostor
+silhouettes use MSAA alpha-to-coverage instead of permanent stochastic grain.
+
+Atlas UVs flip V inside each tile (WebGPU capture origin), with an inset and mip
+filtering. GPU validation is still required for parallax disocclusion, silhouette
+quality, thin foliage, atlas borders, transitions, shadows and frame times.
+Captures regenerate when opening the lab; persistent atlas caching is absent.
 
 ## Controls and budgets
 
@@ -75,6 +86,10 @@ resident prototype/biome cells through the asset lifecycle developed for ships.
 Replacing Three.js alone would not address vegetation overdraw or draw budgets.
 
 ## Validation
+
+`test-forest-transitions.mjs` checks octahedral round trips and weights, pole
+bases, parallax ray/plane intersections, complementary coverage, LOD dwell and
+transition locking, shadow snapping and shadow-layer separation.
 
 `test-forest.mjs` checks 2,500 deterministic placements, minimum spacing,
 terrain/trail placement, species habitat, all nine variants, LOD hysteresis,

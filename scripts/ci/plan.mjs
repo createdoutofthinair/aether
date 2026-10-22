@@ -3,7 +3,7 @@ import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 export const groups=['site','nature','engine'];
 export function testGroup(path){
- if(/test-(forest|wood|leaves|tree-model)\.mjs$/.test(path))return 'nature';
+ if(/test-(forest(?:-transitions)?|wood|leaves|tree-model)\.mjs$/.test(path))return 'nature';
  if(/test-(resident-pool|hull-materials|credit-ships|ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
  return 'engine'; // New unclassified tests remain covered by full/core checks.
 }
