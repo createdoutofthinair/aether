@@ -1,5 +1,5 @@
 import * as T from 'three/webgpu';
-import {texture,uv,vec2,vec3,vec4,normalWorld,positionView,float,attribute,mix,uniform,cameraPosition,cameraWorldMatrix,cameraViewMatrix,cameraProjectionMatrix,positionGeometry,cameraNear,cameraFar,viewZToPerspectiveDepth} from 'three/tsl';
+import {texture,uv,vec2,vec3,vec4,normalWorld,positionView,float,attribute,mix,uniform,cameraPosition,cameraWorldMatrix,cameraViewMatrix,cameraNear,cameraFar,viewZToPerspectiveDepth} from 'three/tsl';
 import {OCT_GRID,octDirection,captureBasis,validateAtlasCoverage} from './octahedral.js';
 import {transitionMask} from './coverage.js';
 /** Hemi-octahedral captures of actual geometry.
@@ -38,8 +38,11 @@ export function impostorMaterial(atlas,{sun,debug,parallax=uniform(0)}){
  // Preserve silhouette coverage while blending radiance. A weighted average
  // otherwise erases leaves that occur in only one neighbouring capture.
  const silhouette=samples[0].c.a.mul(weights[0]).max(samples[1].c.a.mul(weights[1])).max(samples[2].c.a.mul(weights[2])).div(weights[0].max(weights[1]).max(weights[2]));
- const coverage=color.a.max(.001),n=normal.div(coverage).mul(2).sub(1).normalize(),world=vec3(n.x.mul(yaw.cos()).add(n.z.mul(yaw.sin())),n.y,n.z.mul(yaw.cos()).sub(n.x.mul(yaw.sin()))),lit=world.dot(sun).max(0).mul(.72).add(.4),m=new T.MeshBasicNodeMaterial({alphaTest:.01,alphaToCoverage:true,side:T.DoubleSide,depthWrite:true});
+ const coverage=color.a.max(.001),n=normal.div(coverage).mul(2).sub(1).normalize(),world=vec3(n.x.mul(yaw.cos()).add(n.z.mul(yaw.sin())),n.y,n.z.mul(yaw.cos()).sub(n.x.mul(yaw.sin()))),lit=world.dot(sun).max(0).mul(.72).add(.4),m=new T.SpriteNodeMaterial({alphaTest:.01,alphaToCoverage:true,transparent:false,side:T.DoubleSide,depthWrite:true});
  m.colorNode=mix(color.rgb.div(coverage).mul(lit).mul(tint),vec3(.85,.3,.7),debug);m.opacityNode=silhouette;m.maskNode=transitionMask();
- const vertex=center.add(rightW.mul(positionGeometry.x.mul(sx))).add(upW.mul(positionGeometry.y.mul(sy)));m.vertexNode=cameraProjectionMatrix.mul(cameraViewMatrix).mul(vec4(vertex,1));
- const planeView=cameraViewMatrix.mul(vec4(center.add(planeOffset),1)).z,rayZ=cameraViewMatrix.mul(vec4(forward(ray),0)).z;m.depthNode=viewZToPerspectiveDepth(planeView.sub(depth.div(coverage).mul(parallax).mul(rayZ)),cameraNear,cameraFar).clamp(0,1);return m;
+ // The built-in sprite path owns clip position, fog position and raster depth.
+ m.positionNode=center;m.scaleNode=vec2(sx,sy);
+ const planeView=cameraViewMatrix.mul(vec4(center.add(planeOffset),1)).z,rayZ=cameraViewMatrix.mul(vec4(forward(ray),0)).z;const reconstructedDepth=viewZToPerspectiveDepth(planeView.sub(depth.div(coverage).mul(parallax).mul(rayZ)),cameraNear,cameraFar).clamp(0,1);
+ m.setParallaxDepth=enabled=>{parallax.value=enabled?1:0;m.depthNode=enabled?reconstructedDepth:null;m.needsUpdate=true;};
+ m.setParallaxDepth(parallax.value>.5);return m;
 }

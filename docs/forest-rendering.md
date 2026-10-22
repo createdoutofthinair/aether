@@ -125,3 +125,16 @@ still projected onto each capture plane and wrote that plane's depth, so it did
 not provide a reliable baseline. Every final colour atlas is read back once at
 preparation time and all 25 capture tiles must contain nonzero coverage before
 use. The counter reports validated atlases; this adds no frame-loop readbacks.
+
+### Sprite transform and depth regression
+
+The default now uses `SpriteNodeMaterial.positionNode` and `scaleNode` with the
+instance centre and scale attributes. Three.js owns the billboard clip position,
+view position (including fog), and raster depth. The previous custom `vertexNode`
+override left standard material position accessors on a different transform and
+still emitted a custom fragment-depth output when the parallax uniform was zero.
+Experimental parallax now changes the material's depth node and recompiles on a
+user toggle; switching it off removes `frag_depth` entirely. The forest test
+builds the actual WGSL for both settings and checks this contract. This checks
+shader generation, not rendered GPU pixels; screenshot parity still needs a
+WebGPU device.
