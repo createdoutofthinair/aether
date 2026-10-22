@@ -1,4 +1,5 @@
 import {NebulaRenderer,presets} from '../nebula/renderer.js?v=volume-perf-8';
+import {NEBULA_TRAVEL_SPEED} from './nebula-lighting.js';
 import {AdaptiveNebulaQuality} from '../nebula/quality.js';
 /** Background work cannot queue behind an unfinished GPU frame. */
 export function createCreditsNebula(canvas){
@@ -13,7 +14,7 @@ export function createCreditsNebula(canvas){
   tick(dt=0){if(disposed)return;if(!reduced.matches)clock+=Math.min(dt,.1);if(!ready)return;
    if(renderer.completedFrames!==observedFrame&&renderer.completedFrames){observedFrame=renderer.completedFrames;if(quality.observe(renderer.frameTimeMs))fit();}
    if(renderer.framePending||(!dirty&&clock-lastDraw<1/24))return;
-   settings.travel=clock*.85;
+   settings.travel=clock*NEBULA_TRAVEL_SPEED;
    try{if(renderer.render(settings,clock)){lastDraw=clock;dirty=false;canvas.classList.add('ready');}}catch(error){disable(error);}
   },
   restart(){clock=0;lastDraw=-1;dirty=true;api.tick(0);},
