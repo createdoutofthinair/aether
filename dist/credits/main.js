@@ -11,14 +11,15 @@ const roll=document.querySelector('#roll'),viewport=document.querySelector('#vie
 const pause=document.querySelector('#pause'),progress=document.querySelector('#progress'),status=document.querySelector('#status');
 const stars=new Starfield(document.querySelector('#creditStars'),{brightness:.75});
 const nebula=createCreditsNebula(document.querySelector('#creditNebula'));
-const ships=createCreditsShips(document.querySelector('#creditShips'));
+const ships=createCreditsShips(document.querySelector('#creditShips'),{onProgress:(done,total)=>{document.querySelector('#startNote').textContent=`Preparing fleet for smooth playback · ${done}/${total}`;}});
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let running=false,started=false,titleReady=false,pageDisposed=false,position=0,last=0,end=1,speed=48,introTime=reduced?7.2:0;
 const startButton=document.querySelector('#playCredits'),gate=document.querySelector('#creditStartGate'),startNote=document.querySelector('#startNote');
 stars.setPlaying(false);
 let title={render:()=>({scroll:true}),dispose(){}};
 function enableStart(){titleReady=true;startButton.disabled=false;startNote.textContent='Start the film and soundtrack together.';}
-createTitleSequence(document.querySelector('.title-stage')).then(sequence=>{if(pageDisposed){sequence.dispose();return;}title=sequence;title.render(introTime,reduced);enableStart();}).catch(error=>{console.warn('Aether title fallback',error);enableStart();});
+const titlePreparation=createTitleSequence(document.querySelector('.title-stage')).then(sequence=>{if(pageDisposed){sequence.dispose();return;}title=sequence;title.render(introTime,reduced);}).catch(error=>{console.warn('Aether title fallback',error);});
+Promise.all([titlePreparation,ships.ready]).then(()=>{if(!pageDisposed)enableStart();});
 startButton.addEventListener('click',()=>{if(!titleReady)return;started=true;gate.hidden=true;document.body.classList.remove('awaiting-credits');restart();viewport.focus({preventScroll:true});});
 function measure(){end=Math.max(1,roll.scrollHeight-viewport.clientHeight+60);position=Math.min(position,end);paint();}
 function paint(){roll.style.transform=`translateY(${-position}px)`;progress.value=String(Math.round(position/end*1000));}

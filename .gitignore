@@ -3,3 +3,5 @@ node_modules/
 
 # Rebuilt from the exact npm package during build/deploy
 dist/vendor-gpu/
+
+dist/render/worker-kit/

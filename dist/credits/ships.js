@@ -1,38 +1,37 @@
 import * as T from 'three/webgpu';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {blueprint} from '../ships/blueprint.js';
-import {shipModel} from '../ships/model.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {activeFlights} from './ship-flight.js';
-// Bake the kit's hundreds of meshes into one draw per material, once per ship.
-export function batchShip(root){
- root.updateMatrixWorld(true);const byMaterial=new Map(),source=new Set();
- root.traverse(o=>{if(!o.isMesh)return;const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);source.add(o.geometry);if(!byMaterial.has(o.material))byMaterial.set(o.material,[]);byMaterial.get(o.material).push(geometry);});
- const batched=new T.Group();for(const [material,geometries]of byMaterial){const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(!geometry)throw Error('Ship batching failed');material.transparent=false;material.opacity=1;material.depthWrite=true;const mesh=new T.Mesh(geometry,material);batched.add(mesh);}source.forEach(g=>g.dispose());return batched;
-}
-export function setFlightOpacity(ship,opacity){
- ship.traverse(o=>{if(!o.material)return;const m=o.material,fading=opacity<1;if(m.transparent!==fading){m.transparent=fading;m.depthWrite=!fading;m.needsUpdate=true;}m.opacity=opacity;});
-}
-function disposeShip(ship){ship.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}
-export function createCreditsShips(canvas){
+import {ResidentPool} from '../render/resident-pool.js';
+import {unpackShip,disposeShip} from '../render/ship-assets.js';
+export {batchShip} from '../render/ship-assets.js';
+import {FLEET_VARIANTS,fleetSeed} from './ship-flight.js';
+// Pipeline state is fixed when assets are hydrated. Fades only change uniforms.
+export function setFlightOpacity(ship,opacity){for(const mesh of ship.children)mesh.material.opacity=opacity;}
+export function createCreditsShips(canvas,{onProgress=()=>{}}={}){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');let environment,pmrem,renderer,scene,camera,clock=0,disposed=false,ready=false,pending=false,lastDraw=-1,failed=false;
- const cache=new Map(),retired=new Set();
+ const cache=new Map();let pool,worker,workerReject,resolveReady;
+ const readiness=new Promise(resolve=>{resolveReady=resolve;});
+ const metrics={prepared:0,active:0,spawnBuilds:0,warmupMs:0,resident:FLEET_VARIANTS};
+ function build(key){return new Promise((resolve,reject)=>{workerReject=reject;worker.onmessage=({data})=>{if(data.id!==key)return;workerReject=null;if(data.error)reject(Error(data.error));else{const ship=unpackShip(data.payload);scene.add(ship);resolve(ship);}};worker.onerror=e=>reject(Error(e.message));worker.postMessage({id:key,seed:fleetSeed(key)});});}
+ async function warm(ship){if(disposed)return;ship.visible=true;ship.position.set(0,0,-50);ship.traverse(o=>{if(o.isMesh)o.frustumCulled=false;});await renderer.compileAsync(scene,camera);if(disposed)return;await renderer.renderAsync(scene,camera);await renderer.backend.device.queue.onSubmittedWorkDone();if(disposed)return;ship.visible=false;ship.traverse(o=>{if(o.isMesh)o.frustumCulled=true;});metrics.prepared++;onProgress(metrics.prepared,FLEET_VARIANTS);}
+
  function fit(){if(!renderer||disposed)return;const {width,height}=canvas.getBoundingClientRect();if(!width||!height)return;renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();}
  const resize=new ResizeObserver(fit);resize.observe(canvas);
- function fail(error){failed=true;ready=false;canvas.hidden=true;console.info('Aether ship flybys unavailable:',error?.message||error);}
- const api={tick(dt=0){if(disposed||failed||reduced.matches||document.hidden)return;clock+=Math.min(Math.max(dt,0),.1);if(!ready||pending||clock-lastDraw<1/30)return;
-  const flights=activeFlights(clock),ids=new Set(flights.map(f=>f.index));for(const index of retired)if(!ids.has(index))retired.delete(index);for(const [index,ship]of cache)if(!ids.has(index)){scene.remove(ship);disposeShip(ship);cache.delete(index);}
-  for(const f of flights){if(retired.has(f.index))continue;let ship=cache.get(f.index);if(!ship){const plan=blueprint(f.seed);const model=shipModel(plan,{roughness:Math.max(.42,plan.appearance.roughness)});model.rotation.set(0,0,0);ship=batchShip(model);const bounds=new T.Box3().setFromObject(ship),size=bounds.getSize(new T.Vector3());ship.userData.projectedExtent=Math.max(size.x,size.y);cache.set(f.index,ship);scene.add(ship);}
-   ship.position.set(f.x,f.y,f.z);ship.scale.setScalar(f.scale);setFlightOpacity(ship,f.opacity);
-   // Kit nose is -Z: remove the studio display rotation before batching, then
-   // keep every hull aligned with the shared forward flight direction.
-   ship.rotation.set(0,0,0);
-   const pixels=ship.userData.projectedExtent*f.scale*canvas.clientHeight/(2*Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.max(1,-f.z));
-   if(f.z<0&&pixels<.65){scene.remove(ship);disposeShip(ship);cache.delete(f.index);retired.add(f.index);}
-  }
+ function fail(error){if(disposed)return;failed=true;ready=false;canvas.hidden=true;resolveReady(false);pool?.dispose();worker?.terminate();console.info('Aether ship flybys unavailable:',error?.message||error);}
+ const api={ready:readiness,metrics,tick(dt=0){if(disposed||failed||reduced.matches||document.hidden)return;clock+=Math.min(Math.max(dt,0),.1);if(!ready||pending||clock-lastDraw<1/30)return;
+  const flights=activeFlights(clock),ids=new Set(flights.map(f=>f.index));for(const [index]of cache)if(!ids.has(index)){pool.release(index);cache.delete(index);}
+  for(const f of flights){let ship=cache.get(f.index);if(!ship){ship=pool.acquire(f.index%FLEET_VARIANTS,f.index);if(!ship)continue;cache.set(f.index,ship);}
+   ship.visible=true;ship.position.set(f.x,f.y,f.z);ship.scale.setScalar(f.scale);setFlightOpacity(ship,f.opacity);
+  }metrics.active=cache.size;
   try{renderer.render(scene,camera);lastDraw=clock;pending=true;renderer.backend.device.queue.onSubmittedWorkDone().then(()=>{pending=false;},fail);}catch(error){fail(error);}
- },restart(){clock=0;lastDraw=-1;for(const ship of cache.values()){scene?.remove(ship);disposeShip(ship);}cache.clear();retired.clear();},dispose(){if(disposed)return;disposed=true;ready=false;resize.disconnect();for(const ship of cache.values())disposeShip(ship);cache.clear();retired.clear();environment?.dispose();pmrem?.dispose();renderer?.dispose();}};
+ },restart(){clock=0;lastDraw=-1;cache.clear();pool?.reset();metrics.active=0;},dispose(){if(disposed)return;disposed=true;ready=false;resolveReady(false);resize.disconnect();workerReject?.(Error('Ship preparation cancelled'));worker?.terminate();pool?.dispose();cache.clear();environment?.dispose();pmrem?.dispose();renderer?.dispose();}};
+
  if(!reduced.matches)(async()=>{try{renderer=new T.WebGPURenderer({canvas,alpha:true,antialias:true});await renderer.init();if(disposed){renderer.dispose();return;}if(!renderer.backend.isWebGPUBackend)throw Error('Flybys require WebGPU');renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor(0,0);renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;scene=new T.Scene();camera=new T.PerspectiveCamera(45,1,.1,100000);
- const key=new T.DirectionalLight(0xdcecff,2.4);key.position.set(-4,5,6);scene.add(key);const rim=new T.DirectionalLight(0x91b8d0,1.4);rim.position.set(3,-1,-4);scene.add(rim);scene.add(new T.AmbientLight(0x9daec5,.65));const room=new RoomEnvironment();pmrem=new T.PMREMGenerator(renderer);environment=pmrem.fromScene(room,.08);room.dispose();scene.environment=environment.texture;scene.environmentIntensity=.5;fit();ready=true;renderer.backend.device.lost.then(info=>{if(!disposed&&info.reason!=='destroyed')fail(info.message);});
- }catch(error){fail(error);}})();return api;
+ const key=new T.DirectionalLight(0xdcecff,2.4);key.position.set(-4,5,6);scene.add(key);const rim=new T.DirectionalLight(0x91b8d0,1.4);rim.position.set(3,-1,-4);scene.add(rim);scene.add(new T.AmbientLight(0x9daec5,.65));const room=new RoomEnvironment();pmrem=new T.PMREMGenerator(renderer);environment=pmrem.fromScene(room,.08);room.dispose();scene.environment=environment.texture;scene.environmentIntensity=.5;fit();
+ canvas.style.visibility='hidden';const warmupStart=performance.now();worker=new Worker(new URL('../render/ship-worker.js',import.meta.url),{type:'module'});
+ pool=new ResidentPool({create:build,warm,destroy:ship=>{scene.remove(ship);disposeShip(ship);}});
+ await pool.prepare(Array.from({length:FLEET_VARIANTS},(_,i)=>i));if(disposed)return;
+ worker.terminate();worker=null;metrics.warmupMs=performance.now()-warmupStart;await renderer.renderAsync(scene,camera);canvas.style.visibility='';ready=true;resolveReady(true);
+ renderer.backend.device.lost.then(info=>{if(!disposed&&info.reason!=='destroyed')fail(info.message);});
+ }catch(error){if(!disposed)fail(error);}})();else resolveReady(false);return api;
 }

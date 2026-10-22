@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 export const groups=['site','nature','engine'];
 export function testGroup(path){
  if(/test-(wood|leaves|tree-model)\.mjs$/.test(path))return 'nature';
- if(/test-(hull-materials|credit-ships|ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
+ if(/test-(resident-pool|hull-materials|credit-ships|ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
  return 'engine'; // New unclassified tests remain covered by full/core checks.
 }
 export function plan(paths,{full=false}={}){
@@ -12,6 +12,7 @@ export function plan(paths,{full=false}={}){
  for(const path of paths){
   if(/^(docs\/|README(?:\.|$)|LICENSE(?:\.|$))/.test(path)||path.endsWith('.md'))continue;
   deploy ||= path.startsWith('dist/')||/^(src\/|package(?:-lock)?\.json$|scripts\/build-|scripts\/vendor-)/.test(path);
+  if(/^(?:src|dist)\/render\/(?:resident-pool|ship-assets|ship-worker)\.js$/.test(path)){selected.add('site');continue;}
   if(/^(dist\/nature\/|dist\/nature-studio\.html$)/.test(path)){selected.add('nature');continue;}
   if(/^dist\/(hull\/|ships\/|credits\/|hud\/|viewer\/|nebula\/|audio\/|assets\/|(?:spaceship-studio|credits|hud-design|logo-design|nebula-generator|nebula-studio)\.html$)/.test(path)){selected.add('site');continue;}
   if(/^dist\/.*\.css$/.test(path)){selected.add('site');continue;}

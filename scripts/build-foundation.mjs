@@ -30,3 +30,22 @@ for(const relative of ['geometries/RoundedBoxGeometry.js','controls/OrbitControl
  await mkdir(target.slice(0,target.lastIndexOf('/')),{recursive:true});
  await copyFile(`node_modules/three/examples/jsm/${relative}`,target);
 }
+// Worker modules cannot use a document's import map. Copy the small runtime
+// graph with explicit URLs to the same pinned Three.js build (no second engine).
+await mkdir('dist/render/worker-kit',{recursive:true});
+for(const name of ['resident-pool','ship-assets','ship-worker'])await copyFile(`src/render/${name}.js`,`dist/render/${name}.js`);
+const workerSources={
+ 'model.js':'dist/ships/model.js',
+ 'material.js':'dist/hull/material.js',
+ 'ship-assets.js':'src/render/ship-assets.js',
+ 'BufferGeometryUtils.js':'node_modules/three/examples/jsm/utils/BufferGeometryUtils.js',
+ 'RoundedBoxGeometry.js':'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js'
+};
+for(const [name,source]of Object.entries(workerSources)){
+ let code=await readFile(source,'utf8');
+ code=code.replaceAll("'three/webgpu'","'../../vendor-gpu/three.webgpu.js'").replaceAll("'three'","'../../vendor-gpu/three.webgpu.js'")
+ .replaceAll("'three/addons/utils/BufferGeometryUtils.js'","'./BufferGeometryUtils.js'").replaceAll("'three/addons/geometries/RoundedBoxGeometry.js'","'./RoundedBoxGeometry.js'")
+ .replaceAll("'./blueprint.js'","'../../ships/blueprint.js'").replaceAll("'../hull/surface.js'","'../../hull/surface.js'").replaceAll("'../hull/material.js'","'./material.js'").replaceAll("'./surface.js'","'../../hull/surface.js'");
+ await writeFile(`dist/render/worker-kit/${name}`,code);
+}
+console.log('Resident asset pool and import-map-free ship worker synchronized');
