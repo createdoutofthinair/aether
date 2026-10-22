@@ -13,7 +13,7 @@ const dev = document.getElementById('dev');
 let current;
 function render() {
  const requested = location.hash.slice(2).split('?')[0];
- const route = Object.hasOwn(routes, requested) ? requested : 'explorer';
+ const route = Object.hasOwn(routes, requested) ? requested : 'credits';
  if (requested !== route) { location.replace('#/' + route); return; }
  if (route === current) return;
  current = route;
