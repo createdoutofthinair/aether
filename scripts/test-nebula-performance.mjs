@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {AdaptiveNebulaQuality} from '../dist/nebula/quality.js';
+import {NebulaRenderer,presets} from '../dist/nebula/renderer.js';
+const quality=new AdaptiveNebulaQuality({budgetMs:20,minScale:.5});
+assert.equal(quality.observe(40),false);assert.equal(quality.observe(40),false);assert.equal(quality.observe(40),true);assert.equal(quality.scale,.85);
+for(let i=0;i<100;i++)quality.observe(40);assert.equal(quality.scale,.5);
+for(let i=0;i<44;i++)assert.equal(quality.observe(5),false);assert.equal(quality.observe(5),true);assert.ok(quality.scale>.5&&quality.scale<1);
+const stable=quality.scale;for(const ms of [NaN,Infinity,0,-5,20,21,19])quality.observe(ms);assert.equal(quality.scale,stable);
+quality.reset();assert.equal(quality.scale,1);
+let complete,submits=0,writes=0;
+const pass={setPipeline(){},setBindGroup(){},draw(){},end(){}};
+const renderer=new NebulaRenderer();renderer.canvas={width:320,height:180};renderer.buffer={destroy(){}};renderer.pipeline={};renderer.bind={};
+renderer.context={getCurrentTexture:()=>({createView:()=>({})}),unconfigure(){}};
+renderer.device={queue:{writeBuffer(){writes++;},submit(){submits++;},onSubmittedWorkDone:()=>new Promise(r=>complete=r)},createCommandEncoder:()=>({beginRenderPass:()=>pass,finish:()=>({})}),destroy(){}};
+assert.equal(renderer.render(presets.veil),true);assert.equal(renderer.render(presets.veil),false);assert.equal(submits,1);assert.equal(writes,1);
+complete();await renderer.whenIdle();assert.equal(renderer.framePending,false);assert.equal(renderer.completedFrames,1);assert.ok(Number.isFinite(renderer.frameTimeMs));
+assert.equal(renderer.render(presets.veil),true);renderer.dispose();complete();await renderer.whenIdle();assert.equal(renderer.completedFrames,1);assert.equal(renderer.render(presets.veil),false);
+console.log('Nebula: single-frame GPU backpressure, completion/disposal races and bounded adaptive-resolution hysteresis passed');

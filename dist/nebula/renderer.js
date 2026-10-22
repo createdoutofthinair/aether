@@ -16,14 +16,15 @@ fn noise(p:vec3f)->f32{let i=floor(p);let f=fract(p);let t=f*f*(vec3f(3.)-2.*f);
 fn fbm(p:vec3f)->f32{var q=p;var value=0.;var amp=.55;for(var i=0;i<4;i++){value+=noise(q)*amp;q=vec3f(q.y*.8+q.z*.6,q.x*.6-q.z*.8,q.x*.8-q.y*.6)*2.07+vec3f(13.7,7.1,19.3);amp*=.5;}return value;}
 fn starLayer(uv:vec2f,scale:f32)->f32{let grid=uv*scale;let cell=floor(grid);let h=hash(vec3f(cell,u.seed));let center=vec2f(hash(vec3f(cell,71.)),hash(vec3f(cell,19.)));let d=length(fract(grid)-center);let pixel=scale/u.resolution.y;return select(0.,(1.-smoothstep(pixel*.25,pixel*1.4,d))*(.18+h*.45),h>.9985);}
 fn silhouette(p:vec3f,kind:f32)->f32{
- let edge=length(p)+.16*(fbm(p*4.+vec3f(19.))-.5);
- let boundary=1.-smoothstep(.6,.98,edge);
  var form=exp(-dot(p*vec3f(1.0,1.45,1.4),p*vec3f(1.0,1.45,1.4)));
  if(kind>.5&&kind<1.5){form=exp(-pow((length(p.xy)-.52)*7.,2.)-p.z*p.z*12.);}
  if(kind>1.5&&kind<2.5){let axis=vec3f(p.x+sin(p.y*4.)*.15,p.y,p.z);form=exp(-axis.x*axis.x*7.-axis.z*axis.z*10.-axis.y*axis.y*1.8);}
  if(kind>2.5&&kind<3.5){let a=p-vec3f(.34,.15,0.);let b=p+vec3f(.34,.15,0.);form=exp(-dot(a*2.7,a*2.7))+exp(-dot(b*2.7,b*2.7));}
  if(kind>3.5&&kind<4.5){let curve=vec2f(p.x-sin(p.y*5.)*.3,p.z-cos(p.y*5.)*.22);form=exp(-dot(curve,curve)*28.-p.y*p.y*1.8);}
  if(kind>4.5){form=exp(-pow((length(p)-.59)*9.,2.));}
+ if(form<.000001){return 0.;}
+ let edge=length(p)+.16*(fbm(p*4.+vec3f(19.))-.5);
+ let boundary=1.-smoothstep(.6,.98,edge);
  return form*boundary;
 }
 // Shared optional scene palette: each encounter keeps its own spatial composition.
@@ -63,17 +64,21 @@ fn encounterPalette(kind:u32)->mat3x3f{
    let p=vec3f(c*local.x-s*local.y,s*local.x+c*local.y,local.z)/axes;
    let q=p*u.scale*2.8+seed+vec3f(u.time*.004,0.,0.);
    let warp=vec3f(fbm(q*.7),fbm(q*.7+vec3f(7.3)),fbm(q*.7+vec3f(15.8)))-vec3f(.5);
-   let n=fbm(q+warp*u.turbulence*1.7);
    let envelope=silhouette(p+warp*.22,kind);
+   if(envelope<.000001){continue;}
+   let n=fbm(q+warp*u.turbulence*1.7);
    let visibility=select(1.,1.-smoothstep(62.,84.,center.z),flight);
    // Thresholded structures rather than a continuously filled cloud.
    let coarseField=fbm(p*3.8+seed*.31+vec3f(81.));
    let holes=smoothstep(.32+u.form.z*.15,.55+u.form.z*.1,coarseField);
    let ridged=pow(max(0.,1.-abs(n-.51)*13.),4.);
-   let cross=fbm(q*.72+vec3f(47.));
-   let branches=pow(max(0.,1.-abs(cross-.49)*16.),5.);
-   let fragments=smoothstep(.50,.69,n)*.45;
-   let structure=(max(ridged*.8,branches*.55)+fragments)*holes;
+   var structure=0.;
+   if(holes>0.){
+    let cross=fbm(q*.72+vec3f(47.));
+    let branches=pow(max(0.,1.-abs(cross-.49)*16.),5.);
+    let fragments=smoothstep(.50,.69,n)*.45;
+    structure=(max(ridged*.8,branches*.55)+fragments)*holes;
+   }
    let halo=smoothstep(.45,.66,n)*.008;
    let gas=(structure+halo)*u.density*envelope*visibility;
    let dustField=fbm(q*.62+vec3f(23.1));
@@ -81,9 +86,11 @@ fn encounterPalette(kind:u32)->mat3x3f{
    let dustGas=lane*envelope*visibility*.095;
    let extinction=gas*.65+dustGas;
    let alpha=1.-exp(-extinction*stepSize*.8);
+   if(gas<=0.){trans*=1.-alpha;continue;}
    // Different spatial emission distributions, not one recoloured noise blend.
    let region=fbm(p*3.5+seed*.37+vec3f(41.));
-   let depth=fbm(vec3f(p.xy*5.,p.z*2.)+seed*.19+vec3f(9.));
+   var depth=0.;
+   if((kind>.5&&kind<2.5)||kind>4.5){depth=fbm(vec3f(p.xy*5.,p.z*2.)+seed*.19+vec3f(9.));}
    let perturb=(region-.5)*.28;
    let band=p.y+sin(p.x*5.)*.12+perturb;
    var weights=vec3f((1.-smoothstep(-.1,.18,band))*.65,smoothstep(.0,.24,band)*.9,exp(-pow((band-.06)*22.,2.))*.28);
@@ -118,13 +125,17 @@ fn encounterPalette(kind:u32)->mat3x3f{
    color+=trans*alpha*source;trans*=1.-alpha;
   }
  }
- let stars=starLayer(uv,150.)+starLayer(uv+vec2f(1.37),245.);
- color+=trans*vec3f(.75,.85,1.)*stars*.45*u.colorC.a;
+ if(u.colorC.a>0.){
+  let stars=starLayer(uv,150.)+starLayer(uv+vec2f(1.37),245.);
+  color+=trans*vec3f(.75,.85,1.)*stars*.45*u.colorC.a;
+ }
  color=vec3f(1.)-exp(-color*1.65);return vec4f(pow(color,vec3f(.4545)),1.);
 
 }`;
 export class NebulaRenderer{
  async initialize(canvas){if(!navigator.gpu)throw Error('This nebula lab requires WebGPU. Enable hardware acceleration in a WebGPU-capable browser.');this.canvas=canvas;this.adapter=await navigator.gpu.requestAdapter();if(!this.adapter)throw Error('No WebGPU adapter is available.');this.device=await this.adapter.requestDevice();this.context=canvas.getContext('webgpu');if(!this.context)throw Error('WebGPU canvas initialization failed.');const format=navigator.gpu.getPreferredCanvasFormat();this.context.configure({device:this.device,format,alphaMode:'opaque'});const module=this.device.createShaderModule({code:shader});const compilation=await module.getCompilationInfo();const errors=compilation.messages.filter(m=>m.type==='error');if(errors.length)throw Error(errors.map(e=>e.message).join('; '));this.pipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vs'},fragment:{module,entryPoint:'fs',targets:[{format}]},primitive:{topology:'triangle-list'}});this.buffer=this.device.createBuffer({size:128,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});this.bind=this.device.createBindGroup({layout:this.pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.buffer}}]});this.device.lost.then(info=>{if(!this.disposed&&info.reason!=='destroyed')this.onError?.('WebGPU device lost. Reload the lab to recover.');});return this;}
- render(settings,time=0){if(this.disposed)return;const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a').slice(0,3),settings.stars===false?0:1,settings.stretch||3,settings.layers??.55,settings.porosity??.75,settings.monochrome?0:(settings.saturation??.4),settings.cycleLooks?1:0,0,0,0]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);}
+ render(settings,time=0){if(this.disposed||this.framePending)return false;const submittedAt=performance.now();const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a').slice(0,3),settings.stars===false?0:1,settings.stretch||3,settings.layers??.55,settings.porosity??.75,settings.monochrome?0:(settings.saturation??.4),settings.cycleLooks?1:0,0,0,0]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);this.framePending=true;
+ this.frameCompletion=this.device.queue.onSubmittedWorkDone().then(()=>{this.framePending=false;if(this.disposed)return;this.frameTimeMs=performance.now()-submittedAt;this.completedFrames=(this.completedFrames||0)+1;}).catch(error=>{this.framePending=false;if(!this.disposed)this.onError?.(error.message);});return true;}
+ whenIdle(){return this.frameCompletion||Promise.resolve();}
  dispose(){this.disposed=true;this.buffer?.destroy();this.context?.unconfigure();this.device?.destroy();}
 }

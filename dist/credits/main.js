@@ -1,4 +1,4 @@
-import {createCreditsNebula} from './space-background.js?v=brighter-7';
+import {createCreditsNebula} from './space-background.js?v=volume-perf-8';
 import {Starfield} from '../space/starfield.js';
 import {createTitleSequence} from './title-sequence.js';
 import {getAudioManager} from '../audio/audio-manager.js';
