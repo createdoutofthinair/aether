@@ -1,0 +1,3 @@
+/* Workspaces retain their local tools; branding and global navigation belong to the shell. */
+body>header .brand,body>header nav,body>header>strong,body>header .header-divider,body>header .page-name{display:none!important}
+body>header:has(> .edition),body>header:has(> #backend),body>header:has(> .scope),body>header:has(> nav:only-of-type):not(:has(button)):not(:has(.header-right)){display:none!important}
