@@ -22,3 +22,13 @@ let audioFailure,silentDownload=false;const failedAudio=new CreditsRecorder({Rec
 const {readFileSync}=await import('node:fs');const {runInNewContext}=await import('node:vm');const navigation=readFileSync(new URL('../dist/navigation.js',import.meta.url),'utf8');
 for(const [search,expected] of [['?capture=1',0],['',1]]){let redirects=0;const win={};win.top=win;runInNewContext(navigation,{window:win,location:{pathname:'/aether/credits.html',search,replace:()=>redirects++},URLSearchParams});assert.equal(redirects,expected);}
 console.log('Stop-sharing finalization, rejected soundtrack and standalone capture routing passed');
+
+// Preserve the original stereo capture track, and reject a reported mono source.
+assert.equal(options.audio.channelCount.ideal,2);
+for(const key of ['echoCancellation','noiseSuppression','autoGainControl'])assert.equal(options.audio[key],false);
+assert.equal(rec.recorder.stream,source);
+const mono=stream();mono.sound.getSettings=()=>({channelCount:1});let monoError;
+const monoRecorder=new CreditsRecorder({Recorder,capture:async()=>mono,onError:e=>monoError=e});
+await monoRecorder.start();assert.equal(monoRecorder.state,'error');assert.match(monoError.message,/mono audio/);assert.equal(mono.sound.readyState,'ended');
+const stereo=stream();stereo.sound.getSettings=()=>({channelCount:2});assert.equal(validateCreditsStream(stereo),stereo.video);
+console.log('Stereo music constraints, unmodified channel routing and mono-source rejection passed');

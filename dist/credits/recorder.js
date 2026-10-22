@@ -13,6 +13,8 @@ export function validateCreditsStream(stream){
  const surface=video.getSettings?.().displaySurface;
  if(surface&&surface!=='browser')throw Error('Select a browser tab, rather than a window or your entire screen.');
  if(!stream.getAudioTracks().some(track=>track.readyState!=='ended'))throw Error('Sound is missing. Select this tab and enable “Share tab audio”, then try again.');
+ const audio=stream.getAudioTracks().find(track=>track.readyState!=='ended');
+ if(audio.getSettings?.().channelCount===1)throw Error('The browser is sharing mono audio. Select this Aether tab with tab audio in desktop Chrome or Edge, and check that system Mono audio is off.');
  return video;
 }
 export class CreditsRecorder{
@@ -26,7 +28,7 @@ export class CreditsRecorder{
   this.chunks=[];this.failure=null;this.setState('selecting');
   try{
    // Invoked directly by the Record button: capture permission requires a user gesture.
-   const stream=await this.capture({video:{frameRate:{ideal:30,max:30},width:{ideal:1920},height:{ideal:1080},cursor:'never'},audio:{suppressLocalAudioPlayback:false},preferCurrentTab:true,selfBrowserSurface:'include',surfaceSwitching:'exclude',systemAudio:'exclude',monitorTypeSurfaces:'exclude'});
+   const stream=await this.capture({video:{frameRate:{ideal:30,max:30},width:{ideal:1920},height:{ideal:1080},cursor:'never'},audio:{channelCount:{ideal:2},sampleRate:{ideal:48000},echoCancellation:false,noiseSuppression:false,autoGainControl:false,suppressLocalAudioPlayback:false},preferCurrentTab:true,selfBrowserSurface:'include',surfaceSwitching:'exclude',systemAudio:'exclude',monitorTypeSurfaces:'exclude'});
    this.stream=stream;if(this.disposed){this.release();return;}
    const video=validateCreditsStream(stream);
    this.onClean(true);this.onReset();this.setState('preparing');await this.afterPaint();
