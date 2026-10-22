@@ -113,3 +113,10 @@ No claim of photorealism, 60 FPS at a stated population, or forest-scale optimiz
 ## Validation record for this change
 
 `npm run build`, `npm run check`, and the complete `npm test` suite passed locally. Additional worker tests exercise all three families, deterministic output, RGBA channel sizes, opaque alpha and normal normalization. Local visual WebGPU validation could not run: no Chromium binary was installed and the attempted browser download returned a truncated archive. Appearance, shader execution and hardware frame-rate remain unverified; no screenshots or performance claims accompany this first implementation.
+
+
+## Tree and branch authoring extension
+
+Nature Studio now defaults to a whole tree. Switch to a leafy branch or the original leaf study. Seeded species-inspired branch architecture produces tapered parent-connected segments; leaves use stable twig attachment frames and short instanced petioles. Family, height, depth, density, size and foliage visibility are editable. Recipe v2 preserves these inputs. The birch, oak and willow profiles vary branching spread and willow droop; these are authoring approximations, not botanical growth simulations.
+
+Bark segments merge into one draw, petioles share one instanced draw, and the leaf population shares the existing four geometry LODs and GPU wind material. Attachments are capped at 6,000 leaves. Leaf wind is anchored at the stalk; woody branches remain static. The entire tree currently shares one leaf LOD selection. Cluster culling, branch LODs, shadow optimization and distant tree impostors remain future work; this is a tree authoring preview, not a forest renderer. The generation and assembly run on the CPU when controls change, while existing tissue texture generation stays in its worker.
