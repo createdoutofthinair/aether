@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 export const groups=['site','nature','engine'];
 export function testGroup(path){
  if(/test-(wood|leaves|tree-model)\.mjs$/.test(path))return 'nature';
- if(/test-(ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
+ if(/test-(credit-ships|ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
  return 'engine'; // New unclassified tests remain covered by full/core checks.
 }
 export function plan(paths,{full=false}={}){
