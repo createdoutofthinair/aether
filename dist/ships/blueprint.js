@@ -7,7 +7,7 @@ export function blueprint(seed){
  const r=random('ship-v3:'+seed),pick=a=>a[Math.floor(r()*a.length)],range=(a,b)=>a+(b-a)*r();
  const family=pick(['capsule','courier','hauler','twin-boom','delta','ring-drive']);
  const role=pick(['explorer','freighter','scout']),count=2+Math.floor(r()*7),radius=range(.75,1.25),parts=[];
- const appearance={finish:pick(['silver','dark']),roughness:range(.22,.55),hue:range(.48,.64),metalness:range(.72,.96)};
+ const appearance={finish:pick(['silver','dark']),roughness:range(.38,.62),hue:range(.48,.64),metalness:range(.72,.96)};
  const add=(type,length,x,y,z,extra={})=>{const p={id:parts.length,type,length,radius,x,y,z,shape:family==='courier'||family==='hauler'?'box':family==='delta'?'octagonal':'round',engineStyle:pick(['bell','cluster','slotted']),variant:Math.floor(r()*3),detailSeed:Math.floor(r()*0xffffffff),...extra};if(extra.side){const paired=random(seed+':'+type+':'+Math.abs(x)+':'+y+':'+z);p.engineStyle=['bell','cluster','slotted'][Math.floor(paired()*3)];p.variant=Math.floor(paired()*3);p.detailSeed=Math.floor(paired()*0xffffffff);}parts.push(p);return p;};
  const cockpitLength=range(2.1,3.4);let tail=cockpitLength/2;
  const cockpit=add('cockpit',cockpitLength,0,0,0);let previous=cockpit;
@@ -21,5 +21,8 @@ export function blueprint(seed){
  if(family==='twin-boom'||role==='freighter'||r()<.45){const offset=radius*2+range(.45,1.1),podRadius=radius*range(.55,.76),podLength=range(1.9,3.2),station=hull.at(-1),podZ=station.z;
  for(const side of [-1,1]){const inner=radius-.12,outer=offset-podRadius+.12;const mount=add('mount',outer-inner,side*(inner+outer)/2,0,podZ,{side,parent:station.id,radius:.18});if(family==='twin-boom'){const boom=add('habitat',4.5,side*offset,0,podZ,{side,radius:podRadius,parent:mount.id});add('engine',podLength,side*offset,0,podZ+2.25+podLength/2-INSERTION,{side,radius:podRadius,parent:boom.id});}else add('engine',podLength,side*offset,0,podZ,{side,radius:podRadius,parent:mount.id});}}
  const station=hull[Math.floor(r()*hull.length)];add('antenna',range(.8,1.4),0,radius-.12,station.z,{parent:station.id});
- return {version:3,family,seed:String(seed),role,count,radius,appearance,parts};
+ const history=random('service:'+seed),serial=String(Math.floor(history()*90000)+10000),age=.18+history()*.46;
+ const repairPart=hull[Math.floor(history()*hull.length)].id;
+ const service={age,registry:'AE-'+serial,repairPart,accessSide:history()<.5?-1:1,accent:role==='freighter'?'#ad7447':role==='explorer'?'#537c83':'#646e80'};
+ return {version:4,family,seed:String(seed),role,count,radius,appearance,service,parts};
 }

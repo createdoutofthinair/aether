@@ -36,6 +36,7 @@ await mkdir('dist/render/worker-kit',{recursive:true});
 for(const name of ['resident-pool','ship-assets','ship-worker'])await copyFile(`src/render/${name}.js`,`dist/render/${name}.js`);
 const workerSources={
  'model.js':'dist/ships/model.js',
+ 'surfaces.js':'dist/ships/surfaces.js',
  'material.js':'dist/hull/material.js',
  'ship-assets.js':'src/render/ship-assets.js',
  'BufferGeometryUtils.js':'node_modules/three/examples/jsm/utils/BufferGeometryUtils.js',

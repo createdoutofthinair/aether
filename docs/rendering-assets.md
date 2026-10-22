@@ -65,3 +65,15 @@ GPU memory usage. Actual WebGPU tracing should verify no wave-boundary CPU/GPU
 spikes, including on lower-end devices; steady-state rendering cost is separate
 from spawn preparation cost. Canvas resize/device loss can still cause new GPU
 work outside this asset pool.
+
+
+## Maintained ship surfaces
+
+Generated ships now use a shared eight-cell functional surface atlas instead of
+one material per finish. Bevels and service details are built in the existing
+worker before batching. Atlas color, normal, ORM and vertex tint are transferred
+as typed buffers; preparation still hydrates and warms the resident pool once.
+No mesh, atlas or pipeline is created when a wave spawns. Worker-kit builds now
+include `ships/surfaces.js`; its imports are rewritten to the pinned explicit
+Three.js URLs like the existing model/material modules. Mirrored component
+transforms correct index winding when baked into merged geometry.

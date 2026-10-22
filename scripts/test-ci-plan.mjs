@@ -17,3 +17,5 @@ for(const paths of [['dist/ships/model.js'],['dist/spaceship-studio.html'],['dis
 assert.equal(plan(['dist/ships/model.js','dist/terrain.js']).siteOnly,false);
 assert.equal(plan(['package-lock.json']).siteOnly,false);
 assert.equal(plan([]).siteOnly,false);
+
+assert.equal(testGroup('scripts/test-ship-finishes.mjs'),'site');

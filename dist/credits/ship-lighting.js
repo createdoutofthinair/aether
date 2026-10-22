@@ -20,13 +20,19 @@ export function createShipLighting(){
  }};
 }
 export function applyShipLighting(ship){
- const lighting=createShipLighting();
- for(const mesh of ship.children){
+ const lighting=createShipLighting(),converted=new Map();
+ ship.traverse(mesh=>{
+  if(!mesh.isMesh)return;
   const old=mesh.material;
-  const material=(old.isMeshPhysicalMaterial?new T.MeshPhysicalNodeMaterial():new T.MeshStandardNodeMaterial()).copy(old);
+  if(converted.has(old)){mesh.material=converted.get(old);return;}
+  // The atlas is shared by many unbatched studio parts. Copy each material once.
+  // Texture ownership transfers to the viewer/pool; don't dispose hull textures.
+  const data=old.userData;old.userData={};
+  const material=old.isMeshPhysicalMaterial?new T.MeshPhysicalNodeMaterial():new T.MeshStandardNodeMaterial();
+  try{material.copy(old);}finally{old.userData=data;}material.userData=data;
   material.envNode=lighting.environment;
-  mesh.material=material;old.dispose();
- }
+  mesh.material=material;converted.set(old,material);if(!data.hull)old.dispose();
+ });
  ship.userData.nebulaLighting=lighting;
  return lighting;
 }

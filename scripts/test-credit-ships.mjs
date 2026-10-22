@@ -39,3 +39,7 @@ const lighting=applyShipLighting(litShip),versions=litShip.children.map(m=>m.mat
 for(const mesh of litShip.children){assert.ok(mesh.material.isNodeMaterial);assert.equal(mesh.material.map,texture);assert.equal(mesh.material.metalness,.7);assert.equal(mesh.material.roughness,.4);assert.equal(mesh.material.color.getHex(),0x789abc);assert.equal(mesh.material.opacity,.8);assert.deepEqual(mesh.material.normalScale.toArray(),[.6,.8]);}
 for(let i=0;i<100;i++)lighting.update(i,new T.Vector3(2,3,-10));assert.deepEqual(litShip.children.map(m=>m.material.version),versions);
 console.log('Nebula lighting: bounded radiance, smooth grid transitions, distance falloff, original PBR properties and uniform-only animation passed.');
+
+// Baking a negative module transform must retain the same visible front face.
+const mirror=new T.Group(),mirrored=new T.Mesh(new T.BoxGeometry(),new T.MeshStandardMaterial());mirrored.scale.x=-1;mirror.add(mirrored);const bakedMirror=batchShip(mirror);bakedMirror.updateMatrixWorld(true);
+const hits=new T.Raycaster(new T.Vector3(-2,0,0),new T.Vector3(1,0,0)).intersectObject(bakedMirror,true);assert.ok(hits.length);assert.ok(Math.abs(hits[0].point.x+.5)<1e-6,'Mirrored attachment outward winding must survive batching');bakedMirror.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});

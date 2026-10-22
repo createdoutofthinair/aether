@@ -2,13 +2,17 @@ import * as T from 'three/webgpu';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 export function batchShip(root){
  root.updateMatrixWorld(true);const byMaterial=new Map(),source=new Set();
- root.traverse(o=>{if(!o.isMesh)return;const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);source.add(o.geometry);if(!byMaterial.has(o.material))byMaterial.set(o.material,[]);byMaterial.get(o.material).push(geometry);});
+ root.traverse(o=>{if(!o.isMesh)return;const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);
+ // Baking a mirrored module removes the negative object transform. Keep its
+ // front faces outward after that transform becomes vertex data.
+ if(o.matrixWorld.determinant()<0){if(!geometry.index)geometry.setIndex(Array.from({length:geometry.attributes.position.count},(_,i)=>i));const index=geometry.index;for(let i=0;i<index.count;i+=3){const b=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,b);}}
+ source.add(o.geometry);if(!byMaterial.has(o.material))byMaterial.set(o.material,[]);byMaterial.get(o.material).push(geometry);});
  const batched=new T.Group();for(const [material,geometries]of byMaterial){const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());if(!geometry)throw Error('Ship batching failed');material.transparent=false;material.opacity=1;material.depthWrite=true;batched.add(new T.Mesh(geometry,material));}source.forEach(g=>g.dispose());return batched;
 }
 const textureFields=['map','normalMap','aoMap','roughnessMap','metalnessMap'];
 export function disposeShip(ship){const gs=new Set(),ms=new Set(),ts=new Set();ship.traverse(o=>{if(o.geometry)gs.add(o.geometry);if(o.material){ms.add(o.material);for(const k of textureFields)if(o.material[k])ts.add(o.material[k]);}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 /** Worker-to-renderer payload: transfer typed buffers, not JSON vertex arrays. */
-export function packShip(root){const textures=[],textureIds=new Map(),meshes=[];root.traverse(o=>{if(!o.isMesh)return;const m=o.material,material={physical:m.isMeshPhysicalMaterial===true,color:m.color.getHex(),emissive:m.emissive.getHex(),emissiveIntensity:m.emissiveIntensity,roughness:m.roughness,metalness:m.metalness,clearcoat:m.clearcoat??0,clearcoatRoughness:m.clearcoatRoughness??0,normalScale:m.normalScale.toArray(),maps:{}};
+export function packShip(root){const textures=[],textureIds=new Map(),meshes=[];root.traverse(o=>{if(!o.isMesh)return;const m=o.material,material={physical:m.isMeshPhysicalMaterial===true,vertexColors:m.vertexColors,name:m.name,color:m.color.getHex(),emissive:m.emissive.getHex(),emissiveIntensity:m.emissiveIntensity,roughness:m.roughness,metalness:m.metalness,clearcoat:m.clearcoat??0,clearcoatRoughness:m.clearcoatRoughness??0,normalScale:m.normalScale.toArray(),maps:{}};
  for(const key of textureFields){const t=m[key];if(!t)continue;if(!textureIds.has(t)){textureIds.set(t,textures.length);textures.push({data:t.image.data,width:t.image.width,height:t.image.height,mipmaps:t.mipmaps,colorSpace:t.colorSpace,wrapS:t.wrapS,wrapT:t.wrapT,minFilter:t.minFilter,magFilter:t.magFilter,anisotropy:t.anisotropy});}material.maps[key]=textureIds.get(t);}
  meshes.push({attributes:Object.fromEntries(Object.entries(o.geometry.attributes).map(([key,a])=>[key,{array:a.array,itemSize:a.itemSize,normalized:a.normalized}])),index:o.geometry.index?.array??null,material});});return{meshes,textures};}
 export function shipTransfers(payload){const buffers=new Set();for(const m of payload.meshes){for(const a of Object.values(m.attributes))buffers.add(a.array.buffer);if(m.index)buffers.add(m.index.buffer);}for(const t of payload.textures){buffers.add(t.data.buffer);for(const mip of t.mipmaps)buffers.add(mip.data.buffer);}return [...buffers];}

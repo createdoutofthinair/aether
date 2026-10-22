@@ -20,9 +20,11 @@ an artistic approximation, not a thin-film optical simulation.
 Textures use base color (sRGB), tangent-space OpenGL normal, linear ORM+height
 (R=AO, G=roughness, B=metallic, A=height), and masks (paint, wear, construction,
 heat). Height creates normal relief; it does not displace the mesh or alter its
-silhouette. Significant armor thickness and openings remain geometry. Hero
-Shipyard box parts receive small geometric bevels; credit ships retain simpler
-geometry and share materials for at most seven draw calls per ship.
+silhouette. Significant armor thickness and openings remain geometry. Shipyard and resident credit assets both retain geometric box/cylinder bevels,
+layered docking trim, recessed access assemblies and open exhausts. Credit assets
+use fewer radial segments while retaining the same construction language. The
+shared functional atlas keeps generated ships within seven draw calls; the
+validated capsule and hauler examples use four.
 
 ## Hybrid authoring
 
@@ -76,3 +78,46 @@ required to assess the final appearance; numerical tests do not establish it.
 - Unreal normal-aware roughness: https://dev.epicgames.com/documentation/en-us/unreal-engine/composite-texture?application_version=4.27
 - Specular antialiasing research: https://www.jcgt.org/published/0010/02/02/
 - NASA thermal systems: https://science.nasa.gov/learn/basics-of-space-flight/chapter11-4/
+
+## Maintained spacecraft pass
+
+Blueprint v4 preserves the existing seeded structural families and sockets and
+adds a separate service-history seed: registry, wear age, repair station, access
+side and role accent. Port/starboard propulsion and structural mounts retain
+symmetry; crew hatches, handholds, equipment, stencils and replacement finishes
+provide controlled local asymmetry. Explorers carry external sensor pods,
+freighters gain retaining straps, and scouts carry smaller equipment covers.
+MLI tanks have shallow geometric folds as well as normal-map relief.
+
+Eight finish cells share one opaque PBR material: armor, exposed alloy, engine
+metal, ceramic, insulation, replacement paint, role accent and identification.
+Coatings remain dielectric. Broad roughness changes and restrained paint tint
+variation accompany fine detail. Engine heat follows the axial nozzle direction;
+docking trim exposes alloy at actual interfaces. Thermal coloring and aging are
+art-directed approximations; there is no corrosion/thermal simulation.
+
+The atlas is 4 by 2 cells. Credits use 128-pixel cells and the Shipyard uses 256;
+the maximum dimensions are 1024 by 512. Each cell gets its own color-space-aware
+normal/roughness mip chain. A one-eighth UV guard and an eight-pixel minimum
+cell mip prevent adjacent finishes from bleeding into one another. The seeded
+atlas maps within a module's topology; standalone/custom Surface Lab materials
+retain metric repeating UVs. UV1 carries the same atlas coordinates for AO.
+Per-module tint is vertex data, survives worker transfer, and adds no material
+or draw. Glass and the two emission colors remain separate shared materials.
+
+The Shipyard now defaults to an oblique stellar key with restrained fill and the
+same analytic nebula reflection path as credits, without a studio room probe.
+Inspection mode adds neutral fill for surface evaluation; wear and exposure are
+explicit preview controls. Other ObjectViewer consumers retain their existing
+studio environment. Nebula radiance continues to be uniform-driven, not a
+per-frame cubemap capture or radiosity solve. Nested studio meshes share one
+converted node material per original material; the transfer retains texture
+ownership and avoids repeated material copies.
+
+`test-ship-finishes.mjs` checks deterministic zones, rectangular texture sizes,
+UV guards/mips, aging, crew cues, flyby bevels, geometry/draw bounds, worker
+serialization and shared-material ownership. The credit tests also ray-test
+mirrored front faces after batching. Local software-WebGPU offscreen renders of
+capsule and hauler fixtures produced no validation errors; these are visual
+look-development checks, not a hardware frame-time benchmark. The existing
+resident pool still prepares and warms all models before playback.
