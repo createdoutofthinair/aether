@@ -176,3 +176,7 @@ The scan metadata records its source, author, CC0 license and simplification err
 ## HUD design lab
 
 Open **DEV → HUD design** or `hud-design.html` for the independent interactive cockpit prototype. **Run demo** tours cruise, targeting, an emergency and approach. The inspector provides live colour, scale, contrast and motion controls. See [HUD design, controls, principles and integration boundary](docs/hud-design-lab.md). Telemetry is simulated; this page does not control the planet renderer.
+
+### Nature Studio — procedural leaf studies
+
+Open **DEV → Nature Studio** (`index.html#/nature`) for species-inspired birch, oak and willow blades. Includes deterministic worker-generated tissue maps, WebGPU approximate subsurface lighting, GPU wind, four geometry LODs, instanced populations, map inspection and recipe export. See [the research and implementation limits](docs/NATURE-STUDIO-RESEARCH.md) for primary sources, budgets and the route toward cluster/impostor vegetation. Visual WebGPU validation on target hardware is still required.

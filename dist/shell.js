@@ -1,6 +1,7 @@
 export const routes = {
  explorer: ['explorer.html', 'Planet explorer'],
  materials: ['material-editor.html', 'Material editor'],
+ nature: ['nature-studio.html', 'Nature Studio'],
  hud: ['hud-design.html', 'HUD design'],
  studio: ['logo-design.html', 'Object studio'],
  renderer: ['webgpu-preview.html', 'Renderer preview'],
@@ -29,7 +30,7 @@ function render() {
   if (a.dataset.route === route) a.setAttribute('aria-current', 'page');
   else a.removeAttribute('aria-current');
  });
- dev.classList.toggle('active', ['hud','studio','renderer','nebula'].includes(route));
+ dev.classList.toggle('active', ['hud','studio','renderer','nebula','nature'].includes(route));
  dev.open = false;
 }
 window.addEventListener('hashchange', render);
