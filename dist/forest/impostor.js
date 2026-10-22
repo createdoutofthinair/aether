@@ -1,6 +1,6 @@
 import * as T from 'three/webgpu';
 import {texture,uv,vec2,vec3,vec4,normalWorld,positionView,float,attribute,mix,uniform,cameraPosition,cameraWorldMatrix,cameraViewMatrix,cameraProjectionMatrix,positionGeometry,cameraNear,cameraFar,viewZToPerspectiveDepth} from 'three/tsl';
-import {OCT_GRID,octDirection,captureBasis} from './octahedral.js';
+import {OCT_GRID,octDirection,captureBasis,validateAtlasCoverage} from './octahedral.js';
 import {transitionMask} from './coverage.js';
 /** Hemi-octahedral captures of actual geometry.
  * Normal RGB + normalized capture-depth A drive relighting and ray reprojection. */
@@ -16,12 +16,12 @@ export async function bakeImpostor(renderer,source,{tile=128,onView=()=>{},cance
  if(cancelled())throw Error('Forest preparation cancelled');const direction=octDirection(col,row),basis=captureBasis(direction);camera.up.fromArray(basis.up);camera.position.copy(center).add(new T.Vector3(...direction).multiplyScalar(distance));camera.lookAt(center);
  for(let i=0;i<source.children.length;i++)source.children[i].material=albedos[i];renderer.setRenderTarget(colorTile);await renderer.renderAsync(scene,camera);renderer.copyTextureToTexture(colorTile.texture,color.texture,null,new T.Vector2(col*tile,row*tile));
  for(let i=0;i<source.children.length;i++)source.children[i].material=normals[i];renderer.setRenderTarget(normalTile);await renderer.renderAsync(scene,camera);renderer.copyTextureToTexture(normalTile.texture,normal.texture,null,new T.Vector2(col*tile,row*tile));onView(row*OCT_GRID+col+1);await new Promise(resolve=>setTimeout(resolve,0));
- }await renderer.backend.device.queue.onSubmittedWorkDone();return{color,normal,center,span,tile};
+ }await renderer.backend.device.queue.onSubmittedWorkDone();const pixels=await renderer.readRenderTargetPixelsAsync(color,0,0,tile*OCT_GRID,tile*OCT_GRID),coverage=validateAtlasCoverage(pixels,tile);return{color,normal,center,span,tile,coverage};
  }catch(e){color.dispose();normal.dispose();throw e;}finally{renderer.setRenderTarget(oldTarget);renderer.setClearColor(oldColor,oldAlpha);renderer.toneMapping=oldTone;source.children.forEach((o,i)=>o.material=originals[i]);scene.remove(source);albedos.forEach(m=>m.dispose());normals.forEach(m=>m.dispose());colorTile.dispose();normalTile.dispose();}
 }
 // GPU view selection + triangular hemi-octahedral interpolation. Each capture
 // reprojects the current camera ray through its stored depth before sampling.
-export function impostorMaterial(atlas,{sun,debug,parallax=uniform(1)}){
+export function impostorMaterial(atlas,{sun,debug,parallax=uniform(0)}){
  const center=attribute('forestCenter','vec3'),scale=attribute('forestScale','float'),width=attribute('forestWidth','float'),yaw=attribute('forestYaw','float'),tint=attribute('forestTint','float'),sx=scale.mul(width),sy=scale;
  const inverse=v=>vec3(v.x.mul(yaw.cos()).sub(v.z.mul(yaw.sin())).div(sx),v.y.div(sy),v.x.mul(yaw.sin()).add(v.z.mul(yaw.cos())).div(sx));
  const forward=v=>vec3(v.x.mul(sx).mul(yaw.cos()).add(v.z.mul(sx).mul(yaw.sin())),v.y.mul(sy),v.z.mul(sx).mul(yaw.cos()).sub(v.x.mul(sx).mul(yaw.sin())));
@@ -32,7 +32,7 @@ export function impostorMaterial(atlas,{sun,debug,parallax=uniform(1)}){
  const atlasUV=(p,index)=>vec2(p.x,float(1).sub(p.y)).clamp(.5/atlas.tile,1-.5/atlas.tile).add(index).div(OCT_GRID);
  const samples=indices.map(index=>{
  const u=index.x.div(OCT_GRID-1),v=index.y.div(OCT_GRID-1),dx=u.add(v).sub(1),dz=u.sub(v),d=vec3(dx,float(1).sub(dx.abs()).sub(dz.abs()),dz).normalize(),horizontal=vec3(d.z,0,d.x.negate()),right=horizontal.length().greaterThan(.0001).select(horizontal.div(horizontal.length().max(.0001)),vec3(1,0,0)),up=d.cross(right),denom=ray.dot(d).max(.05);
- const t0=point.dot(d).div(denom),q=point.sub(ray.mul(t0)),uv0=vec2(q.dot(right),q.dot(up)).div(atlas.span).add(.5),c0=texture(atlas.color.texture,atlasUV(uv0,index)).level(0),n0=texture(atlas.normal.texture,atlasUV(uv0,index)).level(0),depth=c0.a.greaterThan(.02).select(n0.a.div(c0.a.max(.001)).sub(.5).mul(2*atlas.span).clamp(-atlas.span*.5,atlas.span*.5),float(0)),t=point.dot(d).add(depth.mul(parallax)).div(denom),surface=point.sub(ray.mul(t)),coords=vec2(surface.dot(right),surface.dot(up)).div(atlas.span).add(.5),valid=coords.x.greaterThanEqual(0).and(coords.x.lessThanEqual(1)).and(coords.y.greaterThanEqual(0)).and(coords.y.lessThanEqual(1)).select(1,0),warped=texture(atlas.color.texture,atlasUV(coords,index)).level(0),warpedNormal=texture(atlas.normal.texture,atlasUV(coords,index)).level(0),useWarp=valid.greaterThan(0).and(warped.a.greaterThan(.01)),baseValid=uv0.x.greaterThanEqual(0).and(uv0.x.lessThanEqual(1)).and(uv0.y.greaterThanEqual(0)).and(uv0.y.lessThanEqual(1)).select(1,0),c=useWarp.select(warped,c0.mul(baseValid)),n=useWarp.select(warpedNormal,n0.mul(baseValid));return{c,n,t:useWarp.select(t,t0)};});
+ const t0=point.dot(d).div(denom),q=point.sub(ray.mul(t0)),uv0=parallax.greaterThan(.5).select(vec2(q.dot(right),q.dot(up)).div(atlas.span).add(.5),uv()),c0=texture(atlas.color.texture,atlasUV(uv0,index)).level(0),n0=texture(atlas.normal.texture,atlasUV(uv0,index)).level(0),depth=c0.a.greaterThan(.02).select(n0.a.div(c0.a.max(.001)).sub(.5).mul(2*atlas.span).clamp(-atlas.span*.5,atlas.span*.5),float(0)),t=point.dot(d).add(depth.mul(parallax)).div(denom),surface=point.sub(ray.mul(t)),coords=vec2(surface.dot(right),surface.dot(up)).div(atlas.span).add(.5),valid=coords.x.greaterThanEqual(0).and(coords.x.lessThanEqual(1)).and(coords.y.greaterThanEqual(0)).and(coords.y.lessThanEqual(1)).select(1,0),warped=texture(atlas.color.texture,atlasUV(coords,index)).level(0),warpedNormal=texture(atlas.normal.texture,atlasUV(coords,index)).level(0),useWarp=parallax.greaterThan(.5).and(valid.greaterThan(0)).and(warped.a.greaterThan(.01)),baseValid=uv0.x.greaterThanEqual(0).and(uv0.x.lessThanEqual(1)).and(uv0.y.greaterThanEqual(0)).and(uv0.y.lessThanEqual(1)).select(1,0),c=useWarp.select(warped,c0.mul(baseValid)),n=useWarp.select(warpedNormal,n0.mul(baseValid));return{c,n,t:useWarp.select(t,t0)};});
  let color=vec4(0),normal=vec3(0),depth= float(0);
  for(let i=0;i<3;i++){const s=samples[i],w=weights[i];color=color.add(s.c.mul(w));normal=normal.add(s.n.rgb.mul(w));depth=depth.add(s.t.mul(s.c.a).mul(w));}
  // Preserve silhouette coverage while blending radiance. A weighted average
@@ -41,5 +41,5 @@ export function impostorMaterial(atlas,{sun,debug,parallax=uniform(1)}){
  const coverage=color.a.max(.001),n=normal.div(coverage).mul(2).sub(1).normalize(),world=vec3(n.x.mul(yaw.cos()).add(n.z.mul(yaw.sin())),n.y,n.z.mul(yaw.cos()).sub(n.x.mul(yaw.sin()))),lit=world.dot(sun).max(0).mul(.72).add(.4),m=new T.MeshBasicNodeMaterial({alphaTest:.01,alphaToCoverage:true,side:T.DoubleSide,depthWrite:true});
  m.colorNode=mix(color.rgb.div(coverage).mul(lit).mul(tint),vec3(.85,.3,.7),debug);m.opacityNode=silhouette;m.maskNode=transitionMask();
  const vertex=center.add(rightW.mul(positionGeometry.x.mul(sx))).add(upW.mul(positionGeometry.y.mul(sy)));m.vertexNode=cameraProjectionMatrix.mul(cameraViewMatrix).mul(vec4(vertex,1));
- const planeView=cameraViewMatrix.mul(vec4(center.add(planeOffset),1)).z,rayZ=cameraViewMatrix.mul(vec4(forward(ray),0)).z;m.depthNode=viewZToPerspectiveDepth(planeView.sub(depth.div(coverage).mul(rayZ)),cameraNear,cameraFar).clamp(0,1);return m;
+ const planeView=cameraViewMatrix.mul(vec4(center.add(planeOffset),1)).z,rayZ=cameraViewMatrix.mul(vec4(forward(ray),0)).z;m.depthNode=viewZToPerspectiveDepth(planeView.sub(depth.div(coverage).mul(parallax).mul(rayZ)),cameraNear,cameraFar).clamp(0,1);return m;
 }

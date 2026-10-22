@@ -22,3 +22,13 @@ assert.ok(shader.includes('generateMipmaps:false'));
 assert.ok(shader.includes('useWarp.select(warped,c0.mul(baseValid))'));
 assert.ok(shader.includes('t:useWarp.select(t,t0)'));
 assert.ok(shader.includes('alphaTest:.01'));
+
+const {validateAtlasCoverage}=await import('../dist/forest/octahedral.js');
+const tile=2,side=tile*OCT_GRID,pixels=new Uint8Array(side*side*4);
+for(let row=0;row<OCT_GRID;row++)for(let col=0;col<OCT_GRID;col++)pixels[((row*tile)*side+col*tile)*4+3]=255;
+assert.deepEqual(validateAtlasCoverage(pixels,tile),Array(25).fill(.25));
+pixels[((4*tile)*side+4*tile)*4+3]=0;
+assert.throws(()=>validateAtlasCoverage(pixels,tile),/Empty forest atlas capture 4,4/);
+assert.throws(()=>validateAtlasCoverage(pixels.subarray(4),tile),/Incomplete/);
+assert.ok(shader.includes('depth.div(coverage).mul(parallax).mul(rayZ)'),'Disabling parallax must also disable capture depth');
+assert.ok(shader.includes('add(.5),uv())'),'Disabling parallax uses billboard UVs');

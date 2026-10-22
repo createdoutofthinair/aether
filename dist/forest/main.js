@@ -6,7 +6,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {makeVariant,instanceBucket} from './assets.js';
 import {bakeImpostor,impostorMaterial} from './impostor.js';
 import {VARIANTS,SPECIES,groundHeight,projectedPixels,selectTreeLOD} from './ecology.js';
-const $=id=>document.getElementById(id),status=text=>{$('status').textContent=text;},wind=uniform(.35),parallax=uniform(1),debug=uniform(0),sun=uniform(new T.Vector3(.5,.8,.3).normalize());
+const $=id=>document.getElementById(id),status=text=>{$('status').textContent=text;},wind=uniform(.35),parallax=uniform(0),debug=uniform(0),sun=uniform(new T.Vector3(.5,.8,.3).normalize());
 let renderer,controls,observer,worker,disposed=false,ready=false,layout,groups=[],shadowGroups=[],variants=[],workerID=0,waiting=new Map(),tour=false,walkYaw=0,walkPitch=0,drag=null,last=0,lastUpdate=-1,fpsTime=0,frames=0,counts=[0,0,0,0],transitioning=false,inspection=null;
 const keys=new Set(),dummy=new T.Object3D(),up=new T.Vector3(0,1,0),frustum=new T.Frustum(),projection=new T.Matrix4();
 const scene=new T.Scene();scene.background=new T.Color(0xaec6b6);scene.fog=new T.FogExp2(0xaec6b6,.0022);const camera=new T.PerspectiveCamera(55,1,.1,1000),light=new T.DirectionalLight(0xffedd0,2.5);light.position.set(50,80,30);scene.add(light,light.target,new T.HemisphereLight(0xc9e0ee,0x354126,1.2));
@@ -41,7 +41,7 @@ function updateForest(now){for(const vs of groups)for(const bucket of vs)for(con
  for(const pair of shadowGroups)for(const mesh of pair)mesh.count=0;
  if($('shadows').checked){const casters=(inspection?[inspection]:layout.trees).filter(t=>Math.hypot(t.x-camera.position.x,t.z-camera.position.z)<65).sort((a,b)=>Math.hypot(a.x-camera.position.x,a.z-camera.position.z)-Math.hypot(b.x-camera.position.x,b.z-camera.position.z)).slice(0,128);for(const t of casters)put(t,2,1,0,true);}
  for(const pair of shadowGroups)for(const mesh of pair){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;for(const a of Object.values(mesh.geometry.attributes))if(a.isInstancedBufferAttribute)a.needsUpdate=true;}
- $('counts').textContent=`Near ${counts[0]} · Mid ${counts[1]} · Low ${counts[2]} · Impostors ${counts[3]}`;
+ $('counts').textContent=`Near ${counts[0]} · Mid ${counts[1]} · Low ${counts[2]} · Impostors ${counts[3]} · Atlases ${variants.filter(v=>v.atlas?.coverage).length}/${VARIANTS}`;
 }
 function cleanup(){if(disposed)return;disposed=true;renderer?.setAnimationLoop(null);worker?.terminate();for(const job of waiting.values())job.reject(Error('Forest closed'));waiting.clear();observer?.disconnect();controls?.dispose();destroyGroups();for(const v of variants){v.lods.flat().forEach(g=>g.dispose());v.maps.forEach(t=>t.dispose());v.barkMaterial.dispose();v.leafMaterial.dispose();v.impostorMaterial?.dispose();v.atlas?.color.dispose();v.atlas?.normal.dispose();}ground?.geometry.dispose();ground?.material.dispose();renderer?.dispose();}
 window.addEventListener('pagehide',cleanup);

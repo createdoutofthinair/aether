@@ -117,3 +117,11 @@ preserves coverage when neighbouring captures disagree without a hard view switc
 Parallax samples that leave the capture or land in empty texels fall back to the
 unwarped capture (including its plane depth), rather than deleting the fragment.
 The alpha cutoff is 0.01; MSAA coverage handles the remaining leaf edges.
+
+The default is now a conventional camera-facing impostor with direct billboard
+UVs and billboard depth. Experimental parallax must be explicitly enabled; it
+controls both ray reprojection and reconstructed depth. Previously disabling it
+still projected onto each capture plane and wrote that plane's depth, so it did
+not provide a reliable baseline. Every final colour atlas is read back once at
+preparation time and all 25 capture tiles must contain nonzero coverage before
+use. The counter reports validated atlases; this adds no frame-loop readbacks.
