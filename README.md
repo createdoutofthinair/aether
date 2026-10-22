@@ -10,6 +10,10 @@ Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, 
 - Rover R06 GLB from the user's existing project. Simplified surface-constrained driving with slope acceleration and damped suspension, fixed 120 Hz steps; not a general rigid-body vehicle solver.
 - Orbit, guided descent/ascent, free flight, rover chase camera, keyboard/touch controls, sunlight/atmosphere/exposure controls.
 
+## City Buildings Lab
+
+Open `index.html#/city` through the shared DEV menu. Concord generates circular civic/research/residential districts, interconnected transport hubs, and six procedural building families with shared ship/city PBR finishes, three mesh LODs and validated directional impostors. Presets cover 1–61 connected hubs, including an 18,117-building megaregion. See [the city pipeline and validation notes](docs/CITY-BUILDINGS-LAB.md).
+
 ## Known limitations
 
 LOD edges are stitched, morph continuously, and isolate skirt lighting. High-speed travel may show detail arriving. Wheel and rock contact samples the currently visible stitched terrain triangles and the new fractured outcrop triangles. Ordinary scattered boulders and pebbles remain visual objects without colliders. Erosion runs on the reference basin; the rest of the planet uses procedural landforms. No caves, clouds, terrain self-shadowing at planetary scale, multiple scattering, or atmospheric LUTs. Atmospheric planet shadow uses the reference sphere. Each wheel is repositioned independently against the terrain under a damped chassis; this is a kinematic contact solver, not full articulated rigid-body suspension. This intentionally small planet is not Earth-scale.

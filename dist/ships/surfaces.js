@@ -1,6 +1,6 @@
 import * as T from 'three/webgpu';
-import {bakeSurface,filteredMips,seedHash} from '../hull/surface.js';
-import {hullMaterial} from '../hull/material.js';
+import {bakeSurface,seedHash} from '../hull/surface.js';
+import {surfaceAtlas,mapSurface} from '../render/surface-atlas.js';
 export const SHIP_ZONES=['armor','alloy','engine','ceramic','insulation','repair','accent','marking'];
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const FONT={A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[15,16,16,16,16,16,15],D:[30,17,17,17,17,17,30],E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[15,16,16,23,17,17,15],H:[17,17,17,31,17,17,17],I:[31,4,4,4,4,4,31],J:[7,2,2,2,18,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],M:[17,27,21,21,17,17,17],N:[17,25,21,19,17,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],Y:[17,17,10,4,4,4,4],Z:[31,1,2,4,8,16,31],'0':[14,17,19,21,25,17,14],'1':[4,12,4,4,4,4,14],'2':[14,17,1,2,4,8,31],'3':[30,1,1,14,1,1,30],'4':[2,6,10,18,31,2,2],'5':[31,16,16,30,1,1,30],'6':[14,16,16,30,17,17,14],'7':[31,1,2,4,8,8,8],'8':[14,17,17,14,17,17,14],'9':[14,17,17,15,1,1,14],'-':[0,0,0,31,0,0,0]};
@@ -40,18 +40,9 @@ function zoneTile(plan,zone,size,roughness,finish,wear){
 /** One opaque PBR atlas for eight functional finishes. Mips are filtered per
  * cell, with a 1/8 UV guard and a minimum cell size of eight pixels. */
 export function shipSurfaceAtlas(plan,{size=128,roughness=.5,finish='silver',wear=plan.service?.age??.35}={}){
- size=Math.min(256,Math.max(64,size));if(!Number.isInteger(size)||(size&(size-1)))throw Error('Ship atlas cell size must be a power of two');const tiles=SHIP_ZONES.map(zone=>zoneTile(plan,zone,size,roughness,finish,wear)),chains=tiles.map(filteredMips),levels=[];
- for(let level=0;level<chains[0].length&&chains[0][level].width>=8;level++){
-  const n=chains[0][level].width,out={width:n*4,height:n*2};for(const key of ['color','normal','surface','masks'])out[key]=new Uint8Array(out.width*out.height*4);
-  for(let z=0;z<8;z++)for(const key of ['color','normal','surface','masks'])for(let y=0;y<n;y++)out[key].set(chains[z][level][key].subarray(y*n*4,(y+1)*n*4),((Math.floor(z/4)*n+y)*out.width+(z%4)*n)*4);
-  levels.push(out);
- }
- const maps={...levels[0],size:levels[0].width,recipe:{tileMeters:2,seed:String(plan.seed),preset:'ship-atlas'}},material=hullMaterial(maps,levels);material.name='Spacecraft functional surfaces';material.vertexColors=true;material.normalScale.set(.6,.6);
- for(const t of material.userData.textures)t.wrapS=t.wrapT=T.ClampToEdgeWrapping;
- const zones=Object.fromEntries(SHIP_ZONES.map((zone,index)=>[zone,{material,zone,index}]));return{material,zones,levels,size,tiles};
+ size=Math.min(256,Math.max(64,size));if(!Number.isInteger(size)||(size&(size-1)))throw Error('Ship atlas cell size must be a power of two');
+ const atlas=surfaceAtlas(SHIP_ZONES.map(zone=>zoneTile(plan,zone,size,roughness,finish,wear)),{seed:plan.seed,name:'ship-atlas'});
+ atlas.material.name='Spacecraft functional surfaces';
+ const zones=Object.fromEntries(SHIP_ZONES.map((zone,index)=>[zone,{material:atlas.material,zone,index}]));return{...atlas,zones};
 }
-export function mapShipSurface(geometry,surface,{tint=1}={}){
- const uv=geometry.attributes.uv,slot=surface.index,col=slot%4,row=Math.floor(slot/4),rect=surface.rect||[0,0,1,1];
- for(let i=0;i<uv.count;i++)uv.setXY(i,(col+.125+(rect[0]+clamp(uv.getX(i))*rect[2])*.75)/4,(row+.125+(rect[1]+clamp(uv.getY(i))*rect[3])*.75)/2);
- geometry.setAttribute('uv1',uv.clone());const color=new Float32Array(geometry.attributes.position.count*3);color.fill(tint);geometry.setAttribute('color',new T.BufferAttribute(color,3));return geometry;
-}
+export const mapShipSurface=mapSurface;

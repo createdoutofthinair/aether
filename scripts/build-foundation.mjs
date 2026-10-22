@@ -35,6 +35,7 @@ for(const relative of ['geometries/RoundedBoxGeometry.js','controls/OrbitControl
 await mkdir('dist/render/worker-kit',{recursive:true});
 for(const name of ['resident-pool','ship-assets','ship-worker'])await copyFile(`src/render/${name}.js`,`dist/render/${name}.js`);
 const workerSources={
+ 'surface-atlas.js':'dist/render/surface-atlas.js',
  'model.js':'dist/ships/model.js',
  'surfaces.js':'dist/ships/surfaces.js',
  'material.js':'dist/hull/material.js',
@@ -46,7 +47,7 @@ for(const [name,source]of Object.entries(workerSources)){
  let code=await readFile(source,'utf8');
  code=code.replaceAll("'three/webgpu'","'../../vendor-gpu/three.webgpu.js'").replaceAll("'three'","'../../vendor-gpu/three.webgpu.js'")
  .replaceAll("'three/addons/utils/BufferGeometryUtils.js'","'./BufferGeometryUtils.js'").replaceAll("'three/addons/geometries/RoundedBoxGeometry.js'","'./RoundedBoxGeometry.js'")
- .replaceAll("'./blueprint.js'","'../../ships/blueprint.js'").replaceAll("'../hull/surface.js'","'../../hull/surface.js'").replaceAll("'../hull/material.js'","'./material.js'").replaceAll("'./surface.js'","'../../hull/surface.js'");
+ .replaceAll("'../render/surface-atlas.js'","'./surface-atlas.js'").replaceAll("'./blueprint.js'","'../../ships/blueprint.js'").replaceAll("'../hull/surface.js'","'../../hull/surface.js'").replaceAll("'../hull/material.js'","'./material.js'").replaceAll("'./surface.js'","'../../hull/surface.js'");
  await writeFile(`dist/render/worker-kit/${name}`,code);
 }
 console.log('Resident asset pool and import-map-free ship worker synchronized');

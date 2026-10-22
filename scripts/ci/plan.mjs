@@ -1,8 +1,9 @@
 import {execFileSync} from 'node:child_process';
 import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-export const groups=['site','nature','engine'];
+export const groups=['site','nature','city','engine'];
 export function testGroup(path){
+ if(/test-city(?:-[\w-]+)?\.mjs$/.test(path))return 'city';
  if(/test-(forest(?:-transitions)?|wood|leaves|tree-model)\.mjs$/.test(path))return 'nature';
  if(/test-(resident-pool|hull-materials|credit-ships|credit-recorder|ship-finishes|ships|hud|emblem-orbit|nebula-performance|foundation-build)\.mjs$/.test(path))return 'site';
  return 'engine'; // New unclassified tests remain covered by full/core checks.
@@ -12,8 +13,13 @@ export function plan(paths,{full=false}={}){
  for(const path of paths){
   if(/^(docs\/|README(?:\.|$)|LICENSE(?:\.|$))/.test(path)||path.endsWith('.md'))continue;
   deploy ||= path.startsWith('dist/')||/^(src\/|package(?:-lock)?\.json$|scripts\/build-|scripts\/vendor-)/.test(path);
-  if(/^(?:src|dist)\/render\/(?:resident-pool|ship-assets|ship-worker)\.js$/.test(path)){selected.add('site');continue;}
+  if(/^dist\/render\/readback\.js$/.test(path)){selected.add('nature');selected.add('city');continue;}
+  if(/^dist\/render\/surface-atlas\.js$/.test(path)){selected.add('site');selected.add('city');continue;}
+  if(/^dist\/(city\/|city-lab\.html$)/.test(path)){selected.add('city');continue;}
+  if(/^dist\/forest\/(impostor|assets|coverage|octahedral)\.js$/.test(path)){selected.add('nature');selected.add('city');continue;}
+  if(/^(?:src|dist)\/render\/(?:resident-pool|ship-assets|ship-worker)\.js$/.test(path)){selected.add('site');selected.add('city');continue;}
   if(/^(dist\/(?:nature|forest)\/|dist\/forest-lab\.html$|dist\/nature-studio\.html$)/.test(path)){selected.add('nature');continue;}
+  if(/^dist\/(hull\/(surface|material)\.js|ships\/blueprint\.js)$/.test(path)){selected.add('site');selected.add('city');continue;}
   if(/^dist\/(hull\/|ships\/|credits\/|hud\/|viewer\/|nebula\/|audio\/|assets\/|(?:spaceship-studio|credits|hud-design|logo-design|nebula-generator|nebula-studio)\.html$)/.test(path)){selected.add('site');continue;}
   if(/^dist\/.*\.css$/.test(path)){selected.add('site');continue;}
   if(/^dist\/(shell|navigation|index|entry|webgpu|startup|capability)/.test(path)){full=true;continue;}
