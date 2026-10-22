@@ -1,11 +1,11 @@
 // Independent WebGPU volume renderer. No starfield, credits or game state dependencies.
 export const presets={
- veil:{stretch:3.6,layers:1.25,colorC:'#e79b51',shape:0,size:2.8,seed:47,density:1.7,scale:1.8,turbulence:1.25,dust:1.4,emission:1.3,colorA:'#315bba',colorB:'#c661a9'},
- ember:{stretch:2.8,layers:1.25,colorC:'#4bb8c7',shape:1,size:2.5,seed:128,density:2.1,scale:1.5,turbulence:1.5,dust:1.8,emission:1.6,colorA:'#ad351d',colorB:'#f5b264'},
- abyss:{stretch:3.7,layers:1.25,colorC:'#d39a70',shape:2,size:3.0,seed:912,density:1.3,scale:2.2,turbulence:1.8,dust:2.3,emission:1.15,colorA:'#164c67',colorB:'#639baf'},
- orchid:{stretch:3.3,layers:1.25,colorC:'#5ae0d4',shape:3,size:2.7,seed:306,density:2.2,scale:1.7,turbulence:1.1,dust:1.6,emission:1.35,colorA:'#532b94',colorB:'#d56ba4'},
- helix:{stretch:3.6,layers:1.25,colorC:'#e9ad5b',shape:4,size:2.8,seed:672,density:2.8,scale:2.2,turbulence:.8,dust:1.2,emission:1.8,colorA:'#154c87',colorB:'#db7559'},
- pearl:{stretch:2.7,layers:1.25,colorC:'#ef7750',shape:5,size:2.5,seed:811,density:2.3,scale:1.5,turbulence:.65,dust:1.6,emission:1.6,colorA:'#386a81',colorB:'#d4c0a1'}
+ veil:{stretch:3.8,layers:.55,porosity:.75,saturation:.65,colorC:'#b99e83',shape:0,size:2.8,seed:47,density:.85,scale:1.8,turbulence:1.5,dust:1.4,emission:.8,colorA:'#667d8c',colorB:'#a48387'},
+ ember:{stretch:3.2,layers:.65,porosity:.72,saturation:.655,colorC:'#839ba6',shape:1,size:2.5,seed:128,density:1.0,scale:1.5,turbulence:1.6,dust:1.6,emission:.9,colorA:'#7c7770',colorB:'#b18a72'},
+ abyss:{stretch:3.7,layers:.4,porosity:.85,saturation:.25,colorC:'#998d80',shape:2,size:3,seed:912,density:.75,scale:2.2,turbulence:1.8,dust:2.1,emission:.65,colorA:'#586b75',colorB:'#829ca6'},
+ orchid:{stretch:3.5,layers:.55,porosity:.75,saturation:.65,colorC:'#8aa9a1',shape:3,size:2.7,seed:306,density:.9,scale:1.7,turbulence:1.4,dust:1.5,emission:.8,colorA:'#777280',colorB:'#a58798'},
+ helix:{stretch:3.6,layers:.6,porosity:.8,saturation:.65,colorC:'#b09a7c',shape:4,size:2.8,seed:672,density:1.05,scale:2.2,turbulence:1.1,dust:1.4,emission:.85,colorA:'#677888',colorB:'#a5857b'},
+ pearl:{stretch:3,layers:.5,porosity:.78,saturation:.3,colorC:'#ab8a7b',shape:5,size:2.5,seed:811,density:.9,scale:1.5,turbulence:1.0,dust:1.6,emission:.8,colorA:'#7c878b',colorB:'#a6a498'}
 };
 const shader=`
 struct Params{resolution:vec2f,time:f32,seed:f32,density:f32,scale:f32,turbulence:f32,dust:f32,colorA:vec4f,colorB:vec4f,emission:f32,steps:f32,pad:vec2f,colorC:vec4f,form:vec4f};
@@ -55,22 +55,34 @@ fn silhouette(p:vec3f,kind:f32)->f32{
    let n=fbm(q+warp*u.turbulence*1.7);
    let envelope=silhouette(p+warp*.22,u.pad.y);
    let visibility=select(1.,1.-smoothstep(62.,84.,center.z),flight);
-   let body=smoothstep(.39,.72,n);
-   let outer=smoothstep(.22,.55,n)*.2;
-   let gas=(body+outer)*u.density*envelope*visibility;
+   // Thresholded structures rather than a continuously filled cloud.
+   let coarseField=fbm(p*3.8+seed*.31+vec3f(81.));
+   let holes=smoothstep(.32+u.form.z*.15,.55+u.form.z*.1,coarseField);
+   let ridged=pow(max(0.,1.-abs(n-.51)*13.),4.);
+   let cross=fbm(q*.72+vec3f(47.));
+   let branches=pow(max(0.,1.-abs(cross-.49)*16.),5.);
+   let fragments=smoothstep(.50,.69,n)*.45;
+   let structure=(max(ridged*.8,branches*.55)+fragments)*holes;
+   let halo=smoothstep(.45,.66,n)*.008;
+   let gas=(structure+halo)*u.density*envelope*visibility;
    let dustField=fbm(q*.62+vec3f(23.1));
-   let lane=smoothstep(.43,.65,dustField)*u.dust;
-   let extinction=gas*(.6+lane*3.2);let alpha=1.-exp(-extinction*stepSize*1.1);
-   let filament=pow(max(0.,1.-abs(n-.5)*4.),2.);
-   // Separate spatial gas fields create nested emission fronts and colour islands.
+   let lane=smoothstep(.48,.67,dustField)*u.dust;
+   let dustGas=lane*envelope*visibility*.095;
+   let extinction=gas*.65+dustGas;
+   let alpha=1.-exp(-extinction*stepSize*.8);
+   // Most material is faint and neutral. Only isolated pockets emit coloured light.
    let region=fbm(p*3.5+seed*.37+vec3f(41.));
    let depth=fbm(vec3f(p.xy*5.,p.z*2.)+seed*.19+vec3f(9.));
-   let hot=smoothstep(.39,.64,region+p.z*.12);
-   let ion=smoothstep(.43,.62,depth)*smoothstep(.3,.56,n)*(1.-hot*.55);
-   let front=pow(max(0.,1.-abs(region-.47)*15.),2.);
-   let layered=u.colorA.rgb*(.28+outer*2.)+u.colorB.rgb*hot*(.35+body*1.3)*u.form.y+u.colorC.rgb*(ion*.65+front*.9)*u.form.y;
-   let glow=layered*(.3+filament*1.5)*u.emission*exp(-lane*2.3);
-   color+=trans*alpha*glow;trans*=1.-alpha;
+   let hot=smoothstep(.47,.63,region+p.z*.04);
+   let ion=smoothstep(.52,.68,depth)*smoothstep(.48,.67,n);
+   let front=pow(max(0.,1.-abs(region-.57)*30.),4.)*smoothstep(.44,.63,n);
+   let neutral=vec3f(.031);
+   let palette=u.colorA.rgb*.08+u.colorB.rgb*hot*3.5*u.form.y+u.colorC.rgb*(ion*1.2+front*.9)*u.form.y;
+   let luminance=dot(palette,vec3f(.2126,.7152,.0722));
+   let restrained=mix(vec3f(luminance),palette,u.form.w);
+   let light=(neutral+restrained)*u.emission*exp(-lane*1.7);
+   let source=light*gas/max(extinction,.00001);
+   color+=trans*alpha*source;trans*=1.-alpha;
   }
  }
  let stars=starLayer(uv,150.)+starLayer(uv+vec2f(1.37),245.);
@@ -80,6 +92,6 @@ fn silhouette(p:vec3f,kind:f32)->f32{
 }`;
 export class NebulaRenderer{
  async initialize(canvas){if(!navigator.gpu)throw Error('This nebula lab requires WebGPU. Enable hardware acceleration in a WebGPU-capable browser.');this.canvas=canvas;this.adapter=await navigator.gpu.requestAdapter();if(!this.adapter)throw Error('No WebGPU adapter is available.');this.device=await this.adapter.requestDevice();this.context=canvas.getContext('webgpu');if(!this.context)throw Error('WebGPU canvas initialization failed.');const format=navigator.gpu.getPreferredCanvasFormat();this.context.configure({device:this.device,format,alphaMode:'opaque'});const module=this.device.createShaderModule({code:shader});const compilation=await module.getCompilationInfo();const errors=compilation.messages.filter(m=>m.type==='error');if(errors.length)throw Error(errors.map(e=>e.message).join('; '));this.pipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vs'},fragment:{module,entryPoint:'fs',targets:[{format}]},primitive:{topology:'triangle-list'}});this.buffer=this.device.createBuffer({size:112,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});this.bind=this.device.createBindGroup({layout:this.pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.buffer}}]});this.device.lost.then(info=>{if(!this.disposed&&info.reason!=='destroyed')this.onError?.('WebGPU device lost. Reload the lab to recover.');});return this;}
- render(settings,time=0){if(this.disposed)return;const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a'),settings.stretch||3,settings.layers??1.25,0,0]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);}
+ render(settings,time=0){if(this.disposed)return;const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a'),settings.stretch||3,settings.layers??.55,settings.porosity??.75,settings.monochrome?0:(settings.saturation??.4)]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);}
  dispose(){this.disposed=true;this.buffer?.destroy();this.context?.unconfigure();this.device?.destroy();}
 }
