@@ -1,11 +1,11 @@
 // Independent WebGPU volume renderer. No starfield, credits or game state dependencies.
 export const presets={
- veil:{stretch:3.8,layers:.55,porosity:.75,saturation:.65,colorC:'#b99e83',shape:0,size:2.8,seed:47,density:.85,scale:1.8,turbulence:1.5,dust:1.4,emission:.8,colorA:'#667d8c',colorB:'#a48387'},
- ember:{stretch:3.2,layers:.65,porosity:.72,saturation:.655,colorC:'#839ba6',shape:1,size:2.5,seed:128,density:1.0,scale:1.5,turbulence:1.6,dust:1.6,emission:.9,colorA:'#7c7770',colorB:'#b18a72'},
- abyss:{stretch:3.7,layers:.4,porosity:.85,saturation:.25,colorC:'#998d80',shape:2,size:3,seed:912,density:.75,scale:2.2,turbulence:1.8,dust:2.1,emission:.65,colorA:'#586b75',colorB:'#829ca6'},
- orchid:{stretch:3.5,layers:.55,porosity:.75,saturation:.65,colorC:'#8aa9a1',shape:3,size:2.7,seed:306,density:.9,scale:1.7,turbulence:1.4,dust:1.5,emission:.8,colorA:'#777280',colorB:'#a58798'},
- helix:{stretch:3.6,layers:.6,porosity:.8,saturation:.65,colorC:'#b09a7c',shape:4,size:2.8,seed:672,density:1.05,scale:2.2,turbulence:1.1,dust:1.4,emission:.85,colorA:'#677888',colorB:'#a5857b'},
- pearl:{stretch:3,layers:.5,porosity:.78,saturation:.3,colorC:'#ab8a7b',shape:5,size:2.5,seed:811,density:.9,scale:1.5,turbulence:1.0,dust:1.6,emission:.8,colorA:'#7c878b',colorB:'#a6a498'}
+ veil:{composition:'Cool blue wisps below a broken rose emission front; pale gold only along the boundary.',stretch:3.8,layers:.8,porosity:.75,saturation:.9,colorC:'#dfb47b',shape:0,size:2.8,seed:47,density:.85,scale:1.8,turbulence:1.5,dust:1.4,emission:.8,colorA:'#386fab',colorB:'#bd5377'},
+ ember:{composition:'Copper outer arcs surrounding a cooler teal inner rim, with sparse amber knots.',stretch:3.2,layers:.8,porosity:.72,saturation:.95,colorC:'#d8a24c',shape:1,size:2.5,seed:128,density:1,scale:1.5,turbulence:1.6,dust:1.6,emission:.9,colorA:'#bf5e2f',colorB:'#438d99'},
+ abyss:{composition:'Mostly dark dust; a one-sided blue reflection edge and a few separated rust-coloured tips.',stretch:3.7,layers:.7,porosity:.85,saturation:.85,colorC:'#ba6f43',shape:2,size:3,seed:912,density:.75,scale:2.2,turbulence:1.8,dust:2.1,emission:.65,colorA:'#354253',colorB:'#5288b5'},
+ orchid:{composition:'A cyan lobe and a muted magenta lobe separated by a dark saddle; violet at their overlap.',stretch:3.5,layers:.8,porosity:.75,saturation:.95,colorC:'#8267bb',shape:3,size:2.7,seed:306,density:.9,scale:1.7,turbulence:1.4,dust:1.5,emission:.8,colorA:'#419ca1',colorB:'#b9548d'},
+ helix:{composition:'Narrow red filaments within a faint navy sheath, with gold confined to branching junctions.',stretch:3.6,layers:.8,porosity:.8,saturation:.95,colorC:'#c6a15c',shape:4,size:2.8,seed:672,density:1.05,scale:2.2,turbulence:1.1,dust:1.4,emission:.85,colorA:'#314d87',colorB:'#b44842'},
+ pearl:{composition:'A cool blue outer shell, a nearly neutral inner surface, and isolated warm knots on one side.',stretch:3,layers:.8,porosity:.78,saturation:.85,colorC:'#cf9555',shape:5,size:2.5,seed:811,density:.9,scale:1.5,turbulence:1,dust:1.6,emission:.8,colorA:'#568cb0',colorB:'#999eac'}
 };
 const shader=`
 struct Params{resolution:vec2f,time:f32,seed:f32,density:f32,scale:f32,turbulence:f32,dust:f32,colorA:vec4f,colorB:vec4f,emission:f32,steps:f32,pad:vec2f,colorC:vec4f,form:vec4f};
@@ -70,14 +70,36 @@ fn silhouette(p:vec3f,kind:f32)->f32{
    let dustGas=lane*envelope*visibility*.095;
    let extinction=gas*.65+dustGas;
    let alpha=1.-exp(-extinction*stepSize*.8);
-   // Most material is faint and neutral. Only isolated pockets emit coloured light.
+   // Different spatial emission distributions, not one recoloured noise blend.
    let region=fbm(p*3.5+seed*.37+vec3f(41.));
    let depth=fbm(vec3f(p.xy*5.,p.z*2.)+seed*.19+vec3f(9.));
-   let hot=smoothstep(.47,.63,region+p.z*.04);
-   let ion=smoothstep(.52,.68,depth)*smoothstep(.48,.67,n);
-   let front=pow(max(0.,1.-abs(region-.57)*30.),4.)*smoothstep(.44,.63,n);
-   let neutral=vec3f(.031);
-   let palette=u.colorA.rgb*.08+u.colorB.rgb*hot*3.5*u.form.y+u.colorC.rgb*(ion*1.2+front*.9)*u.form.y;
+   let perturb=(region-.5)*.28;
+   let band=p.y+sin(p.x*5.)*.12+perturb;
+   var weights=vec3f((1.-smoothstep(-.1,.18,band))*.65,smoothstep(.0,.24,band)*.9,exp(-pow((band-.06)*22.,2.))*.28);
+   if(u.pad.y>.5&&u.pad.y<1.5){
+    let r=length(p.xy)+perturb;
+    weights=vec3f(smoothstep(.45,.63,r)*1.05,(1.-smoothstep(.42,.56,r))*.8,smoothstep(.56,.7,depth)*smoothstep(.15,.5,p.x)*.75);
+   }
+   if(u.pad.y>1.5&&u.pad.y<2.5){
+    let edge=p.x+sin(p.y*4.)*.13+perturb;
+    weights=vec3f(.04,smoothstep(-.08,.22,edge)*.8,smoothstep(.3,.6,p.y)*smoothstep(.53,.67,depth)*.8);
+   }
+   if(u.pad.y>2.5&&u.pad.y<3.5){
+    let split=p.x+perturb;
+    weights=vec3f((1.-smoothstep(-.2,-.02,split))*.95,smoothstep(.05,.25,split)*.95,exp(-split*split*60.)*.25);
+   }
+   if(u.pad.y>3.5&&u.pad.y<4.5){
+    let spine=abs(p.y-sin(p.x*7.)*.16+perturb);
+    let branch=abs(p.y+sin(p.x*5.+1.)*.25);
+    weights=vec3f(.25,exp(-spine*spine*100.)*1.2,exp(-branch*branch*110.)*smoothstep(.51,.65,region)*.85);
+   }
+   if(u.pad.y>4.5){
+    let r=length(p)+perturb;
+    weights=vec3f(smoothstep(.52,.7,r)*.9,(1.-smoothstep(.48,.61,r))*.28,smoothstep(.14,.42,p.x)*smoothstep(.53,.69,depth)*1.2);
+   }
+   let selective=.35+smoothstep(.39,.62,region)*.65;
+   let neutral=vec3f(.009);
+   let palette=(u.colorA.rgb*weights.x+u.colorB.rgb*weights.y+u.colorC.rgb*weights.z)*u.form.y*selective;
    let luminance=dot(palette,vec3f(.2126,.7152,.0722));
    let restrained=mix(vec3f(luminance),palette,u.form.w);
    let light=(neutral+restrained)*u.emission*exp(-lane*1.7);
