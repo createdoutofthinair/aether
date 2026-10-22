@@ -6,7 +6,7 @@ same growth, branch skin, leaf and bark generators.
 
 ## Architecture
 
-- Nine resident growth architectures: three age/crown/habit variants for each of
+- Nine resident growth architectures: three growth-seed variants for each of
   birch, oak and willow. Individual trees vary yaw, overall size, crown width,
   tint and wind phase. This is a reusable prototype bank, not unique geometry
   for every tree. Species-inspired models are not botanical reconstructions.
@@ -33,6 +33,12 @@ same growth, branch skin, leaf and bark generators.
   the observer. Far impostors do not cast full canopy shadows.
 
 ## Actual directional impostors
+
+Prototypes now use the same height, density, leaf scale, crown, competition and
+open-growth defaults as Nature Studio. Population transforms provide size/age
+variation. The atlas sampler flips V inside each tile to convert plane UVs to
+WebGPU capture coordinates, keeping elevation rows unchanged. Inspect selected
+tree isolates a full-detail forest instance for specimen comparison.
 
 Startup captures each generated tree from 24 upper-hemisphere directions (eight
 azimuths × three elevations) to 128-pixel tiles. Albedo and normal/depth atlases

@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync,existsSync} from 'node:fs';
-import {scatterForest,groundHeight,habitat,selectTreeLOD,projectedPixels,impostorFrame,VARIANTS} from '../dist/forest/ecology.js';
+import {scatterForest,groundHeight,habitat,selectTreeLOD,projectedPixels,impostorFrame,VARIANTS,atlasUV,forestTreeOptions} from '../dist/forest/ecology.js';
+import {generateTree} from '../dist/nature/tree-model.js';
 import {makeVariant,instanceBucket} from '../dist/forest/assets.js';
 import {impostorMaterial} from '../dist/forest/impostor.js';
 import * as T from 'three/webgpu';
 import {uniform} from 'three/tsl';
+// Capture origin regression: the crown at the top of a copied GPU tile must
+// appear at the top of a plane, without exchanging elevation rows.
+for(let row=0;row<3;row++)for(let col=0;col<8;col++){
+ const top=atlasUV(.5,1,col,row),root=atlasUV(.5,0,col,row);assert.ok(top[1]<root[1]);assert.equal(Math.floor(top[1]*3),row);assert.equal(Math.floor(root[1]*3),row);assert.equal(Math.floor(top[0]*8),col);
+ const sample=(u,v)=>{const p=atlasUV(u,v,col,row),local=(p[1]*3-row)*128;return local<64?'crown':'root';};assert.equal(sample(.5,1),'crown');assert.equal(sample(.5,0),'root');
+}
+for(let variant=0;variant<VARIANTS;variant++){const options=forestTreeOptions(variant,481),forest=generateTree(options),specimen=generateTree({species:options.species,seed:options.seed,leafScale:1.3});assert.deepEqual(forest,specimen,'Forest prototypes must preserve the studio specimen architecture');}
 const a=scatterForest({seed:481,count:2500,extent:360});assert.equal(a.count,2500);assert.deepEqual(a,scatterForest({seed:481,count:2500,extent:360}));assert.notDeepEqual(a,scatterForest({seed:482,count:2500,extent:360}));assert.equal(new Set(a.trees.map(t=>t.variant)).size,VARIANTS);
 const grid=new Map();for(const t of a.trees){assert.ok(Math.abs(t.z-Math.sin(t.x*.018)*15)>=3.5);assert.equal(t.y,groundHeight(t.x,t.z));assert.ok(t.scale>0&&t.width>0);const x=Math.floor(t.x/2.6),z=Math.floor(t.z/2.6);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(const n of grid.get([x+i,z+j].join(','))||[])assert.ok(Math.hypot(n.x-t.x,n.z-t.z)>=2.6);const key=[x,z].join(',');if(!grid.has(key))grid.set(key,[]);grid.get(key).push(t);}
 assert.ok(a.trees.filter(t=>Math.floor(t.variant/3)===2).every(t=>habitat(t.x,t.z,a.seed).moisture>.73),'Willow placement must follow wet habitat');
@@ -18,4 +26,4 @@ try{await new Promise((resolve,reject)=>{worker.once('message',resolve);worker.o
  }}finally{await worker.terminate();}
 const seen=new Set();function visit(url){if(seen.has(url.href))return;seen.add(url.href);assert.ok(existsSync(url));const code=readFileSync(url,'utf8');for(const m of code.matchAll(/(?:^|\n)\s*import\s+(?:[^;]*?\s+from\s*)?(['"])([^'"\n]+)\1/g)){assert.ok(m[2].startsWith('.'),'Forest workers cannot inherit import maps');visit(new URL(m[2],url));}}visit(new URL('../dist/forest/worker.js',import.meta.url));
 const shell=readFileSync('dist/shell.js','utf8'),html=readFileSync('dist/index.html','utf8');assert.ok(shell.includes("forest: ['forest-lab.html'"));assert.ok(html.includes('data-route="forest"'));
-console.log('Forest: 2,500 deterministic habitat-aware spaced trees, nine variants, worker foliage/branch LODs, instanced attributes, wind/fade/depth nodes, projected-size hysteresis, atlas direction selection and SPA/worker URLs passed. Actual GPU atlas quality/frame times require browser validation.');
+console.log('Forest: upright within-tile atlas UVs, nine exact specimen-growth matches, 2,500 deterministic habitat-aware spaced trees, nine variants, worker foliage/branch LODs, instanced attributes, wind/fade/depth nodes, projected-size hysteresis, atlas direction selection and SPA/worker URLs passed. Actual GPU atlas quality/frame times require browser validation.');

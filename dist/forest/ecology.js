@@ -2,6 +2,13 @@
 import {random} from '../nature/leaf-model.js';
 export const SPECIES=['birch','oak','willow'];
 export const VARIANTS=9;
+// Match Nature Studio's full-tree defaults. Variation comes from growth seeds
+// and population transforms, not from replacing the specimen architecture.
+export function forestTreeOptions(variant,seed=481){return{species:SPECIES[Math.floor(variant/3)],seed:seed+variant*997,height:3.8,levels:3,density:2,leafScale:1.3,maturity:.65,crown:1,competition:.65,habit:'open'};}
+// WebGPU capture/copy coordinates have a top-left origin. Flip inside the tile;
+// flipping the whole atlas would also select the wrong elevation row.
+export function atlasUV(u,v,column,row,tile=128){const inset=2/tile,span=1-4/tile;return[(u*span+inset+column)/8,((1-v)*span+inset+row)/3];}
+
 export function groundHeight(x,z){return Math.sin(x*.014)*Math.cos(z*.019)*3+Math.sin((x+z)*.037)*.55;}
 export function habitat(x,z,seed){return{moisture:.5+.5*Math.sin(x*.021+Math.sin(z*.015)+seed*.001),light:.5+.5*Math.cos(z*.024-x*.009+seed*.003)};}
 export function scatterForest({seed=481,count=2500,extent=360}={}){
