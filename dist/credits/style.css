@@ -47,3 +47,6 @@ section>a{font-size:19px;line-height:1.9}
  .controls{font-size:12px}
  .speed{font-size:0}
 }
+
+/* Gentle forward travel with the central title corridor kept dark. */
+canvas.stars{width:100%;height:100%;background-image:none;opacity:1;pointer-events:none;z-index:0}.halo{pointer-events:none}#viewport{z-index:1}

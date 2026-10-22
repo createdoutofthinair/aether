@@ -1,0 +1,10 @@
+export function createStars(count=650,seed=73){let s=seed>>>0;const random=()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);return Array.from({length:count},()=>({x:(random()-.5)*3.8,y:(random()-.5)*3.8,z:.15+random()*2.85,shine:.3+random()*.7}));}
+export function advanceStars(stars,dt,speed=.085){for(const s of stars){s.z-=Math.min(dt,.05)*speed;if(s.z<.12)s.z+=2.88;}}
+export class Starfield{
+ constructor(canvas,{count=650,speed=.085,brightness=.45}={}){this.canvas=canvas;this.ctx=canvas.getContext('2d');this.stars=createStars(count);this.speed=speed;this.brightness=brightness;this.playing=true;this.reduced=matchMedia('(prefers-reduced-motion: reduce)');this.last=0;this.dead=false;this.resize=new ResizeObserver(()=>this.fit());this.resize.observe(canvas);this.fit();this.frame=this.frame.bind(this);this.raf=requestAnimationFrame(this.frame);}
+ fit(){const box=this.canvas.getBoundingClientRect();this.w=box.width;this.h=box.height;const dpr=Math.min(devicePixelRatio,1.5);this.canvas.width=Math.round(this.w*dpr);this.canvas.height=Math.round(this.h*dpr);this.ctx?.setTransform(dpr,0,0,dpr,0,0);this.draw();}
+ draw(){const c=this.ctx;if(!c)return;const w=this.w,h=this.h,f=Math.min(w,h)*.62;c.clearRect(0,0,w,h);for(const s of this.stars){const x=w/2+s.x/s.z*f,y=h/2+s.y/s.z*f;if(x<0||y<0||x>w||y>h)continue;const r=Math.hypot((x-w/2)/(w*.42),(y-h/2)/(h*.5));const textSafe=.16+.84*Math.min(1,r*r);const depth=Math.min(1,(3-s.z)/2.5);const alpha=this.brightness*s.shine*textSafe*(.35+.65*depth);c.fillStyle=`rgba(190,218,243,${alpha})`;c.beginPath();c.arc(x,y,Math.min(1.55,.35+.8*depth),0,Math.PI*2);c.fill();}}
+ frame(now){if(this.dead)return;if(this.playing&&!this.reduced.matches&&!document.hidden){if(this.last)advanceStars(this.stars,(now-this.last)/1000,this.speed);this.draw();}this.last=now;this.raf=requestAnimationFrame(this.frame);}
+ setPlaying(value){this.playing=value;this.last=0;}
+ dispose(){this.dead=true;cancelAnimationFrame(this.raf);this.resize.disconnect();this.ctx?.clearRect(0,0,this.w,this.h);}
+}
