@@ -11,7 +11,7 @@ export function widthAt(t,p,seed=1){
  if(p.shape==='oak')w=Math.pow(Math.sin(Math.PI*t),.65)*(.76+.24*Math.cos(t*Math.PI*12-1));
  else if(p.shape==='birch')w=Math.pow(Math.sin(Math.PI*t),.86)*(1.2-.55*t)*(1-.035*(.5+.5*Math.sin(t*180)));
  else w=Math.pow(Math.sin(Math.PI*t),.8)*(1.15-.3*t)*(1-.018*(.5+.5*Math.sin(t*240)));
- return p.width*.5*w*(1+.022*Math.sin(t*19+seed));
+ return p.width*.5*w*(1+.065*Math.sin(seed*.071))*(1+.022*Math.sin(t*19+seed));
 }
 export function centerAt(t,p,seed){return p.width*.027*Math.sin(t*5+seed)*Math.sin(Math.PI*t);}
 export function surfaceAt(t,s,p,curl=.5,seed=1){return p.length*(curl*.16*t*t+ .07*s*s*Math.sin(Math.PI*t)+.009*Math.sin(t*40+seed)*Math.abs(s));}

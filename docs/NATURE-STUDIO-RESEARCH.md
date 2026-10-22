@@ -1,5 +1,7 @@
 # Nature Studio: procedural leaves and WebGPU rendering
 
+The later [growth v3 implementation](NATURE-GROWTH-V3.md) supersedes the initial tree geometry, bark and foliage limitations described below.
+
 Research and first implementation: 22 October 2026. Implementation uses the repository's pinned Three.js 0.186.0 WebGPU backend. Open `index.html#/nature` from the shared Aether shell (DEV → Nature Studio).
 
 ## Findings and design decision

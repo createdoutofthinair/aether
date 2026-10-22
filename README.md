@@ -180,3 +180,5 @@ Open **DEV → HUD design** or `hud-design.html` for the independent interactive
 ### Nature Studio — procedural leaf studies
 
 Open **DEV → Nature Studio** (`index.html#/nature`) for species-inspired birch, oak and willow blades. Includes deterministic worker-generated tissue maps, WebGPU approximate subsurface lighting, GPU wind, four geometry LODs, instanced populations, map inspection and recipe export. See [the research and implementation limits](docs/NATURE-STUDIO-RESEARCH.md) for primary sources, budgets and the route toward cluster/impostor vegetation. Visual WebGPU validation on target hardware is still required.
+
+Nature Studio's [growth v3 pass](docs/NATURE-GROWTH-V3.md) replaces the fixed branching pattern with species-conditioned growth, crown-space competition, tapered continuous skins and connected forks. It adds age-aware fracture bark, four foliage variants, self-shadowing, clay/silhouette inspection, and worker-generated woody LODs. See the implementation notes for validation and limits.

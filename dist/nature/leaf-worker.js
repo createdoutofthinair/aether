@@ -1,5 +1,5 @@
-import {species,veins,random} from './leaf-model.js';
-self.onmessage=({data:{id,key,seed,age,size=1024}})=>{
+import {species,veins,random} from './leaf-model.js?v=growth-v3';
+export function bakeLeaf({id,key,seed,age,size=1024}){
  const p=species[key],rnd=random(seed),height=new Float32Array(size*size);
  // Rasterize the shared vascular graph into a height field. Linear data, not sRGB.
  for(const line of veins(p,seed))for(let k=1;k<line.points.length;k++){
@@ -25,5 +25,6 @@ self.onmessage=({data:{id,key,seed,age,size=1024}})=>{
  // R: diffuse transmission weight, G: roughness, B: vascular height, A: opaque.
  packed.set([(1-v*.76)*(.7-age*.22)*255,(p.roughness+broad*.045+fine*.03+age*.15)*255,v*255,255],i*4);
  }
- self.postMessage({id,size,color:color.buffer,normal:normal.buffer,packed:packed.buffer},[color.buffer,normal.buffer,packed.buffer]);
-};
+ return {id,size,color:color.buffer,normal:normal.buffer,packed:packed.buffer};
+}
+self.onmessage=({data})=>{const count=data.variantCount||1,variants=Array.from({length:count},(_,i)=>bakeLeaf({...data,seed:data.seed+i*997}));self.postMessage({...variants[0],variants},variants.flatMap(v=>[v.color,v.normal,v.packed]));};

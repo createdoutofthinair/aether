@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {woodHeight,bakeWood} from '../dist/nature/wood-model.js';
-for(const type of ['oak','pine','birch','cut']){
+for(const type of ['oak','pine','birch','willow','cut']){
  const options={type,seed:481,size:64,fissures:.7,grain:1,weather:.3},a=bakeWood(options),b=bakeWood(options);
  for(const channel of ['color','normal','packed']){assert.deepEqual(new Uint8Array(a[channel]),new Uint8Array(b[channel]));assert.equal(a[channel].byteLength,64*64*4);}
  const normal=new Uint8Array(a.normal),packed=new Uint8Array(a.packed);
