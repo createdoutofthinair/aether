@@ -1,3 +1,4 @@
+import {createCreditsNebula} from './space-background.js';
 import {Starfield} from '../space/starfield.js';
 import {createTitleSequence} from './title-sequence.js';
 import {getAudioManager} from '../audio/audio-manager.js';
@@ -7,6 +8,7 @@ soundtrack.setPlaylist(creditsPlaylist,{loop:true});
 const roll=document.querySelector('#roll'),viewport=document.querySelector('#viewport');
 const pause=document.querySelector('#pause'),progress=document.querySelector('#progress'),status=document.querySelector('#status');
 const stars=new Starfield(document.querySelector('#creditStars'));
+const nebula=createCreditsNebula(document.querySelector('#creditNebula'));
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let running=!reduced,position=0,last=0,end=1,speed=48,introTime=reduced?7.2:0;
 const title=await createTitleSequence(document.querySelector('.title-stage'));
@@ -15,7 +17,7 @@ function measure(){end=Math.max(1,roll.scrollHeight-viewport.clientHeight+60);po
 function paint(){roll.style.transform=`translateY(${-position}px)`;progress.value=String(Math.round(position/end*1000));}
 function update(){stars.setPlaying(running);soundtrack.setPlaying(running);pause.textContent=running?'Ⅱ Pause':'▶ Play';pause.setAttribute('aria-label',running?'Pause credits':'Play credits');status.textContent=position>=end?'COMPLETE':running?'ROLLING':'PAUSED';}
 function seek(value){introTime=7.2;title.render(introTime,reduced);position=Math.max(0,Math.min(end,value));if(position>=end)running=false;paint();update();}
-function restart(){soundtrack.restart();introTime=reduced?7.2:0;title.render(introTime,reduced);position=0;running=true;last=0;paint();update();}
+function restart(){nebula.restart();soundtrack.restart();introTime=reduced?7.2:0;title.render(introTime,reduced);position=0;running=true;last=0;paint();update();}
 pause.addEventListener('click',()=>{if(position>=end){restart();return;}running=!running;last=0;update();});
 document.querySelector('#restart').addEventListener('click',restart);document.querySelector('#replay').addEventListener('click',restart);
 document.querySelector('#speed').addEventListener('change',e=>{speed=Number(e.target.value);});
@@ -30,10 +32,10 @@ const fullscreen=document.querySelector('#fullscreen');if(!document.fullscreenEn
 fullscreen.addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{status.textContent='UNAVAILABLE';}});
 document.addEventListener('visibilitychange',()=>{last=0;});
 new ResizeObserver(measure).observe(roll);window.addEventListener('resize',measure);
-function frame(now){if(last&&running&&!document.hidden){const dt=Math.min((now-last)/1000,.1);introTime+=dt;const state=title.render(introTime,reduced);if(state.scroll)position=Math.min(end,position+dt*speed);paint();if(position>=end){running=false;update();}}last=now;requestAnimationFrame(frame);}
+function frame(now){if(last&&running&&!document.hidden){const dt=Math.min((now-last)/1000,.1);nebula.tick(dt);introTime+=dt;const state=title.render(introTime,reduced);if(state.scroll)position=Math.min(end,position+dt*speed);paint();if(position>=end){running=false;update();}}nebula.tick(0);last=now;requestAnimationFrame(frame);}
 measure();update();requestAnimationFrame(frame);
 
-window.addEventListener('pagehide',event=>{soundtrack.pause();if(!event.persisted){title.dispose();stars.dispose();}});
+window.addEventListener('pagehide',event=>{soundtrack.pause();if(!event.persisted){title.dispose();stars.dispose();nebula.dispose();}});
 window.addEventListener('pageshow',()=>soundtrack.setPlaying(running));
 // Non-blocking diagnostics: audio failure never interrupts the credit roll.
 soundtrack.addEventListener('error',event=>console.warn('Aether soundtrack unavailable',event.detail));

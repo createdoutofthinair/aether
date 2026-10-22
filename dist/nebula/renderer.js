@@ -8,7 +8,7 @@ export const presets={
  pearl:{composition:'A cool blue outer shell, a nearly neutral inner surface, and isolated warm knots on one side.',stretch:3,layers:.8,porosity:.78,saturation:.85,colorC:'#cf9555',shape:5,size:2.5,seed:811,density:.9,scale:1.5,turbulence:1,dust:1.6,emission:.8,colorA:'#568cb0',colorB:'#999eac'}
 };
 const shader=`
-struct Params{resolution:vec2f,time:f32,seed:f32,density:f32,scale:f32,turbulence:f32,dust:f32,colorA:vec4f,colorB:vec4f,emission:f32,steps:f32,pad:vec2f,colorC:vec4f,form:vec4f};
+struct Params{resolution:vec2f,time:f32,seed:f32,density:f32,scale:f32,turbulence:f32,dust:f32,colorA:vec4f,colorB:vec4f,emission:f32,steps:f32,pad:vec2f,colorC:vec4f,form:vec4f,scene:vec4f};
 @group(0) @binding(0) var<uniform> u:Params;
 @vertex fn vs(@builtin(vertex_index) i:u32)->@builtin(position) vec4f{let p=array<vec2f,3>(vec2f(-1,-1),vec2f(3,-1),vec2f(-1,3));return vec4f(p[i],0,1);}
 fn hash(p:vec3f)->f32{let q=fract(p*vec3f(.1031,.1030,.0973));let v=q+vec3f(dot(q,q.yxz+vec3f(33.33)));return fract((v.x+v.y)*v.z);}
@@ -26,6 +26,13 @@ fn silhouette(p:vec3f,kind:f32)->f32{
  if(kind>4.5){form=exp(-pow((length(p)-.59)*9.,2.));}
  return form*boundary;
 }
+// Shared optional scene palette: each encounter keeps its own spatial composition.
+fn encounterPalette(kind:u32)->mat3x3f{
+ let a=array<vec3f,6>(vec3f(.220,.435,.671),vec3f(.749,.369,.184),vec3f(.208,.259,.325),vec3f(.255,.612,.631),vec3f(.192,.302,.529),vec3f(.337,.549,.690));
+ let b=array<vec3f,6>(vec3f(.741,.325,.467),vec3f(.263,.553,.600),vec3f(.322,.533,.710),vec3f(.725,.329,.553),vec3f(.706,.282,.259),vec3f(.600,.620,.675));
+ let c=array<vec3f,6>(vec3f(.875,.706,.482),vec3f(.847,.635,.298),vec3f(.729,.435,.263),vec3f(.510,.404,.733),vec3f(.776,.631,.361),vec3f(.812,.584,.333));
+ return mat3x3f(pow(a[kind],vec3f(2.2)),pow(b[kind],vec3f(2.2)),pow(c[kind],vec3f(2.2)));
+}
 @fragment fn fs(@builtin(position) pixel:vec4f)->@location(0) vec4f{
  let uv=(pixel.xy/u.resolution*2.-vec2f(1.))*vec2f(u.resolution.x/u.resolution.y,1.);
  let ray=normalize(vec3f(uv*.78,1.45));let flight=u.colorB.a>.5;let travel=u.pad.x;
@@ -33,12 +40,16 @@ fn silhouette(p:vec3f,kind:f32)->f32{
  let cell=floor(travel/64.);
  for(var cloud=0;cloud<4;cloud++){
   if(!flight&&cloud>0){break;}
-  let id=cell+f32(cloud)-1.;let salt=hash(vec3f(id,u.seed,42.));
+  let id=cell+f32(cloud)-1.;
+  let kind=select(u.pad.y,((id%6.)+6.)%6.,u.scene.x>.5);
+  var gasPalette=mat3x3f(u.colorA.rgb,u.colorB.rgb,u.colorC.rgb);
+  if(u.scene.x>.5){gasPalette=encounterPalette(u32(kind));}
+  let salt=hash(vec3f(id,u.seed,42.));
   var center=vec3f(sin(id*2.4)*2.1,cos(id*1.7)*.65,id*64.+40.-travel);
   if(!flight){center=vec3f(0.,0.,radius*u.form.x*2.25);}
   // Intersect a rotated ellipsoid, so the traversal bound follows elongated gas.
   var axes=vec3f(u.form.x,1.25,.8)*radius;
-  if(u.pad.y>1.5&&u.pad.y<2.5){axes=vec3f(1.25,u.form.x,.8)*radius;}
+  if(kind>1.5&&kind<2.5){axes=vec3f(1.25,u.form.x,.8)*radius;}
   let angle=-.28+sin(id*1.8)*.24;let c=cos(angle);let s=sin(angle);
   let rd=vec3f(c*ray.x-s*ray.y,s*ray.x+c*ray.y,ray.z)/axes;
   let rc=vec3f(c*center.x-s*center.y,s*center.x+c*center.y,center.z)/axes;
@@ -53,7 +64,7 @@ fn silhouette(p:vec3f,kind:f32)->f32{
    let q=p*u.scale*2.8+seed+vec3f(u.time*.004,0.,0.);
    let warp=vec3f(fbm(q*.7),fbm(q*.7+vec3f(7.3)),fbm(q*.7+vec3f(15.8)))-vec3f(.5);
    let n=fbm(q+warp*u.turbulence*1.7);
-   let envelope=silhouette(p+warp*.22,u.pad.y);
+   let envelope=silhouette(p+warp*.22,kind);
    let visibility=select(1.,1.-smoothstep(62.,84.,center.z),flight);
    // Thresholded structures rather than a continuously filled cloud.
    let coarseField=fbm(p*3.8+seed*.31+vec3f(81.));
@@ -76,30 +87,30 @@ fn silhouette(p:vec3f,kind:f32)->f32{
    let perturb=(region-.5)*.28;
    let band=p.y+sin(p.x*5.)*.12+perturb;
    var weights=vec3f((1.-smoothstep(-.1,.18,band))*.65,smoothstep(.0,.24,band)*.9,exp(-pow((band-.06)*22.,2.))*.28);
-   if(u.pad.y>.5&&u.pad.y<1.5){
+   if(kind>.5&&kind<1.5){
     let r=length(p.xy)+perturb;
     weights=vec3f(smoothstep(.45,.63,r)*1.05,(1.-smoothstep(.42,.56,r))*.8,smoothstep(.56,.7,depth)*smoothstep(.15,.5,p.x)*.75);
    }
-   if(u.pad.y>1.5&&u.pad.y<2.5){
+   if(kind>1.5&&kind<2.5){
     let edge=p.x+sin(p.y*4.)*.13+perturb;
     weights=vec3f(.04,smoothstep(-.08,.22,edge)*.8,smoothstep(.3,.6,p.y)*smoothstep(.53,.67,depth)*.8);
    }
-   if(u.pad.y>2.5&&u.pad.y<3.5){
+   if(kind>2.5&&kind<3.5){
     let split=p.x+perturb;
     weights=vec3f((1.-smoothstep(-.2,-.02,split))*.95,smoothstep(.05,.25,split)*.95,exp(-split*split*60.)*.25);
    }
-   if(u.pad.y>3.5&&u.pad.y<4.5){
+   if(kind>3.5&&kind<4.5){
     let spine=abs(p.y-sin(p.x*7.)*.16+perturb);
     let branch=abs(p.y+sin(p.x*5.+1.)*.25);
     weights=vec3f(.25,exp(-spine*spine*100.)*1.2,exp(-branch*branch*110.)*smoothstep(.51,.65,region)*.85);
    }
-   if(u.pad.y>4.5){
+   if(kind>4.5){
     let r=length(p)+perturb;
     weights=vec3f(smoothstep(.52,.7,r)*.9,(1.-smoothstep(.48,.61,r))*.28,smoothstep(.14,.42,p.x)*smoothstep(.53,.69,depth)*1.2);
    }
    let selective=.35+smoothstep(.39,.62,region)*.65;
    let neutral=vec3f(.009);
-   let palette=(u.colorA.rgb*weights.x+u.colorB.rgb*weights.y+u.colorC.rgb*weights.z)*u.form.y*selective;
+   let palette=(gasPalette[0]*weights.x+gasPalette[1]*weights.y+gasPalette[2]*weights.z)*u.form.y*selective;
    let luminance=dot(palette,vec3f(.2126,.7152,.0722));
    let restrained=mix(vec3f(luminance),palette,u.form.w);
    let light=(neutral+restrained)*u.emission*exp(-lane*1.7);
@@ -108,12 +119,12 @@ fn silhouette(p:vec3f,kind:f32)->f32{
   }
  }
  let stars=starLayer(uv,150.)+starLayer(uv+vec2f(1.37),245.);
- color+=trans*vec3f(.75,.85,1.)*stars*.45;
+ color+=trans*vec3f(.75,.85,1.)*stars*.45*u.colorC.a;
  color=vec3f(1.)-exp(-color*1.65);return vec4f(pow(color,vec3f(.4545)),1.);
 
 }`;
 export class NebulaRenderer{
- async initialize(canvas){if(!navigator.gpu)throw Error('This nebula lab requires WebGPU. Enable hardware acceleration in a WebGPU-capable browser.');this.canvas=canvas;this.adapter=await navigator.gpu.requestAdapter();if(!this.adapter)throw Error('No WebGPU adapter is available.');this.device=await this.adapter.requestDevice();this.context=canvas.getContext('webgpu');if(!this.context)throw Error('WebGPU canvas initialization failed.');const format=navigator.gpu.getPreferredCanvasFormat();this.context.configure({device:this.device,format,alphaMode:'opaque'});const module=this.device.createShaderModule({code:shader});const compilation=await module.getCompilationInfo();const errors=compilation.messages.filter(m=>m.type==='error');if(errors.length)throw Error(errors.map(e=>e.message).join('; '));this.pipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vs'},fragment:{module,entryPoint:'fs',targets:[{format}]},primitive:{topology:'triangle-list'}});this.buffer=this.device.createBuffer({size:112,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});this.bind=this.device.createBindGroup({layout:this.pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.buffer}}]});this.device.lost.then(info=>{if(!this.disposed&&info.reason!=='destroyed')this.onError?.('WebGPU device lost. Reload the lab to recover.');});return this;}
- render(settings,time=0){if(this.disposed)return;const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a'),settings.stretch||3,settings.layers??.55,settings.porosity??.75,settings.monochrome?0:(settings.saturation??.4)]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);}
+ async initialize(canvas){if(!navigator.gpu)throw Error('This nebula lab requires WebGPU. Enable hardware acceleration in a WebGPU-capable browser.');this.canvas=canvas;this.adapter=await navigator.gpu.requestAdapter();if(!this.adapter)throw Error('No WebGPU adapter is available.');this.device=await this.adapter.requestDevice();this.context=canvas.getContext('webgpu');if(!this.context)throw Error('WebGPU canvas initialization failed.');const format=navigator.gpu.getPreferredCanvasFormat();this.context.configure({device:this.device,format,alphaMode:'opaque'});const module=this.device.createShaderModule({code:shader});const compilation=await module.getCompilationInfo();const errors=compilation.messages.filter(m=>m.type==='error');if(errors.length)throw Error(errors.map(e=>e.message).join('; '));this.pipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vs'},fragment:{module,entryPoint:'fs',targets:[{format}]},primitive:{topology:'triangle-list'}});this.buffer=this.device.createBuffer({size:128,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});this.bind=this.device.createBindGroup({layout:this.pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.buffer}}]});this.device.lost.then(info=>{if(!this.disposed&&info.reason!=='destroyed')this.onError?.('WebGPU device lost. Reload the lab to recover.');});return this;}
+ render(settings,time=0){if(this.disposed)return;const rgb=hex=>[(parseInt(hex.slice(1,3),16)/255)**2.2,(parseInt(hex.slice(3,5),16)/255)**2.2,(parseInt(hex.slice(5,7),16)/255)**2.2,1];const data=new Float32Array([this.canvas.width,this.canvas.height,time,settings.seed,settings.density,settings.scale,settings.turbulence,settings.dust,...rgb(settings.colorA).slice(0,3),settings.size||2.8,...rgb(settings.colorB).slice(0,3),settings.view==='study'?0:1,settings.emission,settings.steps||48,settings.travel||0,settings.shape||0,...rgb(settings.colorC||'#e7a15a').slice(0,3),settings.stars===false?0:1,settings.stretch||3,settings.layers??.55,settings.porosity??.75,settings.monochrome?0:(settings.saturation??.4),settings.cycleLooks?1:0,0,0,0]);this.device.queue.writeBuffer(this.buffer,0,data);const encoder=this.device.createCommandEncoder();const pass=encoder.beginRenderPass({colorAttachments:[{view:this.context.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0,a:1},loadOp:'clear',storeOp:'store'}]});pass.setPipeline(this.pipeline);pass.setBindGroup(0,this.bind);pass.draw(3);pass.end();this.device.queue.submit([encoder.finish()]);}
  dispose(){this.disposed=true;this.buffer?.destroy();this.context?.unconfigure();this.device?.destroy();}
 }
