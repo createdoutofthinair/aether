@@ -1,5 +1,5 @@
 import * as T from '../vendor-gpu/three.webgpu.js';
-import {mapSurface} from '../render/worker-kit/surface-atlas.js';
+import {mapCitySurface} from './surface-uv.js';
 import {ARCHITECTURAL_KITS,designOptions} from './design.js';
 import {compileArchitecture,volumeLoop,architectureBounds} from './architecture.js';
 import {random} from '../ships/blueprint.js';
@@ -28,16 +28,16 @@ export function loftGeometry(volume,segments=48){
   const n=loops(rings[0])[k].length,start=positions.length/3;
   for(let row=0;row<rings.length;row++){
    const loop=loops(rings[row])[k];let distance=0;
-   for(let i=0;i<=n;i++){const p=loop[i%n];if(i)distance+=Math.hypot(p.x-loop[(i-1)%n].x,p.z-loop[(i-1)%n].z);positions.push(p.x,p.y,p.z);uvs.push(distance/Math.max(1,volume.shape.rx*6),p.y/Math.max(1,volume.levels.at(-1).y));}
+   for(let i=0;i<=n;i++){const p=loop[i%n];if(i)distance+=Math.hypot(p.x-loop[(i-1)%n].x,p.z-loop[(i-1)%n].z);positions.push(p.x,p.y,p.z);uvs.push(distance,p.y);}
   }
   for(let row=0;row<rings.length-1;row++)for(let i=0;i<n;i++){const a=start+row*(n+1)+i,b=a+n+1;indices.push(a,b,a+1,b,b+1,a+1);}
  }
  for(const [ring,top]of [[rings[0],false],[rings.at(-1),true]]){
   const outline=ring.outer.map(p=>new T.Vector2(p.x,p.z)),holes=ring.holes.map(loop=>loop.map(p=>new T.Vector2(p.x,p.z))),flat=[...ring.outer,...ring.holes.flat()],offset=positions.length/3;
-  for(const p of flat){positions.push(p.x,p.y,p.z);uvs.push(.5+(p.x-(volume.x||0))/(volume.shape.rx*2.5),.5+(p.z-(volume.z||0))/(volume.shape.rz*2.5));}
+  for(const p of flat){positions.push(p.x,p.y,p.z);uvs.push(p.x,p.z);}
   for(const [a,b,c]of T.ShapeUtils.triangulateShape(outline,holes))indices.push(offset+a,offset+(top?c:b),offset+(top?b:c));
  }
- return geometry(positions,uvs,indices);
+ const g=geometry(positions,uvs,indices);g.userData.cityMetric=true;return g;
 }
 function atHeight(volume,y){
  const levels=volume.levels;let i=0;while(i<levels.length-2&&levels[i+1].y<y)i++;
@@ -76,7 +76,7 @@ function facadePatch(volume,loopIndex,metric,a,b,lower,upper,offset=.07){
    }
   }
  }
- return geometry(positions,uvs,indices);
+ const g=geometry(positions,uvs,indices);g.userData.cityPatchScale=[(b-a)*metric.perimeter,upper-lower];g.userData.cityPatchOrigin=[a*metric.perimeter,lower];return g;
 }
 export function modularBuildingModel(plan,lod,materials){
  const recipe=plan.architecture,assembly=compileArchitecture(recipe),root=new T.Group(),z=materials.zones,segments=[48,32,20][lod],design=recipe.design||designOptions(),kit=ARCHITECTURAL_KITS[design.kit],appearance=Math.floor(random(recipe.seed+':'+recipe.family+':'+recipe.profile)()*1000),structure=design.structure*kit.brace,equipment=design.equipment*kit.service;let activeVolume='foundation';
@@ -84,9 +84,10 @@ export function modularBuildingModel(plan,lod,materials){
  const solidGeometries=[...assembly.volumes,...collars].map(v=>({id:v.id,geometry:loftGeometry(v,48)})),clipExterior=exteriorClipper(solidGeometries);
  solidGeometries.forEach(s=>s.geometry.dispose());
  function add(g,material,name,tint=1){
+  const surfaceData=g.userData;
   if(/foundation|envelope|facade-bay|macro-cladding|cladding-cassette|floor-edge|mechanical-floor|roof-collar|garden-deck|protective-roof/.test(name))g=clipExterior(g,name==='roof-collar'?activeVolume+':roof-collar':activeVolume);
   if(!g.index?.count||g.attributes.position.count<3){g.dispose();return null;}
-  if(material.zone){mapSurface(g,material,{tint});if(materials.palette){const target=new T.Color(kit.colors[material.index]).lerp(new T.Color(recipe.palette[material.index]),.18),base=new T.Color(materials.palette[material.index]),color=g.attributes.color;for(let i=0;i<color.count;i++)color.setXYZ(i,tint*target.r/Math.max(.01,base.r),tint*target.g/Math.max(.01,base.g),tint*target.b/Math.max(.01,base.b));}}else{const c=new Float32Array(g.attributes.position.count*3);c.fill(tint);g.setAttribute('color',new T.BufferAttribute(c,3));g.setAttribute('uv1',g.attributes.uv.clone());}
+  if(material.zone){g.userData=surfaceData;mapCitySurface(g,material,{tint,seed:recipe.seed+activeVolume,name,variation:design.panelVariation??.035,roughnessBias:[0,5,6,7].includes(material.index)?(design.finishRoughness??.47)-(materials.finishRoughness??.47):0});if(materials.palette){const target=new T.Color(kit.colors[material.index]).lerp(new T.Color(recipe.palette[material.index]),.18),base=new T.Color(materials.palette[material.index]),color=g.attributes.color;for(let i=0;i<color.count;i++)color.setXYZ(i,color.getX(i)*target.r/Math.max(.01,base.r),color.getY(i)*target.g/Math.max(.01,base.g),color.getZ(i)*target.b/Math.max(.01,base.b));}}else{const c=new Float32Array(g.attributes.position.count*3);c.fill(tint);g.setAttribute('color',new T.BufferAttribute(c,3));g.setAttribute('uv1',g.attributes.uv.clone());}
   const m=new T.Mesh(g,material.material||material);m.name=name;m.userData={moduleId:activeVolume,component:name};root.add(m);return m;
  }
  function box(name,x,y,zz,bw,bh,bd,material=z.frame,yaw=0){const bevel=lod===0&&Math.min(bw,bh,bd)>.7,g=bevel?mergeVertices(new RoundedBoxGeometry(bw,bh,bd,1,Math.min(.16,bw*.06,bh*.06,bd*.06))):new T.BoxGeometry(bw,bh,bd),m=add(g,material,name);m.position.set(x,y,zz);m.rotation.y=yaw;return m;}

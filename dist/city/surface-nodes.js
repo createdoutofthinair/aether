@@ -1,0 +1,14 @@
+import {attribute,texture,vec2,vec3,vec4,float,mix,normalMap,positionLocal,positionWorld,positionGeometry,cameraViewMatrix} from 'three/tsl';
+/** Repeat inside one semantic cell. Derivatives are taken BEFORE fract, so
+ * tile boundaries cannot choose blurry mips; guards isolate adjacent finishes. */
+export function citySurfaceNodes(material){
+ const spec=material.userData.citySurface;if(!spec)return material;
+ const uv=(spec.world?positionWorld.xz:attribute('uv','vec2')).div(spec.tileMeters),data=spec.world?vec4(spec.zone||0,0,0,spec.variation??.025):attribute('uv1','vec4'),zone=data.x.round(),slot=vec2(zone.mod(4),zone.div(4).floor()),scale=vec2(.75/4,.75/2),atlasUV=slot.add(.125).div(vec2(4,2)).add(uv.fract().mul(scale));
+ const sample=t=>texture(t,atlasUV).grad(uv.dFdx().mul(scale),uv.dFdy().mul(scale)),albedo=sample(material.map),orm=sample(material.roughnessMap),bump=sample(material.normalMap);
+ const panel=uv.floor().dot(vec2(12.9898,78.233)).sin().mul(43758.5453).fract(),runoff=uv.x.mul(9.7).sin().mul(uv.x.mul(3.1).sin()).smoothstep(.58,.93),base=spec.world?float(0):float(1).sub(positionLocal.y.max(0).div(2).clamp()),dirt=data.y.mul(.55).add(base.mul(.35)).add(runoff.mul(.1)).mul(spec.wear).mul(panel.mul(.4).add(.6)).clamp();
+ const roadSize=spec.road?attribute('streetSize','vec2'):vec2(0),cross=positionGeometry.x.mul(roadSize.x),edge=cross.abs().div(roadSize.x.max(.001).mul(.5)).smoothstep(.78,.99).mul(roadSize.x.greaterThan(0)),tracks=cross.mul(Math.PI/3.6).sin().abs().smoothstep(.87,.99).mul(roadSize.x.greaterThan(0));
+ material.colorNode=mix(albedo.rgb.mul(panel.sub(.5).mul(data.w).add(1)),vec3(...spec.dirt),dirt.mul(.24)).mul(vec3(material.color.r,material.color.g,material.color.b));
+ if(spec.road)material.colorNode=mix(material.colorNode.mul(float(1).sub(tracks.mul(.055))),vec3(...spec.dirt),edge.mul(spec.wear*.22));
+ material.roughnessNode=orm.g.add(data.z).add(dirt.mul(.12)).add(edge.mul(.07)).sub(tracks.mul(.07)).clamp(.22,.98);material.metalnessNode=orm.b.mul(float(1).sub(dirt));material.aoNode=orm.r;material.normalNode=spec.world?vec3(bump.r.mul(2).sub(1),bump.b.mul(2).sub(1),bump.g.mul(2).sub(1)).normalize().transformDirection(cameraViewMatrix):normalMap(bump,vec2(1));
+ return material;
+}

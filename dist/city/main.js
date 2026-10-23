@@ -55,7 +55,7 @@ async function generate(){
   if(rebuild){
    status('Manufacturing shared building library in worker…');const data=await ask({type:'library',seed:config.seed,wear,architecture:config.architecture,assets:config.assets});if(disposed)return;clearLibrary();library=restoreLibrary(data,{debug});library.seed=config.seed;library.wear=wear;library.architectureKey=architectureKey;
   }
-  streets?.dispose();if(streets)scene.remove(streets.root);streets=infrastructure(layout);scene.add(streets.root);streets.transit.visible=$('transit').checked;streets.gardens.visible=$('parks').checked;
+  streets?.dispose();if(streets)scene.remove(streets.root);streets=infrastructure(layout,{wear:Number($('wear').value)});scene.add(streets.root);streets.transit.visible=$('transit').checked;streets.gardens.visible=$('parks').checked;
   if(ground){scene.remove(ground);ground.geometry.dispose();ground.material.dispose();}
   ground=new T.Mesh(new T.PlaneGeometry(Math.max(200000,layout.bounds.radius*6),Math.max(200000,layout.bounds.radius*6)),new T.MeshStandardNodeMaterial({color:config.architecture.style==='garden'?0x7a8170:PLANET_STYLES[config.architecture.style].palette[3],roughness:.95}));ground.rotation.x=-Math.PI/2;ground.position.y=-.25;ground.receiveShadow=true;scene.add(ground);
   $('atlasCount').textContent=library.variants.filter(v=>v.atlas?.coverage).length+' / '+PROTOTYPES+' ATLASES READY';populate();lighting();setMode(previousMode);view('skyline');$('appliedStyle').textContent=PLANET_STYLES[config.architecture.style].label;document.body.dataset.style=config.architecture.style;document.body.dataset.ready='true';

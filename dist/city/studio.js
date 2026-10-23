@@ -2,6 +2,7 @@ import {CONSTRUCTION_BLOCKS,attachConstructionBlock} from './construction-kit.js
 import * as T from 'three/webgpu';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
+import {citySurfaceNodes} from './surface-nodes.js';
 import {windowNodes} from './window-nodes.js';
 import {unpackShip} from '../render/ship-assets.js';
 import {BUILDING_FAMILIES,PLANET_STYLES,architecturalRecipe,compileArchitecture,volumeLoop,architectureBounds,restoreArchitecture} from './architecture.js';
@@ -75,7 +76,7 @@ function build(){
 }
 function install(data){
  const root=unpackShip(data.payload),canonical=new Map(),textures=new Set(),geometries=new Set();
- for(const mesh of root.children){const original=mesh.material,key=original.name;if(!canonical.has(key)){const material=new T.MeshStandardNodeMaterial().copy(original);material.transparent=false;windowNodes(material);canonical.set(key,material);for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])if(material[field])textures.add(material[field]);}mesh.material=canonical.get(key);mesh.userData.originalMaterial=mesh.material;original.dispose();geometries.add(mesh.geometry);mesh.castShadow=true;mesh.receiveShadow=true;}
+ for(const mesh of root.children){const original=mesh.material,key=original.name;if(!canonical.has(key)){const material=new T.MeshStandardNodeMaterial().copy(original);material.transparent=false;citySurfaceNodes(material);windowNodes(material);canonical.set(key,material);for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])if(material[field])textures.add(material[field]);}mesh.material=canonical.get(key);mesh.userData.originalMaterial=mesh.material;original.dispose();geometries.add(mesh.geometry);mesh.castShadow=true;mesh.receiveShadow=true;}
  for(const part of data.parts)for(const mesh of root.children.slice(part.start,part.start+part.count))Object.assign(mesh.userData,{moduleId:part.moduleId,kind:part.kind});
  clearPreview();preview={root,materials:[...canonical.values()],textures:[...textures],geometries:[...geometries],data};root.visible=true;scene.add(root);root.updateMatrixWorld(true);
  const box=new T.Box3().setFromObject(root),size=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());$('dimensions').textContent=[size.x,size.y,size.z].map(n=>n.toFixed(1)).join(' × ')+' m';$('triangleCount').textContent=Math.round(data.stats.triangles).toLocaleString()+' TRIANGLES';$('drawCount').textContent=data.stats.draws+' PART DRAWS';

@@ -1,3 +1,4 @@
+import {citySurfaceWebGL} from './surface-webgl.js';
 import {CITY_LIGHTING,cityLighting} from './lighting.js';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -32,7 +33,7 @@ function release(){
 function install(data){
  $('error').hidden=true;release();root=unpackShip(data.payload);const canonical=new Map();
  for(const mesh of root.children){
-  const original=mesh.material;if(!canonical.has(original.name)){original.transparent=false;original.opacity=1;canonical.set(original.name,original);}else original.dispose();
+  const original=mesh.material;if(!canonical.has(original.name)){original.transparent=false;original.opacity=1;citySurfaceWebGL(original,T.ShaderChunk);canonical.set(original.name,original);}else original.dispose();
   mesh.material=canonical.get(original.name);mesh.userData.original=mesh.material;mesh.castShadow=mesh.receiveShadow=true;
  }
  for(const p of data.parts)for(const m of root.children.slice(p.start,p.start+p.count))Object.assign(m.userData,{moduleId:p.moduleId,kind:p.kind});
