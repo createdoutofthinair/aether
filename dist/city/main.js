@@ -1,7 +1,7 @@
 import * as T from 'three/webgpu';
 import {uniform,mix,vec3,positionWorldDirection} from 'three/tsl';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {ARCHITECTURAL_KITS} from './design.js';
+import {ARCHITECTURAL_KITS,designOptions} from './design.js';
 import {readAssetLibrary} from './studio-state.js';
 import {BUILDING_FAMILIES,PLANET_STYLES,architectureOptions} from './architecture.js';
 import {compactReadback} from '../render/readback.js';
@@ -160,6 +160,7 @@ function cleanup(){
  if(!baking){const queue=renderer?.backend.device.queue;if(queue)queue.onSubmittedWorkDone().then(releaseResources,releaseResources);else releaseResources();}
 }
 $('cityKit').replaceChildren(...Object.entries(ARCHITECTURAL_KITS).map(([id,k])=>new Option(k.name,id)));
+$('cityKit').value=designOptions().kit;
 $('family').replaceChildren(...BUILDING_FAMILIES.map((f,i)=>new Option(f.label,String(i))));
 $('style').replaceChildren(...Object.entries(PLANET_STYLES).map(([id,p])=>new Option(p.label,id)));
 $('styleDescription').textContent=PLANET_STYLES.garden.description;

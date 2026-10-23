@@ -7,7 +7,7 @@ import {DRAFT_KEY} from './studio-state.js';
 import {auditGeometry} from './geometry-audit.js';
 
 const $=id=>document.getElementById(id),note=s=>$('status').textContent=s,params=new URLSearchParams(location.search);
-let renderer,controls,root=null,current=null,worker=null,job=0,working=false,imported=null,duplicateMesh=null,suiteResults=[],dead=false;
+let renderer,controls,root=null,current=null,worker=null,job=0,working=false,imported=null,duplicateMesh=null,suiteResults=[],dead=false,dirty=true;
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(38,1,.1,20000),sun=new T.DirectionalLight(0xfff0d2,3),fill=new T.HemisphereLight(0xc8dfe6,0xb8ad94,2.1),cutPlane=new T.Plane(new T.Vector3(0,-1,0),10000),partMaterials=new Map();
 const clay=new T.MeshStandardMaterial({color:0xb9c4bc,roughness:.8}),normals=new T.MeshNormalMaterial(),wire=new T.MeshBasicMaterial({color:0x244f57,wireframe:true}),uvCanvas=document.createElement('canvas');uvCanvas.width=uvCanvas.height=128;
 const uvContext=uvCanvas.getContext('2d');for(let y=0;y<8;y++)for(let x=0;x<8;x++){uvContext.fillStyle=(x+y)%2?'#568e91':'#f0e3ba';uvContext.fillRect(x*16,y*16,16,16);}
@@ -50,7 +50,7 @@ function fit(view='perspective'){
  const direction={front:[0,.08,1],back:[0,.08,-1],top:[0,1,.001],perspective:[.9,.45,1.4]}[view];camera.position.copy(center).add(new T.Vector3(...direction).normalize().multiplyScalar(distance));camera.near=Math.max(.05,span/3000);camera.far=Math.max(5000,distance*10);camera.updateProjectionMatrix();controls.target.copy(center);controls.update();
 }
 function display(){
- if(!root)return;const mode=$('mode').value,mass=$('mass').value,layer=$('layer').value,side=$('double').checked?T.DoubleSide:T.FrontSide;
+ dirty=true;if(!root)return;const mode=$('mode').value,mass=$('mass').value,layer=$('layer').value,side=$('double').checked?T.DoubleSide:T.FrontSide;
  for(const mesh of root.children){
   mesh.visible=(mass==='all'||mass===mesh.userData.moduleId)&&(layer==='all'||layer===mesh.userData.kind);let material=mesh.userData.original;
   if(mode==='parts'){const id=mesh.userData.moduleId;if(!partMaterials.has(id)){const hash=[...id].reduce((a,c)=>a+c.charCodeAt(0),0);partMaterials.set(id,new T.MeshStandardMaterial({color:new T.Color().setHSL(hash*.071%1,.37,.6),roughness:.8}));}material=partMaterials.get(id);}
@@ -62,7 +62,7 @@ function display(){
  controls.autoRotate=$('rotate').checked;controls.autoRotateSpeed=.7;
 }
 function lighting(){
- const p={day:[3,2.1,0xcbdde0],raking:[4.1,.9,0xc3d3d8],overcast:[1.1,2.8,0xd4deda]}[$('light').value];sun.intensity=p[0];fill.intensity=p[1];scene.background=new T.Color(p[2]);renderer.toneMappingExposure=Number($('exposure').value);
+ dirty=true;const p={day:[3,2.1,0xcbdde0],raking:[4.1,.9,0xc3d3d8],overcast:[1.1,2.8,0xd4deda]}[$('light').value];sun.intensity=p[0];fill.intensity=p[1];scene.background=new T.Color(p[2]);renderer.toneMappingExposure=Number($('exposure').value);
 }
 async function build(){if(working||!renderer)return;working=true;note('Generating and clipping building surfaces…');try{install(await request(recipe()));}catch(e){note('Build failed');$('error').hidden=false;$('error').textContent=e.message;}finally{working=false;}}
 function load(document){imported=restoreArchitecture(document);$('family').value=imported.family;$('kit').value=imported.design.kit;$('planet').value=imported.style;$('seed').value=imported.seed;$('profile').value=imported.profile;build();}
@@ -85,10 +85,10 @@ $('draft').onclick=()=>{try{const draft=localStorage.getItem(DRAFT_KEY);if(!draf
 $('import').onclick=()=>$('file').click();$('file').onchange=async()=>{try{const file=$('file').files[0];if(file)load(JSON.parse(await file.text()));}catch(e){note(e.message);}finally{$('file').value='';}};
 $('suite').onclick=suite;$('report').onclick=()=>{if(current)download('aether-geometry-audit.json',{schema:'aether.geometry-review/1',renderer:'WebGL2 diagnostic / Three r186',recipe:current.recipe,lod:Number($('lod').value),wear:Number($('wear').value),audit:current.audit,camera:{position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov},display:{mode:$('mode').value,layer:$('layer').value,mass:$('mass').value,cut:Number($('cut').value),backFaces:$('double').checked,light:$('light').value,exposure:Number($('exposure').value)},suite:suiteResults});};
 try{
- renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('viewport').prepend(renderer.domElement);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=3;controls.maxDistance=12000;
+ renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('viewport').prepend(renderer.domElement);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.addEventListener('change',()=>dirty=true);controls.minDistance=3;controls.maxDistance=12000;
  // A procedural exterior reflection field, not the black default environment.
  const sky=document.createElement('canvas');sky.width=512;sky.height=256;const ctx=sky.getContext('2d'),gradient=ctx.createLinearGradient(0,0,0,256);for(const [stop,color]of [[0,'#82b0cc'],[.47,'#dce8df'],[.55,'#ece3c9'],[1,'#858e78']])gradient.addColorStop(stop,color);ctx.fillStyle=gradient;ctx.fillRect(0,0,512,256);ctx.fillStyle='#fff2d4';ctx.beginPath();ctx.ellipse(130,70,25,20,0,0,Math.PI*2);ctx.fill();const skyTexture=new T.CanvasTexture(sky);skyTexture.colorSpace=T.SRGBColorSpace;skyTexture.mapping=T.EquirectangularReflectionMapping;const pmrem=new T.PMREMGenerator(renderer),environment=pmrem.fromEquirectangular(skyTexture);scene.environment=environment.texture;scene.environmentIntensity=.8;skyTexture.dispose();pmrem.dispose();
- const resize=new ResizeObserver(()=>{const rect=$('viewport').getBoundingClientRect();renderer.setSize(rect.width,rect.height);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix();});resize.observe($('viewport'));
- let previous=0;renderer.setAnimationLoop(now=>{if(dead||document.hidden)return;controls.update(previous?Math.min(.1,(now-previous)/1000):0);previous=now;renderer.render(scene,camera);});build();
+ const resize=new ResizeObserver(()=>{const rect=$('viewport').getBoundingClientRect();renderer.setSize(rect.width,rect.height);dirty=true;camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix();});resize.observe($('viewport'));
+ let previous=0;renderer.setAnimationLoop(now=>{if(dead||document.hidden)return;controls.update(previous?Math.min(.1,(now-previous)/1000):0);previous=now;if(dirty||controls.autoRotate){renderer.render(scene,camera);dirty=false;}});build();
  window.addEventListener('pagehide',()=>{dead=true;worker?.terminate();resize.disconnect();renderer.setAnimationLoop(null);controls.dispose();release();diagnosticMaterials.forEach(m=>m.dispose());partMaterials.forEach(m=>m.dispose());checker.dispose();ground.geometry.dispose();ground.material.dispose();environment.dispose();renderer.dispose();},{once:true});
 }catch(e){$('error').hidden=false;$('error').textContent='WebGL 2 test scene could not start: '+e.message;note('Renderer unavailable');}

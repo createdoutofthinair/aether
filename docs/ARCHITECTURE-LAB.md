@@ -164,3 +164,11 @@ Closed mass lofts and roof collars are compiled into a CPU surface classifier. E
 Daylight glazing starts from a blue-green material with low metalness, a small sky-colored emissive fill and bounded bay variation. WebGPU room shading no longer multiplies near-black glazing by another deep shadow. Aurelia is the new default kit: warm pale composite, mineral base, muted teal, and warm identity trim, with existing procedural roughness, seams and runoff. Industrial and shielded palettes remain selectable. Existing saved editor drafts retain their selected kit.
 
 The supplied Reddit reference was readable as a post but its image could not be inspected because Reddit blocked the cloud browser. The finish revision follows the user's stated lighter, inhabited direction; it does not claim an exact visual match to the unavailable image.
+
+### Reproducible visual review
+
+`scripts/check-city-webgl.mjs` is an optional, manually invoked local test runner. It serves only this repository on loopback, uses supplied Playwright/Chromium installations, captures the material/normal/wireframe/mass/UV views and the 20-family contact sheet, exercises curved/twisted families and LOD/composition changes, and verifies the downloaded audit. Set `CITY_WEBGL_PLAYWRIGHT`, `CITY_WEBGL_CHROMIUM`, optionally `CITY_WEBGL_BROWSER_ARGS` and `CITY_WEBGL_OUTPUT`. It is not connected to screenshot CI and installs no browser dependencies in this project.
+
+The 2026-10-23 review passed using isolated Chromium 153 with SwiftShader WebGL 2: all 20 families rendered, the exported family audits passed, and no shader/runtime errors were reported. The rendered material, normal, wireframe and contact-sheet images were inspected. The cloud browser itself exposes neither usable WebGPU nor WebGL; the separate local software graphics runner supplies visual evidence without changing engine backends. This verifies a standard PBR geometry baseline, not hardware frame time or WebGPU pixel parity.
+
+The bench renders on changes or during turntable/orbit motion. An idle specimen does not continuously redraw its shadow maps, which also keeps the software-rendering review practical.
