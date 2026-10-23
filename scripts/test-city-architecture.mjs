@@ -5,7 +5,7 @@ import {loftGeometry} from '../dist/city/architecture-model.js';
 import {cityBlueprint,buildingBlueprint,PROTOTYPES,exportCity} from '../dist/city/blueprint.js';
 import {buildingModel,cityMaterials} from '../dist/city/model.js';
 
-assert.equal(BUILDING_FAMILIES.length,20);assert.equal(PROTOTYPES,40);
+assert.equal(BUILDING_FAMILIES.length,24);assert.equal(PROTOTYPES,48);
 assert.deepEqual(architectureOptions({style:'__proto__',twist:Infinity,terraces:-8}),architectureOptions({twist:1,terraces:2}));
 for(const shape of ['ellipse','softbox','petal','ring','crescent']){
  const polygon=footprint({kind:shape,rx:25,rz:20,curve:1},48);
@@ -61,4 +61,4 @@ for(const family of ['dome','helix','crescent','petal']){
  assert.ok(checked>100);model.traverse(o=>o.geometry?.dispose());
 }
 mats.all.forEach(m=>m.dispose());mats.atlas.material.userData.textures.forEach(t=>t.dispose());
-console.log('Architecture: 20 grammar families × 6 planet profiles × 3 LODs, deterministic recipes, module overrides, footprint holes, cap winding, finite normals, stable window population, supported ocean decks and distinct planetary composition passed.');
+console.log('Architecture: 24 grammar families × 6 planet profiles × 3 LODs, deterministic recipes, module overrides, footprint holes, cap winding, finite normals, stable window population, supported ocean decks and distinct planetary composition passed.');

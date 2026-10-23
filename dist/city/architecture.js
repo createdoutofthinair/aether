@@ -1,3 +1,4 @@
+import {constructionAssembly} from './construction-kit.js';
 import {random} from '../ships/blueprint.js';
 import {designOptions,composeBuilding,normalizeModules,normalizeConnections} from './design.js';
 
@@ -24,7 +25,11 @@ export const BUILDING_FAMILIES=[
  ['citadel','Citadel cluster',60,142,56,'research'],
  ['blade','Sail blade',38,122,58,'research'],
  ['portal','Gateway arcology',62,96,44,'culture'],
- ['stack','Offset megablock',58,94,54,'residential']
+ ['stack','Offset megablock',58,94,54,'residential'],
+ ['modular','Stacked floor modules',58,96,48,'residential'],
+ ['junction','Attached wing complex',64,68,60,'research'],
+ ['buttress','Buttressed service tower',48,128,48,'research'],
+ ['dock','Docked habitat campus',74,42,74,'residential']
 ].map(([id,label,width,height,depth,use])=>({id,label,width,height,depth,use}));
 
 export const PLANET_STYLES={
@@ -60,6 +65,7 @@ export function architecturalRecipe(family,seed,profile=0,input={}){
  * Exact corners and cardinal extrema are retained at every representation. */
 export function footprint(shape,segments=48){
  const {kind='ellipse',rx=1,rz=1,lobes=3,curve=1,court=.5}=shape,n=Math.max(16,Math.ceil(segments/4)*4);
+ if(['wedge','lblock','cross'].includes(kind)){const points=kind==='wedge'?[[-1,-1],[.35,-1],[1,0],[.35,1],[-1,1]]:kind==='lblock'?[[-1,-1],[1,-1],[1,-.25],[-.25,-.25],[-.25,1],[-1,1]]:[[-.35,-1],[.35,-1],[.35,-.35],[1,-.35],[1,.35],[.35,.35],[.35,1],[-.35,1],[-.35,.35],[-1,.35],[-1,-.35],[-.35,-.35]];return{outer:points.map(([x,z])=>({x:x*rx,z:z*rz})),holes:[]};}
  if(['chamfer','triangle','hexagon'].includes(kind)){const sides=kind==='triangle'?3:kind==='hexagon'?6:8,vertices=kind==='chamfer'?[[-.72,-1],[.72,-1],[1,-.72],[1,.72],[.72,1],[-.72,1],[-1,.72],[-1,-.72]]:Array.from({length:sides},(_,i)=>[Math.cos(i/sides*Math.PI*2),Math.sin(i/sides*Math.PI*2)]);return{outer:vertices.map(([x,z])=>({x:x*rx,z:z*rz})),holes:[]};}
  const ellipse=(scale=1,reverse=false)=>Array.from({length:n},(_,i)=>{const a=(reverse?-1:1)*i/n*Math.PI*2,mod=kind==='petal'?1+.22*curve*Math.cos(lobes*a):1,power=['softbox','courtyard'].includes(kind)?2/(2+curve*3):1;return{x:Math.sign(Math.cos(a))*Math.abs(Math.cos(a))**power*rx*scale*mod,z:Math.sign(Math.sin(a))*Math.abs(Math.sin(a))**power*rz*scale*mod};});
  if(kind==='crescent'){
@@ -114,6 +120,7 @@ export function compileArchitecture(recipe){
  }else if(f==='stack'){
   const rng=random('stack:'+recipe.seed),count=recipe.shape.tiers+1,phase=rng()*Math.PI;for(let i=0;i<count;i++){const y=b+(h-b)*i/count;add('block-'+i,i%2?'softbox':'chamfer',Math.sin(i*1.9+phase)*w*.16,Math.cos(i*1.9+phase)*d*.13,w*(.42-i*.11/count),d*(.42-i*.11/count),[[y,1],[y+(h-b)/count,.97]],{garden:true,yaw:(rng()-.5)*.32});}
  }
+ const construction=constructionAssembly(recipe);if(construction)({volumes,supports,bridges}=construction);
  ({volumes,supports,bridges}=composeBuilding(recipe,{volumes,supports,bridges}));
  // Production overrides recombine compatible modules without deleting voids
  // or replacing a shell with an unrelated extrusion.

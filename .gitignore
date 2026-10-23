@@ -5,3 +5,7 @@ node_modules/
 dist/vendor-gpu/
 
 dist/render/worker-kit/
+
+# Built from pinned r186 with guarded reversed-Z comparisons
+dist/render/webgpu/city-GTAONode.js
+dist/render/webgpu/city-DenoiseNode.js

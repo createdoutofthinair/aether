@@ -1,3 +1,4 @@
+import {CONSTRUCTION_BLOCKS,attachConstructionBlock} from './construction-kit.js';
 import * as T from 'three/webgpu';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
@@ -101,6 +102,8 @@ function lighting(){
  if(pmrem&&environmentKey!==name){const backdrop=new T.Scene(),g=new T.SphereGeometry(1000,32,16),colors=[],sky=new T.Color(p.sky),horizon=new T.Color(p.horizon),floor=new T.Color(0x15232d);for(let i=0;i<g.attributes.position.count;i++){const y=g.attributes.position.getY(i)/1000,c=y>0?horizon.clone().lerp(sky,y):horizon.clone().lerp(floor,Math.min(1,-y*3));colors.push(c.r,c.g,c.b);}g.setAttribute('color',new T.Float32BufferAttribute(colors,3));const m=new T.MeshBasicNodeMaterial({vertexColors:true,side:T.BackSide});backdrop.add(new T.Mesh(g,m));const next=pmrem.fromScene(backdrop,.03);scene.environment=next.texture;scene.environmentIntensity=.75;environment?.dispose();environment=next;environmentKey=name;g.dispose();m.dispose();}
 }
 function bindUI(){
+ $('blockType').replaceChildren(...Object.entries(CONSTRUCTION_BLOCKS).map(([id,b])=>new Option(b.label,id)));for(const [id,label]of [['wedge','Wedge end'],['lblock','L-shaped block'],['cross','Cross junction']])if(![...$('massShape').options].some(o=>o.value===id))$('massShape').add(new Option(label,id));
+ $('attachBlock').onclick=()=>{try{const next=attachConstructionBlock(state.recipe,compileArchitecture(state.recipe),selected,$('blockType').value,$('blockSide').value);state.change(next.recipe);selected=next.id;requestFit=true;changed();panel('mass');toast('Construction block attached.');}catch(e){toast(e.message);}};
  $('kit').replaceChildren(...Object.entries(ARCHITECTURAL_KITS).map(([id,k])=>new Option(k.name+' · '+k.subtitle.split(' / ')[0],id)));$('planet').replaceChildren(...Object.entries(PLANET_STYLES).map(([id,k])=>new Option(k.label,id)));
  $('search').oninput=library;all('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;all('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));library();});all('[data-panel]').forEach(b=>b.onclick=()=>panel(b.dataset.panel));
  all('[data-option]').forEach(input=>input.onchange=()=>optionsChange(input.dataset.option,Number(input.value)));all('[data-design]').forEach(input=>input.onchange=()=>optionsChange(input.dataset.design,Number(input.value),true));all('input[type=range]').forEach(input=>input.addEventListener('input',()=>{const o=document.querySelector(`[data-output="${input.id}"]`);if(o)o.textContent=input.dataset.design?Math.round(input.value*100)+'%':Number(input.value).toFixed(2);}));

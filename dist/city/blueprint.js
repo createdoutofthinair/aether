@@ -1,3 +1,5 @@
+import {CITY_LAYOUTS,urbanDistrict} from './layouts.js';
+export {CITY_LAYOUTS} from './layouts.js';
 import {random} from '../ships/blueprint.js';
 import {ARCHITECTURE_VERSION,BUILDING_FAMILIES,PLANET_STYLES,architectureOptions,architecturalRecipe,compileArchitecture,architectureBounds,restoreArchitecture} from './architecture.js';
 export const CITY_VERSION=3;
@@ -20,7 +22,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const finite=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
 export function cityOptions(options={}){
  const hubs=[1,7,19,61].includes(Number(options.hubs))?Number(options.hubs):7;
- return{seed:String(options.seed??'FRESCO-01').slice(0,80),hubs,rings:clamp(Math.round(finite(options.rings,6)),3,9),density:clamp(finite(options.density,.85),.35,1),architecture:architectureOptions(options.architecture),assets:(Array.isArray(options.assets)?options.assets:[]).slice(0,20).map(restoreArchitecture)};
+ return{layout:Object.hasOwn(CITY_LAYOUTS,options.layout)?options.layout:'circular',seed:String(options.seed??'FRESCO-01').slice(0,80),hubs,rings:clamp(Math.round(finite(options.rings,6)),3,9),density:clamp(finite(options.density,.85),.35,1),architecture:architectureOptions(options.architecture),assets:(Array.isArray(options.assets)?options.assets:[]).slice(0,20).map(restoreArchitecture)};
 }
 /** The semantic layout is independent of rendering. Transit owns the land
  * before lots are generated; placement never depends on camera or mesh LOD. */
@@ -32,6 +34,11 @@ export function cityBlueprint(options={}){
  const buildings=[],links=[],routes=[],parks=[],prototypes=Array.from({length:PROTOTYPES},(_,v)=>buildingBlueprint(v,seed,config.architecture,config.assets)),style=PLANET_STYLES[config.architecture.style];
  const pool=zone=>BUILDING_FAMILIES.flatMap((f,i)=>{const compatible=f.use===zone||zone==='research'&&['dome','petal','helix','spire','tripod'].includes(f.id)||zone==='residential'&&['ring','spire'].includes(f.id)||zone==='culture'&&['dome','ring','shell','crescent','saucer'].includes(f.id);return compatible?Array(style.weights[f.id]||1).fill(i):[];});
  for(const hub of hubs){
+  if(config.layout!=='circular'){
+   const district=urbanDistrict(hub,config);hub.streetNodes=district.nodes;routes.push(...district.routes);parks.push(...district.parks);
+   for(const lot of district.lots){const rng=random(seed+':'+lot.id),families=pool(lot.zone==='civic'?'culture':lot.zone),family=lot.civic?3:families[Math.floor(rng()*families.length)],variant=family+(lot.civic||rng()<.5?0:FAMILIES.length),width=.9+rng()*.08,scale=Math.min(.8+rng()*.15,Math.max(1,lot.clearance)/(prototypes[variant].footprintRadius*width)),distance=Math.hypot(lot.x-hub.x,lot.z-hub.z)/hub.radius;buildings.push({id:lot.id,hub:hub.id,variant,x:lot.x,y:0,z:lot.z,yaw:lot.yaw,scale,width,tint:.9+rng()*.12,heightScale:lot.zone==='research'?1.15+(1-distance)*.45:.65+rng()*.4,zone:lot.zone,landmark:lot.civic,parcel:lot.polygon,clearance:lot.clearance});}
+   continue;
+  }
   buildings.push({id:`${hub.id}:core`,hub:hub.id,variant:3,x:hub.x,y:0,z:hub.z,yaw:0,scale:2.15,width:1,tint:1,landmark:true,zone:'civic'});
   for(let ring=0;ring<rings;ring++){
    const roadRadius=111+ring*128;
@@ -57,6 +64,7 @@ export function cityBlueprint(options={}){
   const other=byCoordinate.get(`${hub.q+dq},${hub.r+dr}`);if(!other)continue;
   const dx=other.x-hub.x,dz=other.z-hub.z,length=Math.hypot(dx,dz),ux=dx/length,uz=dz/length;
   const link={type:'link',from:hub.id,to:other.id,ax:hub.x+ux*radius,az:hub.z+uz*radius,bx:other.x-ux*radius,bz:other.z-uz*radius,y:9,phase:(hub.id+other.id)*.13};links.push(link);routes.push(link);
+  if(config.layout!=='circular')for(const [h,x,z]of [[hub,link.ax,link.az],[other,link.bx,link.bz]]){const node=[...h.streetNodes].sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z))[0];routes.push({type:'gateway',hub:h.id,ax:node.x,az:node.z,bx:x,bz:z,y:9,width:22,sidewalk:4,transit:true,phase:h.id*.1});}
  }
  return{version:CITY_VERSION,options:config,radius,spacing,hubs,links,routes,parks,buildings,prototypes,bounds:{radius:Math.max(...hubs.map(h=>Math.hypot(h.x,h.z)))+radius}};
 }
@@ -74,4 +82,4 @@ export function routePoint(route,t){
  const v=1-Math.abs(u*2-1),dx=route.bx-route.ax,dz=route.bz-route.az;
  return{x:route.ax+dx*v,y:route.y+1.1,z:route.az+dz*v,yaw:Math.atan2(dx,dz)+(u<.5?0:Math.PI)};
 }
-export function exportCity(layout){return{schema:'aether.city/3',units:'metres',up:'Y',generator:'circular-hubs-architecture-v3',...layout,buildings:layout.buildings.map(({lod,distance,cx,cy,cz,bound,...semantic})=>semantic),renderContract:{prototypes:PROTOTYPES,lods:3,impostor:'25-view hemi-octahedral albedo + normal/emission',surface:'8-zone guarded PBR atlas',seeded:true}};}
+export function exportCity(layout){return{schema:'aether.city/3',units:'metres',up:'Y',generator:'urban-network-architecture-v3',...layout,buildings:layout.buildings.map(({lod,distance,cx,cy,cz,bound,...semantic})=>semantic),renderContract:{prototypes:PROTOTYPES,lods:3,impostor:'25-view hemi-octahedral albedo + normal/emission',surface:'8-zone guarded PBR atlas',seeded:true}};}

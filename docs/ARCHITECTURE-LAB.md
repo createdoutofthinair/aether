@@ -172,3 +172,10 @@ The supplied Reddit reference was readable as a post but its image could not be 
 The 2026-10-23 review passed using isolated Chromium 153 with SwiftShader WebGL 2: all 20 families rendered, the exported family audits passed, and no shader/runtime errors were reported. The rendered material, normal, wireframe and contact-sheet images were inspected. The cloud browser itself exposes neither usable WebGPU nor WebGL; the separate local software graphics runner supplies visual evidence without changing engine backends. This verifies a standard PBR geometry baseline, not hardware frame time or WebGPU pixel parity.
 
 The bench renders on changes or during turntable/orbit motion. An idle specimen does not continuously redraw its shadow maps, which also keeps the software-rendering review practical.
+
+
+## Attachable procedural construction blocks
+
+The library now contains 24 families / 48 prototypes. In the left assembly panel choose an **Assembly block**, choose **Stack above** or one of four side faces, then **Attach block**. A generated building is converted losslessly into editable masses on the first attachment. The selected host's yaw determines its local face directions; heights use the active planet's floor spacing. Each attachment remains an ordinary editable, exportable module. Wedge ends, L corners and cross junctions are available as footprints. New family grammars demonstrate stacked floor modules, wing junctions, buttressed towers and docked campuses. These are original procedural assets studied against the modular organization of the Photobash reference, rather than imported FBX parts.
+
+Geometry compaction now drops unreferenced vertices after clipping. This prevents zero normals when a nearly collapsed window triangle is rejected at a tapered mass boundary.

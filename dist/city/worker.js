@@ -1,3 +1,4 @@
+import {buildingShadowModel} from './shadow-model.js';
 import * as T from '../vendor-gpu/three.webgpu.js';
 import {cityBlueprint,buildingBlueprint,PROTOTYPES} from './blueprint.js';
 import {cityMaterials,buildingModel} from './model.js';
@@ -14,7 +15,8 @@ self.onmessage=({data})=>{
     for(const mesh of [...batch.children])library.add(mesh);
     lods.push({start,count});
    }
-   entries.push({plan,lods});
+   const shadowBatch=batchShip(buildingShadowModel(plan,materials)),shadow={start:library.children.length,count:shadowBatch.children.length};for(const mesh of [...shadowBatch.children])library.add(mesh);
+   entries.push({plan,lods,shadow});
    self.postMessage({id:data.id,progress:variant+1,total:PROTOTYPES});
   }
   const payload=packShip(library);self.postMessage({id:data.id,entries,payload},shipTransfers(payload));disposeShip(library);

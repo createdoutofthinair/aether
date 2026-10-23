@@ -65,7 +65,7 @@ export function normalizeModules(modules){
  return modules.slice(0,12).map((m,i)=>{
   let id=String(m.id||'mass-'+i).replace(/[^\w-]/g,'').slice(0,50)||'mass-'+i;while(seen.has(id))id+='x';seen.add(id);
   return {id,label:String(m.label||'Mass '+(i+1)).slice(0,60),enabled:m.enabled!==false,
-   shape:['ellipse','softbox','petal','ring','crescent','courtyard','chamfer','triangle','hexagon'].includes(m.shape)?m.shape:'chamfer',
+   shape:['ellipse','softbox','petal','ring','crescent','courtyard','chamfer','triangle','hexagon','wedge','lblock','cross'].includes(m.shape)?m.shape:'chamfer',
    role:['tower','podium','service','terrace','crown'].includes(m.role)?m.role:'tower',profile:m.profile==='shell'?'shell':'tower',
    pattern:['auto','curtain','ribbon','punched','vertical','balcony'].includes(m.pattern)?m.pattern:'auto',finish:['auto','ceramic','frame','service','stone','roof','repair','accent'].includes(m.finish)?m.finish:'auto',roof:['auto','garden','solar','sealed','shield','crown'].includes(m.roof)?m.roof:'auto',
    width:value(m.width,20,5,160),depth:value(m.depth,20,5,160),height:value(m.height,45,.5,240),

@@ -34,4 +34,4 @@ assert.ok(!source.includes('windowNodes('),'Do not claim WebGL shader equivalenc
 assert.ok(existsSync('dist/vendor-gpu/three.module.js'),'Build includes matching r186 WebGL module');
 assert.deepEqual(plan(['dist/architecture-bench.html']).groups,['city']);
 mats.all.forEach(m=>m.dispose());mats.atlas.material.userData.textures.forEach(t=>t.dispose());
-console.log('Geometry bench: crossing-surface clipping, deterministic coplanar ownership, courtyard voids, UV preservation, malformed-buffer diagnostics and 40 production prototypes with zero invalid/degenerate/duplicate faces passed.');
+console.log('Geometry bench: crossing-surface clipping, deterministic coplanar ownership, courtyard voids, UV preservation, malformed-buffer diagnostics and 48 production prototypes with zero invalid/degenerate/duplicate faces passed.');

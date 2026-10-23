@@ -1,3 +1,4 @@
+import {CITY_LIGHTING,cityLighting} from './lighting.js';
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {unpackShip,disposeShip} from '../render/ship-assets.js';
@@ -16,7 +17,8 @@ const uvMaterial=new T.MeshBasicMaterial({map:checker}),diagnosticMaterials=[cla
 scene.add(sun,sun.target,fill);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.normalBias=.07;sun.shadow.bias=-.00008;
 const ground=new T.Mesh(new T.PlaneGeometry(20000,20000),new T.MeshStandardMaterial({color:0xc4c8b9,roughness:.95}));ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=true;scene.add(ground);
 function selectOptions(id,entries){$(id).replaceChildren(...entries.map(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o;}));}
-selectOptions('family',BUILDING_FAMILIES.map(f=>[f.id,f.label]));selectOptions('kit',Object.entries(ARCHITECTURAL_KITS).map(([id,k])=>[id,k.name]));selectOptions('planet',Object.entries(PLANET_STYLES).map(([id,s])=>[id,s.label]));
+selectOptions('light',Object.entries(CITY_LIGHTING).map(([id,p])=>[id,p.label]));$('light').value='golden';
+selectOptions('family',BUILDING_FAMILIES.map(f=>[f.id,f.label]));$('suite').textContent='Inspect all '+BUILDING_FAMILIES.length+' families';selectOptions('kit',Object.entries(ARCHITECTURAL_KITS).map(([id,k])=>[id,k.name]));selectOptions('planet',Object.entries(PLANET_STYLES).map(([id,s])=>[id,s.label]));
 $('family').value=BUILDING_FAMILIES.some(f=>f.id===params.get('family'))?params.get('family'):'citadel';$('kit').value=Object.hasOwn(ARCHITECTURAL_KITS,params.get('kit'))?params.get('kit'):'aurelia';$('planet').value='garden';if(params.get('seed'))$('seed').value=params.get('seed');
 function recipe(){return imported||architecturalRecipe($('family').value,$('seed').value||'AURELIA-01',Number($('profile').value),{style:$('planet').value,design:{kit:$('kit').value}});}
 function request(recipe,lod=Number($('lod').value)){
@@ -62,8 +64,10 @@ function display(){
  controls.autoRotate=$('rotate').checked;controls.autoRotateSpeed=.7;
 }
 function lighting(){
- dirty=true;const p={day:[3,2.1,0xcbdde0],raking:[4.1,.9,0xc3d3d8],overcast:[1.1,2.8,0xd4deda]}[$('light').value];sun.intensity=p[0];fill.intensity=p[1];scene.background=new T.Color(p[2]);renderer.toneMappingExposure=Number($('exposure').value);
+ dirty=true;const p=cityLighting($('light').value);sun.color.set(p.sun);sun.intensity=p.intensity;fill.intensity=p.ambient;fill.color.set(p.horizon);fill.groundColor.set(p.ground);scene.background=new T.Color(p.horizon);scene.environmentIntensity=p.environment;renderer.toneMappingExposure=p.exposure*Number($('exposure').value);
+ if(root){const box=new T.Box3().setFromObject(root),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3()),span=Math.max(size.x,size.y,size.z,40);sun.position.copy(center).add(new T.Vector3(...p.direction).normalize().multiplyScalar(span*3));sun.target.position.copy(center);sun.target.updateMatrixWorld();for(const material of new Set(root.children.map(m=>m.userData.original)))if(material.name==='Occupied rooms and wayfinding')material.emissiveIntensity=p.rooms;}
 }
+
 async function build(){if(working||!renderer)return;working=true;note('Generating and clipping building surfaces…');try{install(await request(recipe()));}catch(e){note('Build failed');$('error').hidden=false;$('error').textContent=e.message;}finally{working=false;}}
 function load(document){imported=restoreArchitecture(document);$('family').value=imported.family;$('kit').value=imported.design.kit;$('planet').value=imported.style;$('seed').value=imported.seed;$('profile').value=imported.profile;build();}
 function download(name,value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -76,7 +80,7 @@ async function suite(){
    const a=current.audit,record={family:family.id,seed:specimen.seed,lod:Number($('lod').value),audit:{...a,duplicates:undefined}};suiteResults.push(record);if(!a.ok)failed++;
    const button=document.createElement('button'),image=document.createElement('img'),label=document.createElement('span'),small=document.createElement('small');button.className='specimen';image.src=thumbnail.toDataURL('image/png');image.alt=family.label;label.textContent=family.label;small.textContent=`${Math.round(a.triangles/1000)}k triangles · ${a.ok?'passed':a.duplicateTriangles+' duplicate faces'}`;label.append(small);button.append(image,label);button.onclick=()=>{if(working)return;imported=null;$('family').value=family.id;build();};$('gallery').append(button);
   }
- }catch(e){note(e.message);failed++;}finally{install(await request(original));$('mode').value=originalMode;$('mass').value=originalMass;display();working=false;$('suite').disabled=false;note(`Family review complete · ${suiteResults.length}/20 built · ${failed} flagged. Click a specimen below to inspect.`);}
+ }catch(e){note(e.message);failed++;}finally{install(await request(original));$('mode').value=originalMode;$('mass').value=originalMass;display();working=false;$('suite').disabled=false;note(`Family review complete · ${suiteResults.length}/${BUILDING_FAMILIES.length} built · ${failed} flagged. Click a specimen below to inspect.`);}
 }
 $('generate').onclick=()=>{imported=null;build();};for(const id of ['family','kit','planet','profile','seed'])$(id).onchange=()=>{imported=null;build();};for(const id of ['lod','wear'])$(id).onchange=build;
 for(const id of ['mode','mass','layer','double','rotate'])$(id).onchange=display;$('cut').oninput=display;for(const id of ['light','exposure'])$(id).oninput=lighting;

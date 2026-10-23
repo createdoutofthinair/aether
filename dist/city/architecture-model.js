@@ -13,7 +13,11 @@ function geometry(positions,uvs,indices){
  // Discard them in the final Float32 domain before normal calculation.
  const p=g.attributes.position,a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3(),valid=[];
  for(let i=0;i<indices.length;i+=3){a.fromBufferAttribute(p,indices[i]);b.fromBufferAttribute(p,indices[i+1]);c.fromBufferAttribute(p,indices[i+2]);if(b.sub(a).cross(c.sub(a)).lengthSq()>1e-14)valid.push(indices[i],indices[i+1],indices[i+2]);}
- g.setIndex(valid);g.computeVertexNormals();return g;
+ // Removing a collapsed clipped triangle can leave an unused boundary
+ // vertex. Compact those vertices so no zero normal enters a GPU stream.
+ const remap=new Map(),compact=[],compactUV=[],mapped=[];
+ for(const index of valid){if(!remap.has(index)){remap.set(index,remap.size);compact.push(p.getX(index),p.getY(index),p.getZ(index));compactUV.push(g.attributes.uv.getX(index),g.attributes.uv.getY(index));}mapped.push(remap.get(index));}
+ g.setAttribute('position',new T.Float32BufferAttribute(compact,3));g.setAttribute('uv',new T.Float32BufferAttribute(compactUV,2));g.setIndex(mapped);g.computeVertexNormals();return g;
 }
 /** Closed loft, including hole walls and triangulated roof/floor. Caps have
  * independent vertices so their normals never round over the facade edge. */

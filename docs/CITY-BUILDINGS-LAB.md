@@ -4,7 +4,7 @@ Route: `index.html#/city` (DEV → City Buildings Lab). WebGPU only.
 
 ## Architecture extension (schema 2)
 
-The current generator uses **20 modular families × two compositions**, six
+The current generator uses **24 modular families × two compositions**, six
 planetary architecture profiles and compatible envelope/roof overrides.
 The dedicated [Architecture Lab](ARCHITECTURE-LAB.md) adds editable compound
 assemblies, construction kits and a saved-recipe handoff to this city.
@@ -89,7 +89,7 @@ alpha so distant room lighting follows the selected lighting preset.
 - Defaults: seven connected hubs, six belts, 85% occupancy; `FRESCO-01` gives
   780 buildings. Maximum preset: 61 hubs, nine belts and 100% occupancy gives
   18,117 buildings. This is an actual generated layout count, not an FPS claim.
-- There are 40 reusable prototypes; each has three mesh LODs and one validated
+- There are 48 reusable prototypes; each has three mesh LODs and one validated
   directional impostor. Schema-1 triangle budgets are superseded;
   `test-city.mjs` reports the current per-prototype costs.
 - Automatic thresholds: 260 / 90 / 22 projected pixels, with hysteresis.
@@ -174,3 +174,18 @@ lab ownership, shared asset contract, interface fixtures, performance strategy
 and delivery gates are specified in
 [ENVIRONMENT-STUDIOS-MASTERPLAN.md](ENVIRONMENT-STUDIOS-MASTERPLAN.md).
 This is a forward implementation blueprint; it does not mark the new labs as built.
+
+
+## City lighting, street layouts and attachable construction blocks
+
+The 23 October lighting revision replaces the small, 32-building local shadow study with camera-fitted cascade shadow maps and separate low-detail silhouette casters. Balanced quality uses three 1536-pixel cascades and up to 1,024 building casters; high uses three 2048-pixel cascades and up to 2,048. Nearby detailed meshes also cast their facade and roof shadows. Roads, sidewalks, gardens, transit structures and building meshes receive shadows. Coverage is finite; this is not planetary or unbounded shadowing.
+
+Six presets coordinate direct light, sun direction, sky/ground fill, reflection intensity, exposure, atmosphere, relit impostors and occupied windows: golden hour, architectural daylight, overcast, grazing sun, blue hour and moonlit night. Exposure, haze, shadow quality and contact occlusion remain editable. A single-sample scene depth target feeds half-resolution GTAO, followed by a depth/normal-aware denoiser; tone mapping and sRGB conversion happen before FXAA. A guarded compatibility build adapts r186's forward-depth background/nearest-sample assumptions to the city's reversed Z buffer. It does not replace the renderer or change other studios. Mesh-only mode skips impostor baking; switching back to automatic can fill the missing atlas library.
+
+The city supports four semantic layouts. Circular Concord preserves the Fresco network. Metropolis uses a connected street grid; Old City warps shared junctions and varies block widths; Corridor builds an elongated settlement along a transit spine. Roads and sidewalks reserve space before parcels are occupied. Inter-hub links meet gateways on each district's street graph. Parks occupy reserved parcels; transit only follows the routes marked for it. The default interactive view starts with one grid district; the multi-hub and circular options remain available.
+
+The original procedural construction kit is informed by the [Photobash SCIFI CITY reference](https://www.photobash.org/scifi-city), particularly its extendable floor/core/end-piece vocabulary. No commercial model or texture is bundled. Seven editable block recipes cover service cores, occupied floor stacks, habitat wings, transfer decks, wedge ends, cross junctions and L corners. Architecture Lab can attach any block above a selected mass or against its four local side faces, including rotated hosts. Block heights follow the planet's floor height. The same normalized modules, finishes and connections are exported and saved to City Lab. The 12-mass limit keeps authoring and compilation bounded.
+
+Four additional family grammars demonstrate these parts: stacked floor modules, attached wing complexes, buttressed service towers and docked habitat campuses. Existing family indices and saved recipe identities are preserved; the reusable prototype library increases to 48.
+
+Manual visual review: `scripts/check-city-scene.mjs` runs the production WebGPU City Lab with mesh-only startup, checks six presets and four layouts, records a street view and verifies exported shadow/occlusion measurements. It accepts `CITY_GPU_PLAYWRIGHT`, `CITY_GPU_CHROMIUM`, `CITY_GPU_BROWSER_ARGS` and `CITY_SCENE_OUTPUT`; optional viewport/preset/layout environment variables permit focused reviews. It is not wired into screenshot CI. Geometry/layout/attachment checks remain in normal CI.

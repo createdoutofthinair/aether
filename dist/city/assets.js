@@ -23,7 +23,8 @@ export function restoreLibrary(data,{debug}){
   // access geometry and facade zoning without near-field fasteners.
   for(const m of lods[1])capture.add(new T.Mesh(m.geometry,m.material));
   const box=new T.Box3().setFromObject(capture),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
-  return{plan:entry.plan,lods,capture,center,height:size.y,radius:size.length()/2,atlas:null,impostor:null};
+  const shadow=entry.shadow?source.children.slice(entry.shadow.start,entry.shadow.start+entry.shadow.count):lods[2];
+  return{plan:entry.plan,lods,shadow,capture,center,height:size.y,radius:size.length()/2,atlas:null,impostor:null};
  });
  return{source,variants,materials:[...canonical.values()],maps:[...maps],dispose(){const geometries=new Set(source.children.map(m=>m.geometry));geometries.forEach(g=>g.dispose());canonical.forEach(m=>m.dispose());maps.forEach(t=>t.dispose());}};
 }

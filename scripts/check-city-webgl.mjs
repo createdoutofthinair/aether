@@ -27,21 +27,21 @@ try{
  console.log('WebGL context ready; capturing materials and diagnostic modes.');
  await page.screenshot({path:output+'/materials.png'});
  for(const mode of ['normals','wire','parts','uv']){await page.locator('#mode').selectOption(mode);await page.screenshot({path:output+'/'+mode+'.png'});}
- await page.locator('#mode').selectOption('materials');await page.getByRole('button',{name:'Inspect all 20 families',exact:true}).click();
- console.log('Rendering the 20-family contact sheet.');
+ await page.locator('#mode').selectOption('materials');await page.getByRole('button',{name:'Inspect all 24 families',exact:true}).click();
+ console.log('Rendering the 24-family contact sheet.');
  progress=setInterval(()=>page.locator('#status').textContent().then(s=>console.log(s),()=>{}),10000);
  await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Family review complete'),{},{timeout:300000});
  clearInterval(progress);progress=null;
- assert.match(await page.locator('#status').textContent(),/20\/20 built · 0 flagged/);
- assert.equal(await page.locator('#gallery .specimen').count(),20);
+ assert.match(await page.locator('#status').textContent(),/24\/24 built · 0 flagged/);
+ assert.equal(await page.locator('#gallery .specimen').count(),24);
  await page.locator('#gallery').screenshot({path:output+'/families.png'});
  for(const [id,value]of [['family','dome'],['family','helix'],['lod','2'],['profile','1']]){
   await page.locator('#'+id).selectOption(value);await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Ready'),{},{timeout:60000});
   assert.equal(await page.locator('#health').textContent(),'Passed buffer checks');
  }
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export audit + camera',exact:true}).click();await(await download).saveAs(output+'/audit.json');
- const audit=JSON.parse(await readFile(output+'/audit.json','utf8'));assert.equal(audit.suite.length,20);assert.ok(audit.suite.every(s=>s.audit.ok));assert.equal(audit.audit.ok,true);assert.deepEqual(errors,[]);
- await writeFile(output+'/result.json',JSON.stringify({webgl:true,families:20,errors,output},null,2));console.log('WebGL visual review passed: actual production worker, PBR + four diagnostic modes, 20 family renders, curved/twisted masses, LOD/composition changes, audit export and no shader/runtime errors. Output:',output);
+ const audit=JSON.parse(await readFile(output+'/audit.json','utf8'));assert.equal(audit.suite.length,24);assert.ok(audit.suite.every(s=>s.audit.ok));assert.equal(audit.audit.ok,true);assert.deepEqual(errors,[]);
+ await writeFile(output+'/result.json',JSON.stringify({webgl:true,families:24,errors,output},null,2));console.log('WebGL visual review passed: actual production worker, PBR + four diagnostic modes, 24 family renders, curved/twisted masses, LOD/composition changes, audit export and no shader/runtime errors. Output:',output);
 }catch(error){
  if(page){console.error('Last bench status:',await page.locator('#status').textContent().catch(()=>''));await page.screenshot({path:output+'/failure.png',timeout:10000}).catch(()=>{});}
  throw error;
