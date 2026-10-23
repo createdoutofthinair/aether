@@ -76,6 +76,7 @@ function facadePatch(volume,loopIndex,metric,a,b,lower,upper,offset=.07){
 export function modularBuildingModel(plan,lod,materials){
  const recipe=plan.architecture,assembly=compileArchitecture(recipe),root=new T.Group(),z=materials.zones,segments=[48,32,20][lod],design=recipe.design||designOptions(),kit=ARCHITECTURAL_KITS[design.kit],appearance=Math.floor(random(recipe.seed+':'+recipe.family+':'+recipe.profile)()*1000),structure=design.structure*kit.brace,equipment=design.equipment*kit.service;let activeVolume='foundation';
  function add(g,material,name,tint=1){
+  if(!g.index?.count||g.attributes.position.count<3){g.dispose();return null;}
   if(material.zone){mapSurface(g,material,{tint});if(materials.palette){const target=new T.Color(kit.colors[material.index]).lerp(new T.Color(recipe.palette[material.index]),.18),base=new T.Color(materials.palette[material.index]),color=g.attributes.color;for(let i=0;i<color.count;i++)color.setXYZ(i,tint*target.r/Math.max(.01,base.r),tint*target.g/Math.max(.01,base.g),tint*target.b/Math.max(.01,base.b));}}else{const c=new Float32Array(g.attributes.position.count*3);c.fill(tint);g.setAttribute('color',new T.BufferAttribute(c,3));g.setAttribute('uv1',g.attributes.uv.clone());}
   const m=new T.Mesh(g,material.material||material);m.name=name;m.userData={moduleId:activeVolume,component:name};root.add(m);return m;
  }
