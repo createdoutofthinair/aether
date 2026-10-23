@@ -5,7 +5,7 @@ import {bakeCityFinish,CITY_TILE_METRES} from './surface.js';
 import {PLANET_STYLES} from './architecture.js';
 import {ARCHITECTURAL_KITS,designOptions} from './design.js';
 export const CITY_ZONES=['ceramic','frame','service','stone','roof','repair','accent','identity'];
-/** Buildings and ships share the surface baker, atlas packing, mip filtering,
+/** Buildings and ships share atlas packing, mip filtering,
  * semantic material zoning and opaque worker transfer; architecture uses its
  * own metre-scaled finishes and periodic guard bands. */
 export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden',design={}){

@@ -7,6 +7,8 @@ import {buildingBlueprint} from '../dist/city/blueprint.js';
 import {cityMaterials,buildingModel} from '../dist/city/model.js';
 import {citySurfaceNodes} from '../dist/city/surface-nodes.js';
 import {streetMaterials} from '../dist/city/street-materials.js';
+import {restoreLibrary} from '../dist/city/assets.js';
+import {uniform} from 'three/tsl';
 import {packShip,unpackShip} from '../dist/render/ship-assets.js';
 const a=bakeCityFinish({seed:'FINISH',wear:.6},128),b=bakeCityFinish({seed:'FINISH',wear:.6},128),other=bakeCityFinish({seed:'OTHER',wear:.6},128);assert.deepEqual(a,b);assert.notDeepEqual(a.color,other.color);
 // Guard samples must be periodic, including packed data and normals. No clamp
@@ -21,4 +23,7 @@ const model=buildingModel(plan,2,mats),coated=model.children.find(m=>m.material=
 const root=new T.Group(),g=new T.BoxGeometry(3,4,5);mapCitySurface(g,{index:6});root.add(new T.Mesh(g,mats.atlas.material));const payload=packShip(root);assert.equal(payload.textures.length,3);const restored=unpackShip(payload),source=restored.children[0].material;assert.deepEqual(source.userData.citySurface,mats.atlas.material.userData.citySurface);
 const renderer=new T.WebGPURenderer({canvas:{width:100,height:100,style:{},addEventListener(){},removeEventListener(){}}});renderer.hasFeature=()=>false;renderer.backend.device={limits:{maxUniformBufferBindingSize:65536,maxStorageBufferBindingSize:134217728}};
 const roads=streetMaterials('STREET');for(const material of [citySurfaceNodes(new T.MeshStandardNodeMaterial().copy(source)),roads.road,roads.stone]){const geometry=g.clone();geometry.setAttribute('streetSize',new T.Float32BufferAttribute(Array.from({length:geometry.attributes.position.count},()=>[12,32]).flat(),2));const mesh=new T.Mesh(geometry,material),builder=new T.WGSLNodeBuilder(mesh,renderer);builder.scene=new T.Scene();builder.camera=new T.PerspectiveCamera();builder.context.material=material;builder.build();assert.ok(builder.fragmentShader.includes('textureSampleGrad'),'Explicit pre-wrap derivatives prevent seam mip blur');assert.ok(!builder.fragmentShader.includes('NaN'));geometry.dispose();material.dispose();}
+// Capture materials must preserve metric sampling without depending on the
+// per-instance debug attributes that are absent from the offscreen source mesh.
+const library=restoreLibrary({payload,entries:[]},{debug:uniform(0)}),original=library.materials[0],capture=new T.MeshBasicNodeMaterial({vertexColors:true});assert.ok(original.cityCaptureAlbedo);capture.colorNode=original.cityCaptureAlbedo;const captureMesh=new T.Mesh(g,capture),captureBuilder=new T.WGSLNodeBuilder(captureMesh,renderer);captureBuilder.scene=new T.Scene();captureBuilder.camera=new T.PerspectiveCamera();captureBuilder.context.material=capture;captureBuilder.build();assert.ok(captureBuilder.fragmentShader.includes('textureSampleGrad'));assert.ok(!captureBuilder.attributes.some(a=>a.name==='forestLevel'));capture.dispose();library.dispose();
 roads.dispose();g.dispose();mats.all.forEach(m=>m.dispose());console.log('City surfaces: deterministic finishes, periodic atlas guards, unit normals, dielectric paint, metre UVs on 12/120 m lofts, descriptor worker round trip, three shared maps and building/road/paving WGSL passed.');

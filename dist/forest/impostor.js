@@ -5,12 +5,12 @@ import {compactReadback} from '../render/readback.js';
 import {transitionMask} from './coverage.js';
 /** Hemi-octahedral captures of actual geometry.
  * Normal RGB + normalized capture-depth A drive relighting and ray reprojection. */
-export async function bakeImpostor(renderer,source,{tile=128,encodeEmission=false,onView=()=>{},cancelled=()=>false}={}){
+export async function bakeImpostor(renderer,source,{tile=128,encodeEmission=false,albedoNode=null,onView=()=>{},cancelled=()=>false}={}){
  const box=new T.Box3().setFromObject(source),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3()),span=size.length()*1.06,distance=span*2,near=distance-span,far=distance+span;
  const scene=new T.Scene();scene.add(source);const camera=new T.OrthographicCamera(-span/2,span/2,span/2,-span/2,near,far);
  const params={type:T.UnsignedByteType,minFilter:T.LinearFilter,generateMipmaps:false};
  const color=new T.RenderTarget(tile*OCT_GRID,tile*OCT_GRID,params),normal=new T.RenderTarget(tile*OCT_GRID,tile*OCT_GRID,{...params,type:T.HalfFloatType}),colorTile=new T.RenderTarget(tile,tile,{type:T.UnsignedByteType}),normalTile=new T.RenderTarget(tile,tile,{type:T.HalfFloatType});color.texture.colorSpace=colorTile.texture.colorSpace=T.SRGBColorSpace;renderer.initRenderTarget(color);renderer.initRenderTarget(normal);
- const originals=source.children.map(o=>o.material),albedos=originals.map(m=>new T.MeshBasicNodeMaterial({map:m.map,color:m.color,vertexColors:m.vertexColors,side:T.DoubleSide,toneMapped:false}));
+ const originals=source.children.map(o=>o.material),albedos=originals.map(m=>{const capture=new T.MeshBasicNodeMaterial({map:m.map,color:m.color,vertexColors:m.vertexColors,side:T.DoubleSide,toneMapped:false}),node=albedoNode?.(m);if(node)capture.colorNode=node;return capture;});
  const normals=originals.map(original=>{const m=new T.MeshBasicNodeMaterial({side:T.DoubleSide,toneMapped:false});m.fragmentNode=vec4(normalWorld.mul(.5).add(.5),encodeEmission?float(original.emissive?.getHex()&&original.emissiveIntensity>0?1:0):positionView.z.negate().sub(near).div(far-near).clamp(.001,.999));return m;});
  const oldTarget=renderer.getRenderTarget(),oldColor=renderer.getClearColor(new T.Color()),oldAlpha=renderer.getClearAlpha(),oldTone=renderer.toneMapping;renderer.toneMapping=T.NoToneMapping;renderer.setClearColor(0,0);
  try{for(let row=0;row<OCT_GRID;row++)for(let col=0;col<OCT_GRID;col++){

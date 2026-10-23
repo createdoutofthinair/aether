@@ -68,7 +68,7 @@ async function generate(){
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     baking=true;
     try{
-     v.atlas=await bakeImpostor(renderer,v.capture,{tile:96,encodeEmission:true,cancelled:()=>disposed,onView:n=>status(`Capturing ${v.plan.family} ${i+1}/${PROTOTYPES} · view ${n}/25. Mesh fallbacks remain active.`)});
+     v.atlas=await bakeImpostor(renderer,v.capture,{tile:96,encodeEmission:true,albedoNode:m=>m.cityCaptureAlbedo,cancelled:()=>disposed,onView:n=>status(`Capturing ${v.plan.family} ${i+1}/${PROTOTYPES} · view ${n}/25. Mesh fallbacks remain active.`)});
      if(disposed){v.atlas.color.dispose();v.atlas.normal.dispose();v.atlas=null;return;}
      v.impostor=impostorMaterial(v.atlas,{sun:sunDirection,debug,ambient,diffuse,emission});
      const imp=groups[i][3][0];imp.geometry.dispose();const temporary=new T.PlaneGeometry(v.atlas.span,v.atlas.span),fresh=instanceBucket(temporary,v.impostor,imp.instanceMatrix.count);temporary.dispose();scene.remove(imp);imp.dispose();groups[i][3][0]=fresh;scene.add(fresh);lastUpdate=-1;

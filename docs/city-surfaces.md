@@ -26,6 +26,8 @@ an independent WebGL diagnostic; the engine has no WebGL fallback.
   normal variance into roughness. Base colour is sRGB; data maps are linear.
 * The worker payload carries a versioned `citySurface` material descriptor. Maps,
   metadata and UV streams reach both WebGPU and the WebGL diagnostic material.
+  Distant impostor albedo captures reuse the metric surface node before
+  per-instance debug colouring; they do not fall back to the old map UVs.
   Existing spacecraft payloads and their surface mapping are unchanged.
 
 ## Finish hierarchy
