@@ -1,13 +1,15 @@
 // Native architectural control grammar. No renderer, DCC, imported meshes or
 // training data. The IR owns every semantic choice; mesh LOD cannot reroll it.
 import {random} from '../ships/blueprint.js';
+import {CURVED_MASSES,curvedAssembly} from './grammar-surfaces.js';
+import {facadeLayers} from './grammar-layers.js';
 
 export const MASS_RULES=[
  ['court','Enclosed court'],['horseshoe','Open horseshoe'],['elbow','Offset elbow'],
  ['cross','Cross wings'],['hplan','Linked parallel wings'],['comb','Service spine'],
  ['terraces','Stepped terraces'],['ziggurat','Terraced pyramid'],['twin','Twin towers / podium'],
  ['triad','Three towers / podium'],['perimeter','Perimeter / raised corner'],['blade','Blade / service core']
-].map(([id,label])=>({id,label}));
+].map(([id,label])=>({id,label})).concat(CURVED_MASSES);
 export const FACADE_RULES=[
  ['frame','Deep structural frame'],['ribbon','Horizontal ribbon'],['paired','Paired window bays'],
  ['fins','Vertical solar fins'],['gallery','Recessed loggias'],['service','Technical service bands']
@@ -27,7 +29,8 @@ export function grammarOptions(input={}){
   mass:member(input.mass,[{id:'auto'},...MASS_RULES],'auto'),facade:member(input.facade,[{id:'auto'},...FACADE_RULES],'auto'),
   world:Object.hasOwn(CONSTRUCTION_WORLDS,input.world)?input.world:'garden',
   floors:Math.round(bounded(input.floors,12,4,24)),baysX:Math.round(bounded(input.baysX,8,6,12)),baysZ:Math.round(bounded(input.baysZ,7,6,12)),
-  bay:bounded(input.bay,4.5,3.6,6),massingSeed:String(input.massingSeed??input.seed??'CONCORD-01').slice(0,100),
+  bay:bounded(input.bay,4.5,3.6,6),taper:bounded(input.taper,1,.2,1.5),twist:bounded(input.twist,1,0,1.7),
+  grouping:Math.round(bounded(input.grouping,3,1,4)),coverage:bounded(input.coverage,.58,.15,.9),layout:['clustered','ribbons','shielded','atrium'].includes(input.layout)?input.layout:'clustered',massingSeed:String(input.massingSeed??input.seed??'CONCORD-01').slice(0,100),
   facadeSeed:String(input.facadeSeed??input.seed??'CONCORD-01').slice(0,100)};
 }
 // A union of integer columns is deliberately used for this construction family.
@@ -43,6 +46,7 @@ export function compileGrammar(input={}){
   heights=Array(nx*nz).fill(0),massingRotation=Math.floor(massR()*4),
   shoulder=.52+massR()*.24,terraceRun=1+Math.floor(massR()*3),
   terraceDrop=Math.max(1,Math.ceil((F-2)/(Math.ceil(nz/terraceRun)+1)));
+ if(CURVED_MASSES.some(r=>r.id===mass))return facadeLayers(curvedAssembly(o,mass,facade,world));
  const ix=(x,z)=>z*nx+x,get=(x,z)=>x<0||z<0||x>=nx||z>=nz?0:heights[ix(x,z)],
   set=(x,z,h)=>heights[ix(x,z)]=Math.max(0,Math.min(F,Math.round(h))),
   strip=(x,z)=>x<wing||x>=nx-wing||z<wing||z>=nz-wing;
@@ -104,23 +108,29 @@ export function compileGrammar(input={}){
  if(entry){entry.type='entry';entry.zone='base';}
  const roofLevels=[...new Set(roofs.map(r=>r.y))].sort((a,b)=>a-b),
   signature=JSON.stringify({mass,nx,nz,heights,rotation:massingRotation}),
-  result={schema:'aether.native-grammar/1',options:o,mass,facade,world,heights,columns,facades,roofs,
+  result={schema:'aether.native-grammar/2',options:o,mass,facade,world,heights,columns,facades,roofs,
    entry:entry?.id,rotation:massingRotation*Math.PI/2,
    bounds:{width:nx*o.bay,depth:nz*o.bay,height:totalHeight},foundation,
    signature,trace:[`mass/${mass}`,`footprint/${nx}×${nz}`,`terrace-levels/${roofLevels.length}`,`facade/${facade}`,`climate/${o.world}`,`exterior-bays/${facades.length}`]};
- return result;
+ return facadeLayers(result);
 }
 
 export function validateGrammar(ir){
  const errors=[],{baysX:nx,baysZ:nz,floors}=ir.options,get=(x,z)=>x<0||z<0||x>=nx||z>=nz?0:ir.heights[z*nx+x];
- for(const c of ir.columns)if(c.floors<1||c.floors>floors||!Number.isInteger(c.floors))errors.push(`Invalid column ${c.id}`);
- const ids=new Set();for(const f of ir.facades){if(ids.has(f.id))errors.push(`Duplicate facade ${f.id}`);ids.add(f.id);
-  if(f.floor<get(f.x+f.n[0],f.z+f.n[2])||f.floor>=get(f.x,f.z))errors.push(`Buried facade ${f.id}`);
+ const ids=new Set();for(const f of ir.facades){
+  if(f.width<=0||f.height<=0||!f.position.every(Number.isFinite))errors.push(`Invalid panel ${f.id}`);
+  for(const c of f.cells){if(ids.has(c.id))errors.push(`Duplicate source cell ${c.id}`);ids.add(c.id);
+   if(!ir.surface&&(c.floor<get(c.x+c.n[0],c.z+c.n[2])||c.floor>=get(c.x,c.z)))errors.push(`Buried facade ${c.id}`);
+  }
   if(f.type==='entry'&&f.floor!==0)errors.push(`Ungrounded entry ${f.id}`);
  }
- const occupied=new Set(ir.columns.map(c=>c.x+','+c.z)),visited=new Set(),pending=[ir.columns[0]];
- while(pending.length){const c=pending.pop();if(!c)continue;const key=c.x+','+c.z;if(visited.has(key))continue;visited.add(key);for(const [dx,dz]of [[1,0],[-1,0],[0,1],[0,-1]]){const next={x:c.x+dx,z:c.z+dz};if(occupied.has(next.x+','+next.z)&&!visited.has(next.x+','+next.z))pending.push(next);}}
- if(visited.size!==occupied.size)errors.push('Disconnected ground footprint');
+ if(ids.size!==ir.cellCount)errors.push('Missing exposed boundary cells');
+ if(!ir.surface){
+  for(const c of ir.columns)if(c.floors<1||c.floors>floors||!Number.isInteger(c.floors))errors.push(`Invalid column ${c.id}`);
+  const occupied=new Set(ir.columns.map(c=>c.x+','+c.z)),visited=new Set(),pending=[ir.columns[0]];
+  while(pending.length){const c=pending.pop();if(!c)continue;const key=c.x+','+c.z;if(visited.has(key))continue;visited.add(key);for(const [dx,dz]of [[1,0],[-1,0],[0,1],[0,-1]]){const next={x:c.x+dx,z:c.z+dz};if(occupied.has(next.x+','+next.z)&&!visited.has(next.x+','+next.z))pending.push(next);}}
+  if(visited.size!==occupied.size)errors.push('Disconnected ground footprint');
+ }
  if(ir.facades.filter(f=>f.type==='entry').length!==1)errors.push('Expected one main street entrance');
  return errors;
 }
