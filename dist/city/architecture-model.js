@@ -1,6 +1,7 @@
 import * as T from '../vendor-gpu/three.webgpu.js';
 import {mapSurface} from '../render/worker-kit/surface-atlas.js';
-import {compileArchitecture,volumeLoop} from './architecture.js';
+import {ARCHITECTURAL_KITS,designOptions} from './design.js';
+import {compileArchitecture,volumeLoop,architectureBounds} from './architecture.js';
 import {random} from '../ships/blueprint.js';
 import {mergeVertices} from '../render/worker-kit/BufferGeometryUtils.js';
 import {RoundedBoxGeometry} from '../render/worker-kit/RoundedBoxGeometry.js';
@@ -48,7 +49,7 @@ function sample(loop,metric,t){
  const distance=Math.min(.9999999,Math.max(0,t))*metric.perimeter;let i=0;while(i<loop.length-1&&metric.lengths[i+1]<distance)i++;
  const a=loop[i],b=loop[(i+1)%loop.length],f=(distance-metric.lengths[i])/Math.max(.00001,metric.lengths[i+1]-metric.lengths[i]);return new T.Vector3(T.MathUtils.lerp(a.x,b.x,f),a.y,T.MathUtils.lerp(a.z,b.z,f));
 }
-function facadePatch(volume,loopIndex,metric,a,b,lower,upper){
+function facadePatch(volume,loopIndex,metric,a,b,lower,upper,offset=.07){
  const toU=t=>{const distance=t*metric.perimeter;let i=0;while(i<metric.lengths.length-2&&metric.lengths[i+1]<distance)i++;return i+(distance-metric.lengths[i])/Math.max(.00001,metric.lengths[i+1]-metric.lengths[i]);},u0=toU(a),u1=toU(b),rows=volume.levels.map(l=>{const r=volumeLoop(volume,l,48);return[r.outer,...r.holes][loopIndex];}),positions=[],uvs=[],indices=[];
  const clip=(polygon,key,value,greater)=>{
   const out=[];for(let i=0;i<polygon.length;i++){const p=polygon[i],q=polygon[(i+1)%polygon.length],inside=greater?p[key]>=value:p[key]<=value,next=greater?q[key]>=value:q[key]<=value;
@@ -65,7 +66,7 @@ function facadePatch(volume,loopIndex,metric,a,b,lower,upper){
    for(const triangle of [[p,q,r],[q,s,r]]){
     let polygon=triangle;for(const [key,value,greater]of [['u',u0,true],['u',u1,false],['y',lower,true],['y',upper,false]]){polygon=clip(polygon,key,value,greater);if(polygon.length<3)break;}
     if(polygon.length<3)continue;const normal=triangle[1].point.clone().sub(triangle[0].point).cross(triangle[2].point.clone().sub(triangle[0].point)).normalize(),start=positions.length/3;
-    for(const p of polygon){positions.push(...p.point.clone().addScaledVector(normal,.07).toArray());uvs.push((p.u-u0)/(u1-u0),(p.y-lower)/(upper-lower));}
+    for(const p of polygon){positions.push(...p.point.clone().addScaledVector(normal,offset).toArray());uvs.push((p.u-u0)/(u1-u0),(p.y-lower)/(upper-lower));}
     for(let k=1;k<polygon.length-1;k++)indices.push(start,start+k,start+k+1);
    }
   }
@@ -73,40 +74,43 @@ function facadePatch(volume,loopIndex,metric,a,b,lower,upper){
  return geometry(positions,uvs,indices);
 }
 export function modularBuildingModel(plan,lod,materials){
- const recipe=plan.architecture,assembly=compileArchitecture(recipe),root=new T.Group(),z=materials.zones,segments=[64,40,24][lod];
+ const recipe=plan.architecture,assembly=compileArchitecture(recipe),root=new T.Group(),z=materials.zones,segments=[48,32,20][lod],design=recipe.design||designOptions(),kit=ARCHITECTURAL_KITS[design.kit],appearance=Math.floor(random(recipe.seed+':'+recipe.family+':'+recipe.profile)()*1000),structure=design.structure*kit.brace,equipment=design.equipment*kit.service;let activeVolume='foundation';
  function add(g,material,name,tint=1){
-  if(material.zone)mapSurface(g,material,{tint});else{const c=new Float32Array(g.attributes.position.count*3);c.fill(tint);g.setAttribute('color',new T.BufferAttribute(c,3));g.setAttribute('uv1',g.attributes.uv.clone());}
-  const m=new T.Mesh(g,material.material||material);m.name=name;root.add(m);return m;
+  if(material.zone){mapSurface(g,material,{tint});if(materials.palette){const target=new T.Color(kit.colors[material.index]).lerp(new T.Color(recipe.palette[material.index]),.18),base=new T.Color(materials.palette[material.index]),color=g.attributes.color;for(let i=0;i<color.count;i++)color.setXYZ(i,tint*target.r/Math.max(.01,base.r),tint*target.g/Math.max(.01,base.g),tint*target.b/Math.max(.01,base.b));}}else{const c=new Float32Array(g.attributes.position.count*3);c.fill(tint);g.setAttribute('color',new T.BufferAttribute(c,3));g.setAttribute('uv1',g.attributes.uv.clone());}
+  const m=new T.Mesh(g,material.material||material);m.name=name;m.userData={moduleId:activeVolume,component:name};root.add(m);return m;
  }
  function box(name,x,y,zz,bw,bh,bd,material=z.frame,yaw=0){const bevel=lod===0&&Math.min(bw,bh,bd)>.7,g=bevel?mergeVertices(new RoundedBoxGeometry(bw,bh,bd,1,Math.min(.16,bw*.06,bh*.06,bd*.06))):new T.BoxGeometry(bw,bh,bd),m=add(g,material,name);m.position.set(x,y,zz);m.rotation.y=yaw;return m;}
  function beam(name,a,b,radius,material=z.frame){const av=new T.Vector3(...a),bv=new T.Vector3(...b),delta=bv.clone().sub(av),m=add(new T.CylinderGeometry(radius,radius,delta.length(),[8,6,4][lod]),material,name);m.position.copy(av).add(bv).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());return m;}
 
  const baseKind=['crescent','ring','dome','shell','petal','saucer','canopy','arcology'].includes(recipe.family)?'ellipse':'softbox';
- const base={shape:{kind:baseKind,rx:recipe.width*.51,rz:recipe.depth*.51,curve:recipe.shape.curve},levels:[{y:recipe.foundation>5?recipe.foundation-.9:0,scale:1},{y:recipe.foundation,scale:1}]};
+ const bounds=architectureBounds(assembly),base={x:(bounds.minX+bounds.maxX)/2,z:(bounds.minZ+bounds.maxZ)/2,shape:{kind:recipe.modules?'softbox':baseKind,rx:Math.max(recipe.width*.51,bounds.width/2+1),rz:Math.max(recipe.depth*.51,bounds.depth/2+1),curve:recipe.shape.curve},levels:[{y:recipe.foundation>5?recipe.foundation-.9:0,scale:1},{y:recipe.foundation,scale:1}]};
  add(loftGeometry(base,segments),z.stone,'foundation');
  assembly.supports.forEach((s,i)=>beam('support-'+i,s.a,s.b,s.radius));
  for(const bridge of assembly.bridges){const a=new T.Vector3(...bridge.a),b=new T.Vector3(...bridge.b),mid=a.clone().add(b).multiplyScalar(.5),yaw=-Math.atan2(b.z-a.z,b.x-a.x),length=a.distanceTo(b);box('skybridge',mid.x,mid.y,mid.z,length,bridge.height,bridge.width,z.frame,yaw);box('bridge-glazing',mid.x,mid.y+.2,mid.z,length*.96,bridge.height*.65,bridge.width+.08,materials.glass,yaw);}
  for(const volume of assembly.volumes){
-  const bottom=volume.levels[0].y,top=volume.levels.at(-1).y,roof=volume.levels.at(-1);
+  activeVolume=volume.id;const skin=z[volume.skin||kit.skin],pattern=volume.pattern||kit.pattern,roofType=volume.roof&&volume.roof!=='auto'?volume.roof:recipe.roof,rows=volume.levels.map(l=>volumeLoop(volume,l,48));
+  const bottom=volume.levels[0].y,top=volume.levels.at(-1).y,roof=volume.levels.at(-1),plateKeys=new Set(),baseLoops=[rows[0].outer,...rows[0].holes],bayCounts=baseLoops.map(loop=>bayIntervals(loop,recipe.facade.bayWidth*(pattern==='curtain'?.72:pattern==='punched'?1.35:1)).count);
   // Keep the canonical contour for concave envelopes. Coarsening a petal can
   // put its chord in front of a window that was correctly outside the skin.
-  add(loftGeometry(volume,48),z.ceramic,volume.id+':envelope');
+  add(loftGeometry(volume,48),skin,volume.id+':envelope');
   // Every complete floor owns a stable bay population at every LOD. Geometry
   // simplification removes reveals and fins, never whole illuminated floors.
-  const floorCount=Math.max(1,Math.floor((top-bottom)/recipe.floorHeight)),floorHeight=(top-bottom)/floorCount;
+  const floorCount=volume.facade===false?0:Math.max(1,Math.floor((top-bottom)/recipe.floorHeight)),floorHeight=(top-bottom)/floorCount;
   for(let floor=0;floor<floorCount;floor++){
-   const lower=bottom+floor*floorHeight+.85,upper=Math.min(top-.18,lower+floorHeight*recipe.facade.glazing);
+   const lower=bottom+floor*floorHeight+(pattern==='curtain'?.25:.72),upper=Math.min(top-.18,lower+floorHeight*Math.min(.88,recipe.facade.glazing*(pattern==='curtain'?1.3:pattern==='punched'?.62:1)));
    if(upper<=lower)continue;
    const ref=volumeLoop(volume,atHeight(volume,(lower+upper)/2),48),lo=volumeLoop(volume,atHeight(volume,lower),48),hi=volumeLoop(volume,atHeight(volume,upper),48);
    const loopSet=r=>[r.outer,...r.holes];
    for(let li=0;li<loopSet(ref).length;li++){
-    const loop=loopSet(ref)[li],metric=bayIntervals(loop,recipe.facade.bayWidth),low=loopSet(lo)[li],high=loopSet(hi)[li],lowMetric=bayIntervals(low,recipe.facade.bayWidth),highMetric=bayIntervals(high,recipe.facade.bayWidth);
+    const loop=loopSet(ref)[li],metric=bayIntervals(loop,recipe.facade.bayWidth*(pattern==='curtain'?.72:pattern==='punched'?1.35:1)),low=loopSet(lo)[li],high=loopSet(hi)[li],lowMetric=bayIntervals(low,recipe.facade.bayWidth),highMetric=bayIntervals(high,recipe.facade.bayWidth);
+    if(!volume.shell)metric.count=bayCounts[li];
     for(let bay=0;bay<metric.count;bay++){
      const a=(bay+.12)/metric.count,b=(bay+.88)/metric.count,p=sample(low,lowMetric,a),q=sample(low,lowMetric,b),r=sample(high,highMetric,b),s=sample(high,highMetric,a),tangent=q.clone().sub(p),normal=new T.Vector3(tangent.z,0,-tangent.x).normalize();
      for(const v of [p,q,r,s])v.addScaledVector(normal,.065);
-     const occupied=random(`${recipe.seed}:${plan.variant}:${volume.id}:${floor}:${bay}:${li}`)()<recipe.facade.occupancy,mat=occupied?materials.glow:materials.glass,tint=.65+random(`${recipe.seed}:bay:${bay}:${floor}:${li}`)()*.35;
-     add(facadePatch(volume,li,metric,a,b,lower,upper),mat,'facade-bay',tint);
-     if(lod===0){
+     const group=Math.floor(bay/3),floorGroup=Math.floor(floor/5),masked=(group+appearance)%7<Math.round(design.plating*3)&&(floorGroup+appearance)%3!==1||volume.role==='service'&&group%4===0;
+     const occupied=random(`${recipe.seed}:${appearance}:${volume.id}:${floor}:${bay}:${li}`)()<recipe.facade.occupancy,mat=masked?skin:occupied?materials.glow:materials.glass,tint=.65+random(`${recipe.seed}:bay:${bay}:${floor}:${li}`)()*.35;
+     if(masked&&!volume.shell){const plateKey=li+':'+group+':'+floorGroup;if(!plateKeys.has(plateKey)){plateKeys.add(plateKey);const pa=(group*3+.06)/metric.count,pb=(Math.min(metric.count,(group+1)*3)-.06)/metric.count,py0=bottom+floorGroup*5*floorHeight+.22,py1=Math.min(top-.3,bottom+(floorGroup+1)*5*floorHeight-.22);add(facadePatch(volume,li,metric,pa,pb,py0,py1,.28),skin,'macro-cladding',.9);}}else add(facadePatch(volume,li,metric,a,b,lower,upper),mat,masked?'cladding-cassette':'facade-bay',masked?.85+tint*.15:tint);
+     if(lod===0&&!masked&&floor%2===0&&bay%2===0){
       const center=p.clone().add(q).multiplyScalar(.5),yaw=-Math.atan2(tangent.z,tangent.x),width=p.distanceTo(q),height=upper-lower;
       // Physical sills/reveals and solar brows cast real local shadows.
       box('sill',center.x,lower-.1,center.z,width+.2,.18,.42,z.frame,yaw);
@@ -117,7 +121,7 @@ export function modularBuildingModel(plan,lod,materials){
     }
    }
    // Structural floor bands are silhouette-bearing: keep all three levels.
-   if(!volume.shell){const l=atHeight(volume,bottom+(floor+1)*floorHeight),edge={...volume,levels:[{...l,y:l.y-.16,scale:l.scale*1.014},{...l,y:l.y+.13,scale:l.scale*1.014}]};add(loftGeometry(edge,segments),z.frame,'floor-edge');}
+   if(!volume.shell&&(pattern==='ribbon'||pattern==='balcony'||floor%5===4)){const l=atHeight(volume,bottom+(floor+1)*floorHeight),edge={...volume,levels:[{...l,y:l.y-.16,scale:l.scale*1.014},{...l,y:l.y+.13,scale:l.scale*1.014}]};add(loftGeometry(edge,segments),z.frame,'floor-edge');}
   }
   // Shell meridians are generated from the same loft samples, so every rib
   // meets the actual roof rather than floating above a differently shaped dome.
@@ -128,15 +132,46 @@ export function modularBuildingModel(plan,lod,materials){
     add(new T.TubeGeometry(curve,[24,16,10][lod],recipe.facade.rib, [6,4,3][lod],false),z.frame,'exoskeleton-rib');
    }
   }
-  if(!volume.shell){const collar={...volume,levels:[{...roof,y:top,scale:roof.scale*1.035},{...roof,y:top+.65,scale:roof.scale*1.035}]};add(loftGeometry(collar,segments),recipe.roof==='shield'?z.stone:z.frame,'roof-collar');}
-  if(recipe.roof==='garden'&&volume.garden&&!volume.shell){const garden={...volume,levels:[{...roof,y:top+.66,scale:roof.scale*.9},{...roof,y:top+.87,scale:roof.scale*.9}]};add(loftGeometry(garden,segments),materials.green,'garden-deck');}
-  if(recipe.roof==='shield'){const shield={...volume,levels:[{...roof,y:top+.65,scale:roof.scale*1.045},{...roof,y:top+1.55,scale:roof.scale*1.01}]};add(loftGeometry(shield,segments),z.stone,'protective-roof');}
-  if(recipe.roof==='crown'&&!volume.shell){for(let i=0;i<8;i++){const a=i*Math.PI/4,rx=volume.shape.rx*roof.scale*.8,rz=volume.shape.rz*roof.scale*.8;beam('crown-fin',[(volume.x||0)+Math.cos(a)*rx,top+.5,(volume.z||0)+Math.sin(a)*rz],[(volume.x||0)+Math.cos(a)*rx*.87,top+3.4,(volume.z||0)+Math.sin(a)*rz*.87],recipe.facade.rib,z.accent);}}
-  if(lod<2&&!volume.shell&&['solar','sealed'].includes(recipe.roof)){
+  // Continuous service spines and braced structural bays remain readable
+  // beyond window scale; they are not distributed as independent random noise.
+  if(!volume.shell){
+   const loops=rows.map(r=>r.outer),count=loops[0].length;
+   for(let side=0;side<4;side++){
+    const index=Math.floor((side+.15)*count/4)%count,points=loops.map(loop=>{const p=loop[index];return new T.Vector3(p.x,p.y,p.z);}),curve=new T.CatmullRomCurve3(points);
+    const structural=side%2===0?z.frame:z.service;add(new T.TubeGeometry(curve,[20,12,8][lod],Math.min(volume.shape.rx*.055,.85),[6,4,3][lod],false),structural,'service-spine');
+   }
+   if(equipment>.35&&volume.role!=='podium'){for(const fraction of [.34,.71]){const l=atHeight(volume,bottom+(top-bottom)*fraction),belt={...volume,levels:[{...l,y:l.y-.65,scale:l.scale*1.035},{...l,y:l.y+.65,scale:l.scale*1.035}]};add(loftGeometry(belt,segments),z.service,'mechanical-floor');}}
+   if(structure>.2){
+    const side=recipe.profile?0:Math.floor(count*.25),neighbor=(side+Math.max(1,Math.round(count*.14)))%count,levels=Math.max(1,Math.floor((top-bottom)/18));
+    for(let k=0;k<levels;k++){
+     const y0=bottom+k*(top-bottom)/levels+1,y1=bottom+(k+1)*(top-bottom)/levels-1,la=volumeLoop(volume,atHeight(volume,y0),48).outer,lb=volumeLoop(volume,atHeight(volume,y1),48).outer,a=la[side],b=lb[neighbor],c=la[neighbor],dd=lb[side];
+     beam('diagrid-brace',[a.x,a.y,a.z],[b.x,b.y,b.z],.18+structure*.14,z.frame);if(structure>.55)beam('diagrid-brace',[c.x,c.y,c.z],[dd.x,dd.y,dd.z],.18+structure*.14,z.frame);
+    }
+   }
+   const roofRadius=Math.min(volume.shape.rx,volume.shape.rz)*roof.scale,topX=volume.x||0,topZ=volume.z||0;
+   if(equipment>.15){
+    for(let i=0;i<2+Math.floor(equipment*3);i++){
+     const x=topX+(i%2?1:-1)*roofRadius*.35,zz=topZ+(Math.floor(i/2)-.7)*roofRadius*.36,bw=Math.max(1.3,roofRadius*.27),bh=1+(i%3)*.4;
+     box('plant-enclosure',x,top+bh*.5+.75,zz,bw,bh,bw*.7,z.service);box('plant-cover',x,top+bh+.8,zz,bw*1.1,.18,bw*.8,z.frame);
+     if(lod===0)for(let vent=0;vent<4;vent++)box('plant-louver',x,top+1+vent*.19,zz+bw*.36,bw*.82,.07,.12,z.frame);
+    }
+   }
+   if(design.signage>.15&&volume.role!=='podium'){
+    const idx=Math.floor(count*.25),low=volumeLoop(volume,atHeight(volume,top-(top-bottom)*.27),48).outer[idx],high=volumeLoop(volume,atHeight(volume,top-2),48).outer[idx];
+    beam('identity-pylon',[low.x,low.y,low.z+.12],[high.x,high.y,high.z+.12],Math.min(.5,roofRadius*.03),z.accent);
+    for(let i=0;i<3;i++)box('identity-segment',high.x,high.y-1-i*1.1,high.z+.3,Math.max(1,roofRadius*.3),.26,.22,materials.glow);
+   }
+  }
+  if(!volume.shell){const collar={...volume,levels:[{...roof,y:top,scale:roof.scale*1.035},{...roof,y:top+.65,scale:roof.scale*1.035}]};add(loftGeometry(collar,segments),roofType==='shield'?z.stone:z.frame,'roof-collar');}
+  if(roofType==='garden'&&volume.garden&&!volume.shell){const garden={...volume,levels:[{...roof,y:top+.66,scale:roof.scale*.9},{...roof,y:top+.87,scale:roof.scale*.9}]};add(loftGeometry(garden,segments),materials.green,'garden-deck');}
+  if(roofType==='shield'){const shield={...volume,levels:[{...roof,y:top+.65,scale:roof.scale*1.045},{...roof,y:top+1.55,scale:roof.scale*1.01}]};add(loftGeometry(shield,segments),z.stone,'protective-roof');}
+  if(roofType==='crown'&&!volume.shell){for(let i=0;i<8;i++){const a=i*Math.PI/4,rx=volume.shape.rx*roof.scale*.8,rz=volume.shape.rz*roof.scale*.8;beam('crown-fin',[(volume.x||0)+Math.cos(a)*rx,top+.5,(volume.z||0)+Math.sin(a)*rz],[(volume.x||0)+Math.cos(a)*rx*.87,top+3.4,(volume.z||0)+Math.sin(a)*rz*.87],recipe.facade.rib,z.accent);}}
+  if(lod<2&&!volume.shell&&['solar','sealed'].includes(roofType)){
    const radius=volume.shape.rx*roof.scale;
-   for(let i=0;i<3;i++){const x=(volume.x||0)+(i-1)*radius*.35,zz=volume.z||0;box(recipe.roof==='solar'?'solar-array':'roof-service',x,top+1.1,zz,radius*.28,.35,Math.max(1,volume.shape.rz*roof.scale*.52),recipe.roof==='solar'?materials.glass:z.service);}
+   for(let i=0;i<3;i++){const x=(volume.x||0)+(i-1)*radius*.35,zz=volume.z||0;box(roofType==='solar'?'solar-array':'roof-service',x,top+1.1,zz,radius*.28,.35,Math.max(1,volume.shape.rz*roof.scale*.52),roofType==='solar'?materials.glass:z.service);}
   }
  }
+ activeVolume='access';
  const entry=assembly.entry,yaw=Math.atan2(entry.normal[0],entry.normal[2]),nx=Math.sin(yaw),nz=Math.cos(yaw),ex=entry.x+nx*.22,ez=entry.z+nz*.22;
  box('pressure-vestibule',ex+nx*.8,entry.y+1.7,ez+nz*.8,5.2,3.4,2.8,z.frame,yaw);
  box('entry-door',ex+nx*2.24,entry.y+1.65,ez+nz*2.24,3.3,2.8,.12,materials.glass,yaw);
@@ -144,7 +179,7 @@ export function modularBuildingModel(plan,lod,materials){
  box('entry-beacon',ex+nx*2.5,entry.y+3.05,ez+nz*2.5,3,.15,.12,materials.glow,yaw);
  // Ground connection remains at every LOD. The ocean variant explicitly shows
  // a lift shaft; ramps/accessible interfaces remain a Streets-stage study.
- if(recipe.foundation>5)box('access-lift',ex+nx*4,recipe.foundation*.5,ez+nz*4,3,recipe.foundation,3,z.service,yaw);
+ if(entry.y>5)box('access-lift',ex+nx*4,entry.y*.5,ez+nz*4,3,entry.y,3,z.service,yaw);
  else for(let i=0;i<4;i++)box('entry-step',ex+nx*(3.1+i*.55),recipe.foundation*(4-i)/8,ez+nz*(3.1+i*.55),5.4,recipe.foundation*(4-i)/4,.65,z.stone,yaw);
  if(lod===0)for(let i=0;i<3;i++){
   const volume=assembly.volumes[0],back=volumeLoop(volume,volume.levels[0],48).outer.reduce((a,p)=>p.z<a.z?p:a);

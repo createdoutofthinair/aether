@@ -6,9 +6,9 @@ self.onmessage=({data})=>{
  try{
   if(data.type==='layout'){self.postMessage({id:data.id,layout:cityBlueprint(data.options)});return;}
   if(data.type!=='library')throw Error('Unknown city generation request');
-  const materials=cityMaterials(data.seed,data.wear,data.architecture?.style),library=new T.Group(),entries=[];
+  const materials=cityMaterials(data.seed,data.wear,data.architecture?.style,data.architecture?.design),library=new T.Group(),entries=[];
   for(let variant=0;variant<PROTOTYPES;variant++){
-   const plan=buildingBlueprint(variant,data.seed,data.architecture),lods=[];
+   const plan=buildingBlueprint(variant,data.seed,data.architecture,data.assets),lods=[];
    for(let lod=0;lod<3;lod++){
     const model=buildingModel(plan,lod,materials),batch=batchShip(model),start=library.children.length,count=batch.children.length;
     for(const mesh of [...batch.children])library.add(mesh);

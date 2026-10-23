@@ -4,8 +4,10 @@ Route: `index.html#/city` (DEV → City Buildings Lab). WebGPU only.
 
 ## Architecture extension (schema 2)
 
-The current generator uses **16 modular families × two compositions**, six
+The current generator uses **20 modular families × two compositions**, six
 planetary architecture profiles and compatible envelope/roof overrides.
+The dedicated [Architecture Lab](ARCHITECTURE-LAB.md) adds editable compound
+assemblies, construction kits and a saved-recipe handoff to this city.
 See [Procedural architecture](PROCEDURAL-ARCHITECTURE.md) for research, controls,
 module ownership, schema changes, validation and remaining work. The original
 implementation notes below describe the schema-1 baseline where explicitly
@@ -87,7 +89,7 @@ alpha so distant room lighting follows the selected lighting preset.
 - Defaults: seven connected hubs, six belts, 85% occupancy; `FRESCO-01` gives
   780 buildings. Maximum preset: 61 hubs, nine belts and 100% occupancy gives
   18,117 buildings. This is an actual generated layout count, not an FPS claim.
-- There are 32 reusable prototypes; each has three mesh LODs and one validated
+- There are 40 reusable prototypes; each has three mesh LODs and one validated
   directional impostor. Schema-1 triangle budgets are superseded;
   `test-city.mjs` reports the current per-prototype costs.
 - Automatic thresholds: 260 / 90 / 22 projected pixels, with hysteresis.

@@ -1,6 +1,8 @@
 import * as T from 'three/webgpu';
 import {uniform,mix,vec3,positionWorldDirection} from 'three/tsl';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {ARCHITECTURAL_KITS} from './design.js';
+import {readAssetLibrary} from './studio-state.js';
 import {BUILDING_FAMILIES,PLANET_STYLES,architectureOptions} from './architecture.js';
 import {compactReadback} from '../render/readback.js';
 import {restoreLibrary} from './assets.js';
@@ -37,14 +39,15 @@ function populate(){
  cells=[...grid.values()];lastUpdate=-1;
  $('population').textContent=layout.buildings.length.toLocaleString()+' BUILDINGS';$('network').textContent=layout.hubs.length+' CONNECTED HUBS / '+((layout.bounds.radius*2)/1000).toFixed(1)+' KM';
 }
-function options(){return{architecture:architectureOptions(Object.fromEntries(['style','variation','curvature','taper','twist','terraces','bayWidth','glazing','shade','envelope','roof','height','aspect'].map(id=>[id,$(id).value]))),seed:$('seed').value||'FRESCO-01',hubs:Number($('hubs').value),rings:Number($('rings').value),density:Number($('density').value)};}
+function options(){const architecture=Object.fromEntries(['style','variation','curvature','taper','twist','terraces','bayWidth','glazing','shade','envelope','roof','height','aspect'].map(id=>[id,$(id).value]));architecture.design={kit:$('cityKit').value};return{architecture:architectureOptions(architecture),assets:$('useLibrary').checked?readAssetLibrary(localStorage):[],seed:$('seed').value||'FRESCO-01',hubs:Number($('hubs').value),rings:Number($('rings').value),density:Number($('density').value)};}
+
 async function generate(){
  if(generating||!worker)return;generating=true;$('generate').disabled=true;
- const config=options(),wear=Number($('wear').value),architectureKey=JSON.stringify(config.architecture),previousMode=mode,rebuild=!library||library.seed!==config.seed||library.wear!==wear||library.architectureKey!==architectureKey;
+ const config=options(),wear=Number($('wear').value),architectureKey=JSON.stringify([config.architecture,config.assets]),previousMode=mode,rebuild=!library||library.seed!==config.seed||library.wear!==wear||library.architectureKey!==architectureKey;
  try{
   status('Planning civic cores, protected corridors and building plots…');const result=await ask({type:'layout',options:config});if(disposed)return;layout=result.layout;
   if(rebuild){
-   status('Manufacturing shared building library in worker…');const data=await ask({type:'library',seed:config.seed,wear,architecture:config.architecture});if(disposed)return;clearLibrary();library=restoreLibrary(data,{debug});library.seed=config.seed;library.wear=wear;library.architectureKey=architectureKey;
+   status('Manufacturing shared building library in worker…');const data=await ask({type:'library',seed:config.seed,wear,architecture:config.architecture,assets:config.assets});if(disposed)return;clearLibrary();library=restoreLibrary(data,{debug});library.seed=config.seed;library.wear=wear;library.architectureKey=architectureKey;
   }
   streets?.dispose();if(streets)scene.remove(streets.root);streets=infrastructure(layout);scene.add(streets.root);streets.transit.visible=$('transit').checked;streets.gardens.visible=$('parks').checked;
   if(ground){scene.remove(ground);ground.geometry.dispose();ground.material.dispose();}
@@ -156,6 +159,7 @@ function cleanup(){
  if(disposed)return;disposed=true;renderer?.setAnimationLoop(null);worker?.terminate();for(const job of waiting.values())job.reject(Error('City Lab closed'));waiting.clear();observer?.disconnect();controls?.dispose();
  if(!baking){const queue=renderer?.backend.device.queue;if(queue)queue.onSubmittedWorkDone().then(releaseResources,releaseResources);else releaseResources();}
 }
+$('cityKit').replaceChildren(...Object.entries(ARCHITECTURAL_KITS).map(([id,k])=>new Option(k.name,id)));
 $('family').replaceChildren(...BUILDING_FAMILIES.map((f,i)=>new Option(f.label,String(i))));
 $('style').replaceChildren(...Object.entries(PLANET_STYLES).map(([id,p])=>new Option(p.label,id)));
 $('styleDescription').textContent=PLANET_STYLES.garden.description;
@@ -181,7 +185,7 @@ try{
  });
  generate();
 }catch(e){if(!disposed)status('City preparation failed: '+e.message);}
-$('generate').onclick=generate;$('cityTab').onclick=()=>{if(layout){setMode('city');view('skyline');}};$('buildingTab').onclick=inspect;$('catalogueTab').onclick=()=>{if(layout){setMode('catalogue');view('catalogue');status('Sixteen procedural families · shared planet profile · two seeded compositions per family.');}};$('inspect').onclick=inspect;
+$('generate').onclick=generate;$('cityTab').onclick=()=>{if(layout){setMode('city');view('skyline');}};$('buildingTab').onclick=inspect;$('catalogueTab').onclick=()=>{if(layout){setMode('catalogue');view('catalogue');status('Twenty procedural families · shared planet profile · two seeded compositions per family.');}};$('inspect').onclick=inspect;
 $('family').onchange=()=>{if(mode==='building')inspect();};$('profile').onchange=()=>{if(mode==='building')inspect();else lastUpdate=-1;};
 $('style').onchange=()=>{$('styleDescription').textContent=PLANET_STYLES[$('style').value].description;};
 for(const name of ['aerial','skyline','street'])$(name).onclick=()=>{if(layout){setMode('city');view(name);}};

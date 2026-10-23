@@ -3,13 +3,15 @@ import * as T from '../vendor-gpu/three.webgpu.js';
 import {surfaceAtlas} from '../render/worker-kit/surface-atlas.js';
 import {bakeSurface} from '../hull/surface.js';
 import {PLANET_STYLES} from './architecture.js';
+import {ARCHITECTURAL_KITS,designOptions} from './design.js';
 export const CITY_ZONES=['ceramic','frame','service','stone','roof','repair','accent','identity'];
 /** Buildings and ships share the surface baker, atlas packing, mip filtering,
  * semantic material zoning and opaque worker transfer; architecture uses its
  * own finish recipes rather than stretching a spacecraft texture over a city. */
-export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden'){
+export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden',design={}){
+ const kit=ARCHITECTURAL_KITS[designOptions(design).kit];
  const recipes=[
-  {preset:'ceramic',paint:'#bebdb0',roughness:.67,metalness:0,panels:3},
+  {preset:'ceramic',paint:'#bebdb0',roughness:.47,metalness:.12,panels:4},
   {preset:'alloy',substrate:'#8b999c',paintCoverage:0,roughness:.4,panels:4},
   {preset:'engine',substrate:'#384a50',paintCoverage:0,roughness:.7,heat:.05,panels:4},
   {preset:'ceramic',paint:'#8c8d82',roughness:.87,panels:2},
@@ -18,7 +20,7 @@ export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden'){
   {preset:'armor',paint:'#467b83',roughness:.52,panels:3},
   {preset:'armor',paint:'#aa8250',roughness:.65,panels:5}
  ];
- const palette=(PLANET_STYLES[style]||PLANET_STYLES.garden).palette;
+ const planet=(PLANET_STYLES[style]||PLANET_STYLES.garden).palette,palette=kit.colors.map((c,i)=>'#'+new T.Color(c).lerp(new T.Color(planet[i]),.18).getHexString());
  recipes.forEach((r,i)=>{if(r.paintCoverage===0)r.substrate=palette[i];else r.paint=palette[i];});
  const tiles=recipes.map((recipe,index)=>{
   const tile=bakeSurface({...recipe,seed:seed+':city:'+index,wear:wear*.19,heat:recipe.heat??0,grain:.11,markings:false},128);
@@ -33,9 +35,9 @@ export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden'){
  });
  const atlas=surfaceAtlas(tiles,{seed,name:'Architectural manufacturing surfaces',tileMeters:4});
  const zones=Object.fromEntries(CITY_ZONES.map((zone,index)=>[zone,{zone,index,material:atlas.material}]));
- const glass=new T.MeshStandardMaterial({name:'Architectural glazing',color:0x25434e,roughness:.24,metalness:.35,vertexColors:true});
- const glow=new T.MeshStandardMaterial({name:'Occupied rooms and wayfinding',color:0x879e9b,emissive:0xe8b97b,emissiveIntensity:.65,roughness:.5,vertexColors:true});
+ const glass=new T.MeshStandardMaterial({name:'Architectural glazing',color:0x183342,roughness:.19,metalness:.48,vertexColors:true});
+ const glow=new T.MeshStandardMaterial({name:'Occupied rooms and wayfinding',color:0x31434b,emissive:0xc5a875,emissiveIntensity:.45,roughness:.5,vertexColors:true});
  const green=new T.MeshStandardMaterial({name:'Planted terraces',color:0x405c44,roughness:.94,vertexColors:true});
- return{atlas,zones,glass,glow,green,all:[atlas.material,glass,glow,green]};
+ return{atlas,zones,glass,glow,green,palette,all:[atlas.material,glass,glow,green]};
 }
 export {modularBuildingModel as buildingModel} from './architecture-model.js';

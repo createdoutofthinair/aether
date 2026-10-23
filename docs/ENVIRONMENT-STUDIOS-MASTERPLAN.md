@@ -16,6 +16,15 @@ massing and component rules, not completion of the shared studio foundation,
 independent component studies or E2 acceptance. The earlier “three building
 families” reference block is a first integration selection, not a generator limit.
 
+### Architecture Lab revision · schema 3
+
+The [dedicated Architecture Lab](ARCHITECTURE-LAB.md) now owns building inspection,
+editable masses, connection anchors, construction-layer isolation, material kits,
+variant exploration, recipe history and a local City handoff. The generator has
+20 compound families and five construction kits. This supersedes the visual
+and schema-2 implementation described above; the broader shared registry,
+independent facade-part catalogue and remaining E1/E2 acceptance gates are open.
+
 ## 1. Product direction
 
 Keep Concord's circular civic/research/residential layout and connected hubs.

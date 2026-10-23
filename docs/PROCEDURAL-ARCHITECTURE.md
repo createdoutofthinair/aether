@@ -1,5 +1,9 @@
 # Procedural architecture: modular forms and planetary identity
 
+**Schema-2 baseline.** The current implementation and visual direction are
+documented in [Architecture Lab](ARCHITECTURE-LAB.md), including schema 3,
+20 families, construction kits and the dedicated editable assembly interface.
+
 Implemented extension · 23 October 2026 · architecture schema 2
 
 This extends the existing City Buildings Lab, not the entire Environment Studios

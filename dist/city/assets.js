@@ -1,6 +1,7 @@
 import * as T from 'three/webgpu';
 import {texture,attribute,mix,vec3,float} from 'three/tsl';
 import {unpackShip} from '../render/ship-assets.js';
+import {windowNodes} from './window-nodes.js';
 import {transitionMask} from '../forest/coverage.js';
 /** Restore geometry once; canonical materials and textures are shared by all
  * prototypes, their LODs and every instanced placement in the city. */
@@ -12,7 +13,7 @@ export function restoreLibrary(data,{debug}){
    const m=new T.MeshStandardNodeMaterial().copy(original);m.transparent=false;m.depthWrite=true;m.maskNode=transitionMask();
    const base=m.map?texture(m.map).rgb.mul(vec3(m.color.r,m.color.g,m.color.b)):vec3(m.color.r,m.color.g,m.color.b),level=attribute('forestLevel','float');
    m.colorNode=mix(base,vec3(float(.92).sub(level.mul(.22)),float(.29).add(level.mul(.2)),float(.14).add(level.mul(.25))),debug);
-   canonical.set(key,m);for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])if(m[field])maps.add(m[field]);
+   windowNodes(m);canonical.set(key,m);for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])if(m[field])maps.add(m[field]);
   }
   mesh.material=canonical.get(key);original.dispose();
  }

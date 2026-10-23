@@ -10,9 +10,13 @@ Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, 
 - Rover R06 GLB from the user's existing project. Simplified surface-constrained driving with slope acceleration and damped suspension, fixed 120 Hz steps; not a general rigid-body vehicle solver.
 - Orbit, guided descent/ascent, free flight, rover chase camera, keyboard/touch controls, sunlight/atmosphere/exposure controls.
 
+## Architecture Lab
+
+Open `index.html#/architecture` for compound procedural buildings, an editable mass tree, transform gizmos, facade/finish/roof overrides, construction-layer isolation, seeded variations, undo/redo and recipe import/export. Saved recipes can be used in City Lab. See [the Architecture Lab research, workflow and validation notes](docs/ARCHITECTURE-LAB.md).
+
 ## City Buildings Lab
 
-Open `index.html#/city` through the shared DEV menu. Concord generates circular civic/research/residential districts, interconnected transport hubs, and sixteen modular procedural building families with six planetary architecture profiles, envelope/roof overrides, a comparison catalogue and shared ship/city PBR finishes, three mesh LODs and validated directional impostors. Presets cover 1–61 connected hubs, including an 18,117-building megaregion. See [the city pipeline and validation notes](docs/CITY-BUILDINGS-LAB.md) and [the parts-first environment studios masterplan](docs/ENVIRONMENT-STUDIOS-MASTERPLAN.md).
+Open `index.html#/city` through the shared DEV menu. Concord generates circular civic/research/residential districts, interconnected transport hubs, and twenty modular procedural building families with five construction kits and six planetary architecture profiles, envelope/roof overrides, a comparison catalogue and shared ship/city PBR finishes, three mesh LODs and validated directional impostors. Presets cover 1–61 connected hubs, including an 18,117-building megaregion. See [the city pipeline and validation notes](docs/CITY-BUILDINGS-LAB.md) and [the parts-first environment studios masterplan](docs/ENVIRONMENT-STUDIOS-MASTERPLAN.md).
 
 ## Known limitations
 

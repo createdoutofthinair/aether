@@ -17,14 +17,18 @@
     {
       "id": "architecture",
       "title": "Architecture Lab",
-      "status": "partially-implemented-in-city-lab",
+      "status": "partially-implemented",
       "route": "architecture",
-      "routeStatus": "proposed",
+      "routeStatus": "implemented",
       "existingSources": [
         "dist/city/model.js",
         "dist/city/blueprint.js",
         "dist/city/architecture.js",
-        "dist/city/architecture-model.js"
+        "dist/city/architecture-model.js",
+        "dist/city/studio.js",
+        "dist/city/studio-state.js",
+        "dist/city/studio-worker.js",
+        "dist/city/design.js"
       ],
       "studies": [
         {
@@ -43,7 +47,11 @@
             "twisted loft",
             "supported disc",
             "triad ring crown",
-            "stepped arcology"
+            "stepped arcology",
+            "citadel cluster",
+            "sail blade",
+            "gateway arcology",
+            "offset megablock"
           ],
           "status": "grammar-implemented-pending-visual-acceptance"
         },
@@ -1063,10 +1071,10 @@
     }
   ],
   "architectureExtension": {
-    "specification": "PROCEDURAL-ARCHITECTURE.md",
+    "specification": "ARCHITECTURE-LAB.md",
     "status": "implemented-pending-browser-visual-validation",
-    "schema": "aether.architecture/2",
-    "families": 16,
+    "schema": "aether.architecture/3",
+    "families": 20,
     "compositions": 2,
     "planetProfiles": [
       "garden",
@@ -1076,7 +1084,8 @@
       "lunar",
       "lowgravity"
     ],
-    "runtimeRoute": "city",
-    "scope": "Grammar, planetary modules, catalogue and recipes; independent component pages and E1/E2 gates remain open."
+    "runtimeRoute": "architecture",
+    "scope": "Dedicated assembly editor, five construction kits, 20 compound families, module transforms and overrides, connection anchors, recipe history and local City handoff. Independent facade/door kits and full E1/E2 acceptance remain open.",
+    "constructionKits": 5
   }
 }

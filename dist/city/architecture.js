@@ -1,8 +1,9 @@
 import {random} from '../ships/blueprint.js';
+import {designOptions,composeBuilding,normalizeModules,normalizeConnections} from './design.js';
 
 // A small, serializable architectural grammar. No renderer or hand-authored mesh
 // is needed to author a recipe; all representations consume the same volumes.
-export const ARCHITECTURE_VERSION=2;
+export const ARCHITECTURE_VERSION=3;
 export const BUILDING_FAMILIES=[
  ['spire','Setback spire',30,132,30,'research'],
  ['terrace','Garden terraces',52,42,44,'residential'],
@@ -19,7 +20,11 @@ export const BUILDING_FAMILIES=[
  ['saucer','Suspended disc',56,43,56,'culture'],
  ['arcology','Stepped arcology',56,76,52,'residential'],
  ['vault','Ribbed vault',50,35,58,'utility'],
- ['canopy','Canopy habitat',58,55,52,'residential']
+ ['canopy','Canopy habitat',58,55,52,'residential'],
+ ['citadel','Citadel cluster',60,142,56,'research'],
+ ['blade','Sail blade',38,122,58,'research'],
+ ['portal','Gateway arcology',62,96,44,'culture'],
+ ['stack','Offset megablock',58,94,54,'residential']
 ].map(([id,label,width,height,depth,use])=>({id,label,width,height,depth,use}));
 
 export const PLANET_STYLES={
@@ -39,22 +44,23 @@ export function architectureOptions(input={}){
   terraces:Math.round(number(input.terraces,4,2,7)),bayWidth:number(input.bayWidth,4.5,3,8),
   glazing:number(input.glazing,1,.45,1.35),shade:number(input.shade,1,0,1.8),
   envelope:['auto','ellipse','softbox','petal'].includes(input.envelope)?input.envelope:'auto',
-  roof:['auto','garden','solar','sealed','shield','crown'].includes(input.roof)?input.roof:'auto'};
+  roof:['auto','garden','solar','sealed','shield','crown'].includes(input.roof)?input.roof:'auto',design:designOptions(input.design)};
 }
 export function architecturalRecipe(family,seed,profile=0,input={}){
  const options=architectureOptions(input),style=PLANET_STYLES[options.style],f=BUILDING_FAMILIES.find(f=>f.id===family)||BUILDING_FAMILIES[0],r=random(`grammar:${seed}:${family}:${profile}`),v=options.variation;
  const width=f.width*(1+(r()-.5)*.12*v)*options.aspect,depth=f.depth*(1+(r()-.5)*.12*v)/options.aspect,height=f.height*style.height*(1+(r()-.5)*.24*v)*options.height,floorHeight=style.floor;
- return {schema:'aether.architecture/2',style:options.style,options,family:f.id,profile,seed:String(seed),width,depth,height,floorHeight,
-  floorCount:Math.max(2,Math.floor((height-style.foundation)/floorHeight)),foundation:style.foundation,
+ return {schema:'aether.architecture/3',style:options.style,options,family:f.id,profile,seed:String(seed),width,depth,height,floorHeight,
+  design:options.design,floorCount:Math.max(2,Math.floor((height-style.foundation)/floorHeight)),foundation:style.foundation,
   shape:{lobes:profile?5:3,curve:options.curvature,twist:(profile?-.48:.38)*options.twist,taper:(.16+r()*.18)*options.taper,tiers:options.terraces,court:.47+(r()-.5)*.08*v},
-  facade:{bayWidth:options.bayWidth,glazing:clamp(style.glazing*options.glazing,.08,.88),shade:style.shade*options.shade,rib:style.rib,skin:style.skin,occupancy:.27+r()*.35},
-  roof:options.roof==='auto'?style.roof:options.roof,palette:style.palette};
+  facade:{bayWidth:options.bayWidth,glazing:clamp(style.glazing*options.glazing,.08,.88),shade:style.shade*options.shade,rib:style.rib,skin:style.skin,occupancy:.08+r()*.17},
+  roof:options.roof==='auto'?(options.style==='lunar'?'shield':options.design.kit==='stratum'?'sealed':options.design.kit==='forge'?'solar':options.design.kit==='monolith'?'shield':style.roof):options.roof,palette:style.palette};
 }
 
 /** Footprints live in metres. Outer loops are CCW in X/Z, holes clockwise.
  * Exact corners and cardinal extrema are retained at every representation. */
 export function footprint(shape,segments=48){
  const {kind='ellipse',rx=1,rz=1,lobes=3,curve=1,court=.5}=shape,n=Math.max(16,Math.ceil(segments/4)*4);
+ if(['chamfer','triangle','hexagon'].includes(kind)){const sides=kind==='triangle'?3:kind==='hexagon'?6:8,vertices=kind==='chamfer'?[[-.72,-1],[.72,-1],[1,-.72],[1,.72],[.72,1],[-.72,1],[-1,.72],[-1,-.72]]:Array.from({length:sides},(_,i)=>[Math.cos(i/sides*Math.PI*2),Math.sin(i/sides*Math.PI*2)]);return{outer:vertices.map(([x,z])=>({x:x*rx,z:z*rz})),holes:[]};}
  const ellipse=(scale=1,reverse=false)=>Array.from({length:n},(_,i)=>{const a=(reverse?-1:1)*i/n*Math.PI*2,mod=kind==='petal'?1+.22*curve*Math.cos(lobes*a):1,power=['softbox','courtyard'].includes(kind)?2/(2+curve*3):1;return{x:Math.sign(Math.cos(a))*Math.abs(Math.cos(a))**power*rx*scale*mod,z:Math.sign(Math.sin(a))*Math.abs(Math.sin(a))**power*rz*scale*mod};});
  if(kind==='crescent'){
   const gap=.58+.18/curve,arc=2*Math.PI-2*gap,outer=[],inner=[];
@@ -72,7 +78,7 @@ export function volumeLoop(volume,level,segments){
 /** Compose primary volumes, then let the renderer subdivide their envelopes
  * into metric floors/bays. No LOD decision or camera can change this recipe. */
 export function compileArchitecture(recipe){
- const {width:w,depth:d,height:h,foundation:b,shape:s,family:f}=recipe,volumes=[],supports=[],bridges=[];
+ const {width:w,depth:d,height:h,foundation:b,shape:s,family:f}=recipe;let volumes=[],supports=[],bridges=[];
  const add=(id,kind,x,z,rx,rz,levels,extra={})=>volumes.push({id,shape:{kind,rx,rz,lobes:s.lobes,curve:s.curve,court:s.court},x,z,levels:levels.map(([y,scale=1,twist=0])=>({y,scale,twist})),facade:true,...extra});
  const tower=(id,x,z,rx,rz,bottom,top,kind='ellipse',twist=0)=>add(id,kind,x,z,rx,rz,[[bottom,1,0],[top,1-s.taper,twist]]);
  const tiers=(kind,count,rx=w*.48,rz=d*.48)=>{for(let i=0;i<count;i++){const y=b+(h-b)*i/count,top=b+(h-b)*(i+1)/count,scale=1-i*.65/Math.max(1,count-1);add('tier-'+i,kind,0,0,rx*scale,rz*scale,[[y,1],[top,.96]],{garden:true});}};
@@ -81,7 +87,7 @@ export function compileArchitecture(recipe){
  else if(f==='courtyard'||f==='ring'){add('court',f==='courtyard'?'courtyard':'ring',0,0,w*.48,d*.48,[[b,1],[h,1-s.taper*.3]],{garden:true});}
  else if(f==='dome'||f==='shell'||f==='vault'){
   const levels=[];for(let i=0;i<=8;i++){const t=i/8,scale=Math.max(.025,Math.cos(t*Math.PI/2));levels.push([b+(h-b)*Math.sin(t*Math.PI/2),scale]);}
-  add('shell',f==='vault'?'softbox':'ellipse',0,0,w*.48,d*.48,levels,{shell:true,facade:false});
+  add('shell',f==='vault'?'softbox':'ellipse',0,0,w*.48,d*.48,levels,{shell:true,facade:true});
  }else if(f==='habitat'){
   for(const side of [-1,1])tower('wing-'+side,side*w*.26,side*d*.07,w*.2,d*.35,b,h*.92,'softbox');
   bridges.push({a:[-w*.26,h*.62,-d*.07],b:[w*.26,h*.62,d*.07],width:d*.14,height:3.6});
@@ -97,15 +103,40 @@ export function compileArchitecture(recipe){
   add('crown','ellipse',0,0,w*.48,d*.48,[[stem,.62],[stem+(h-stem)*.2,1],[h-(h-stem)*.25,.94],[h,.55]],{garden:true});
   for(let i=0;i<6;i++){const a=i*Math.PI/3;supports.push({a:[Math.cos(a)*w*.12,b,Math.sin(a)*d*.12],b:[Math.cos(a)*w*.37,stem+(h-stem)*.18,Math.sin(a)*d*.37],radius:recipe.facade.rib+.3});}
  }else if(f==='arcology'){tiers('petal',s.tiers);}
+ else if(f==='citadel'){
+  const rng=random('citadel:'+recipe.seed+':'+recipe.profile),count=3+Math.floor(rng()*3);for(let i=0;i<count;i++){const x=(i/(count-1)-.5)*w*.68,z=(i%2?-.12:.1)*d+(rng()-.5)*d*.13,top=b+(h-b)*(i===Math.floor(count/2)?1:.38+rng()*.48);tower('citadel-'+i,x,z,w*(.12+rng()*.035),d*(.16+rng()*.07),b,top,recipe.profile&&i%2?'hexagon':'chamfer');}
+  bridges.push({a:[-w*.3,h*.43,d*.1],b:[w*.3,h*.43,d*.1],width:5,height:4});
+ }else if(f==='blade'){
+  const rng=random('blade:'+recipe.seed);add('sail','chamfer',-w*.12,0,w*.3,d*.46,[[b,1],[h*(.25+rng()*.2),1],[h,.5+rng()*.2]],{yaw:(rng()-.5)*.45});tower('counterweight',w*.3,-d*.14,w*.12,d*.19,b,h*(.48+rng()*.24),'chamfer');
+ }else if(f==='portal'){
+  for(const side of [-1,1])tower('pier-'+side,side*w*.33,0,w*.15,d*.4,b,h*(side===1?.92:1),'chamfer');
+  const bridgeLevel=.5+random('portal:'+recipe.seed)()*.3;bridges.push({a:[-w*.33,h*bridgeLevel,0],b:[w*.33,h*bridgeLevel,0],width:d*.58,height:8});
+ }else if(f==='stack'){
+  const rng=random('stack:'+recipe.seed),count=recipe.shape.tiers+1,phase=rng()*Math.PI;for(let i=0;i<count;i++){const y=b+(h-b)*i/count;add('block-'+i,i%2?'softbox':'chamfer',Math.sin(i*1.9+phase)*w*.16,Math.cos(i*1.9+phase)*d*.13,w*(.42-i*.11/count),d*(.42-i*.11/count),[[y,1],[y+(h-b)/count,.97]],{garden:true,yaw:(rng()-.5)*.32});}
+ }
+ ({volumes,supports,bridges}=composeBuilding(recipe,{volumes,supports,bridges}));
  // Production overrides recombine compatible modules without deleting voids
  // or replacing a shell with an unrelated extrusion.
  if(recipe.options.envelope!=='auto')for(const v of volumes)if(!v.shell&&!['ring','crescent','courtyard'].includes(v.shape.kind))v.shape.kind=recipe.options.envelope;
  // Raised ocean decks are honest foundations rather than floating buildings.
- if(b>5)for(let i=0;i<8;i++){const a=i*Math.PI/4;supports.push({a:[Math.cos(a)*w*.29,0,Math.sin(a)*d*.29],b:[Math.cos(a)*w*.29,b,Math.sin(a)*d*.29],radius:.85});}
- const entryVolume=volumes.find(v=>v.levels[0].y===b)||volumes[0],entryLoop=volumeLoop(entryVolume,entryVolume.levels[0],48).outer;
+ if(b>5&&!recipe.connections)for(let i=0;i<8;i++){const a=i*Math.PI/4;supports.push({a:[Math.cos(a)*w*.29,0,Math.sin(a)*d*.29],b:[Math.cos(a)*w*.29,b,Math.sin(a)*d*.29],radius:.85});}
+ const entryVolume=[...volumes].sort((a,b)=>a.levels[0].y-b.levels[0].y)[0],entryLoop=volumeLoop(entryVolume,entryVolume.levels[0],48).outer;
  const edges=entryLoop.map((p,i)=>{const q=entryLoop[(i+1)%entryLoop.length],dx=q.x-p.x,dz=q.z-p.z,length=Math.hypot(dx,dz);return{x:(p.x+q.x)/2,z:(p.z+q.z)/2,length,normal:[dz/length,0,-dx/length]};});
- const front=edges.filter(e=>e.normal[2]>.25).sort((a,b)=>b.z-a.z)[0]||edges[0],entry={x:front.x,y:b,z:front.z,normal:front.normal};
- return {schema:'aether.architecture-assembly/2',recipe,volumes,supports,bridges,entry,
-  sockets:[{id:'street-access',kind:'entrance',position:[entry.x,b,entry.z+.7],normal:entry.normal,clearance:[5,4,5]}],
+ const front=edges.filter(e=>e.normal[2]>.25).sort((a,b)=>b.z-a.z)[0]||edges[0],entry={x:front.x,y:entryVolume.levels[0].y,z:front.z,normal:front.normal};
+ return {schema:'aether.architecture-assembly/3',recipe,volumes,supports,bridges,entry,
+  sockets:[{id:'street-access',kind:'entrance',position:[entry.x,entry.y,entry.z+.7],normal:entry.normal,clearance:[5,4,5]}],
   modules:['foundation','envelope','floor-edge','facade-bay','reveal','solar-brow','roof-collar','entrance','service-rack']};
+}
+
+export function restoreArchitecture(document){
+ const input=document?.recipe||document?.architecture||document;
+ if(!input||!BUILDING_FAMILIES.some(f=>f.id===input.family))throw Error('Unrecognized building recipe');
+ const options=architectureOptions({...input.options,design:input.design||input.options?.design,style:input.style||input.options?.style}),recipe=architecturalRecipe(input.family,String(input.seed||'ARCH-01'),input.profile===1?1:0,options);
+ if(input.modules){const modules=normalizeModules(input.modules);if(!modules?.some(m=>m.enabled))throw Error('A building needs at least one enabled mass');recipe.modules=modules;if(input.connections)recipe.connections=normalizeConnections(input.connections,modules);}
+ recipe.label=String(input.label||BUILDING_FAMILIES.find(f=>f.id===input.family).label).slice(0,80);return recipe;
+}
+export function architectureBounds(assembly){
+ let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity,maxY=0;
+ for(const v of assembly.volumes)for(const l of v.levels)for(const p of volumeLoop(v,l,48).outer){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minZ=Math.min(minZ,p.z);maxZ=Math.max(maxZ,p.z);maxY=Math.max(maxY,p.y);}
+ return {minX,maxX,minZ,maxZ,maxY,width:maxX-minX,depth:maxZ-minZ,radius:Math.max(Math.hypot(minX,minZ),Math.hypot(minX,maxZ),Math.hypot(maxX,minZ),Math.hypot(maxX,maxZ))+9};
 }
