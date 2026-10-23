@@ -15,7 +15,7 @@ export function plan(paths,{full=false}={}){
   deploy ||= path.startsWith('dist/')||/^(src\/|package(?:-lock)?\.json$|scripts\/build-|scripts\/vendor-)/.test(path);
   if(/^dist\/render\/readback\.js$/.test(path)){selected.add('nature');selected.add('city');continue;}
   if(/^dist\/render\/surface-atlas\.js$/.test(path)){selected.add('site');selected.add('city');continue;}
-  if(/^dist\/(city\/|(?:city-(?:lab|surfaces|grammar)|architecture-(?:lab|bench))\.html$)/.test(path)){selected.add('city');continue;}
+  if(/^dist\/(city\/|(?:city-(?:lab|surfaces|grammar|materials)|architecture-(?:lab|bench))\.html$)/.test(path)){selected.add('city');continue;}
   if(/^dist\/forest\/(impostor|assets|coverage|octahedral)\.js$/.test(path)){selected.add('nature');selected.add('city');continue;}
   if(/^(?:src|dist)\/render\/(?:resident-pool|ship-assets|ship-worker)\.js$/.test(path)){selected.add('site');selected.add('city');continue;}
   if(/^(dist\/(?:nature|forest)\/|dist\/forest-lab\.html$|dist\/nature-studio\.html$)/.test(path)){selected.add('nature');continue;}

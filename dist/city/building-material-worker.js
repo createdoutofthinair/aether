@@ -1,0 +1,2 @@
+import {buildingMaterialRecipe,bakeBuildingMaterial} from './building-material.js';
+self.onmessage=({data})=>{try{const recipe=buildingMaterialRecipe(data.recipe),tiles=[];for(let i=0;i<8;i++){tiles.push(bakeBuildingMaterial(recipe,i));self.postMessage({id:data.id,progress:(i+1)/8});}const transfer=tiles.flatMap(t=>['color','normal','surface','masks'].map(k=>t[k].buffer));self.postMessage({id:data.id,recipe,tiles},transfer);}catch(e){self.postMessage({id:data.id,error:e.message});}};

@@ -114,3 +114,73 @@ vertices, packed physical height bounds, deterministic refined finishes and WGSL
 compilation with relief enabled. `scripts/check-city-grammar.mjs` remains an
 optional local WebGPU visual inspection, including facade, street, relief-off,
 Balanced, planetary, clay and gallery views; it is not screenshot CI.
+
+## Building Material Designer
+
+`city-materials.html` uses the native building renderer and a specialized recipe,
+`aether.building-material/1`. Eight independently editable finish zones select
+ceramic, mineral concrete, brushed aluminum, coated steel, basalt or composite.
+The shared default is lightly inhabited/weathered. New, industrial, coastal and
+arid histories initialize different weathering/exposure combinations; users can
+then tune every zone independently. The designer offers a real 2 m beveled panel,
+full building, facade and street views. Material changes preserve the camera.
+
+All inputs are procedural; physical shading is retained. No photos, scanned
+materials, downloaded PBR packs or Blender are needed. The implemented layers are:
+
+| Layer | Formula / placement | Coupled outputs |
+| --- | --- | --- |
+| Manufacturing | Periodic quintic gradient noise, four-octave fBm, low-frequency coordinate warp, seeded panel variation | Base color, roughness, shallow height |
+| Microstructure | Anisotropic noise for aluminum; thresholded pores for mineral surfaces | Height-derived normals, roughness, cavity AO |
+| Joints / chips | Metric joint distance and bevel fields, broken by meso-scale noise and service age | Coating loss, exposed substrate, relief, color |
+| Oxidation | Exposed-metal mask × age × oxide field | Roughness, substrate color, reduced metalness |
+| Runoff / deposits | Sparse jittered joint sources, tapered Gaussian trails and finite downstream decay | Grime, deposit masks, color, roughness, small height |
+| Building exposure | World-space noise stretched along gravity; normal orientation and ground-height bands | Long streaks, horizontal dust, lower-wall film, patchy wetness |
+
+Coated steel is dielectric until its coating is removed. Bare aluminum is metallic;
+its oxide is pale, whereas exposed steel can receive an orange/brown oxide.
+Ceramic, concrete, basalt, dirt and deposits remain dielectric. Wet patches darken
+base color and reduce roughness together. Layer colors are blended in linear
+light and encoded to sRGB only for the base-color texture. Height stays in metres,
+with relief bounded to ±11 mm; normal maps come from central differences of that
+same height field. This is an appearance model: geometric edge curvature,
+mesh-aware flow/transport, deep erosion and subsurface volume changes are not
+simulated. The large openings and recesses remain geometry.
+
+Gradient noise uses the C2 quintic fade `6t⁵ − 15t⁴ + 10t³`. Frequencies fade
+smoothly toward their mean as they approach the source texel footprint; fBm detail
+is not blindly sampled above source resolution. The atlas retains periodic guard
+bands, independent cell mip chains, normal-variance roughness filtering and
+pre-wrap shader derivatives. A second world-space noise layer prevents all
+weathering from repeating every two metres. Its masks follow gravity and the
+surface normal rather than facade UV orientation.
+
+Baking runs in a cancellable module worker with progress and transferable buffers.
+The main thread creates the shared atlas after synthesis; it does not evaluate
+multi-octave procedural fields every animation frame. Runtime world exposure adds
+two low-frequency MaterialX noise evaluations per shaded fragment. Resolution is
+512² or 1024² per zone, packing into a 2048×1024 or 4096×2048 atlas, respectively.
+All building finish zones still share three GPU maps. Higher resolution increases
+bake time, upload cost and memory use; no hardware frame-rate claim is made.
+
+The inspector displays lit finish, base color, normal, roughness, metalness,
+contrast-enhanced height or cavity AO. Debug channels still pass through display
+transforms; the exported PNGs contain the unlit data. The ZIP material pack contains
+separate base-color, normal, AO, roughness, metalness and height maps, packed surface
+and layer masks, the complete recipe and encoding notes. Packed alpha is data,
+not opacity. Saving a recipe applies it to the Native Building Lab on reload;
+legacy city/production material defaults remain separate until integrated there.
+
+### Research used and implementation boundaries
+
+* [Ken Perlin, Improving Noise / reference implementation (2002)](https://cs.nyu.edu/~perlin/noise/): smooth gradient noise and quintic interpolation. Our periodic seeded 2D implementation uses hashed gradients rather than the reference permutation table.
+* [PBRT, Noise](https://pbr-book.org/3ed-2018/Texture/Noise): multiscale noise, coordinate perturbation and filtering frequencies to the sampling footprint. Our baker uses a resolution-based cutoff, followed by atlas mip filtering.
+* [Dorsey, Pedersen and Hanrahan, Flow and Changes in Appearance (1996)](https://graphics.stanford.edu/papers/flow/): directional weathering and deposition motivated the appearance masks. We do not implement the paper's particle flow or coupled differential equations.
+* [Dorsey and Hanrahan, Modeling and Rendering of Metallic Patinas (1996)](https://graphics.stanford.edu/papers/patina/): coat/erode/deposit layers motivated our correlated substrate and oxide masks. Reflectance uses the renderer's existing microfacet model, not that paper's complete layered reflectance solver.
+* [Burley, Physically-Based Shading at Disney (2012)](https://www.disneyanimation.com/publications/physically-based-shading-at-disney/): artist-facing material parameters and consistent physical shading informed the controls. The renderer uses Three.js's existing BRDF; this is not a new implementation of Disney's full model.
+
+`test-city-building-materials.mjs` checks repeat continuity, physical height bounds,
+normal lengths, deterministic recipes, coupled wetness, coating loss, six finish
+profiles, input validation, ZIP CRC32 and weather/inspection WGSL. The optional
+local `check-city-materials.mjs` checks real WebGPU views, editing, channels,
+512/1024 baking, JSON/ZIP downloads and saved finish reuse. It is not screenshot CI.

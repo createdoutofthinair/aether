@@ -1,7 +1,8 @@
-import {attribute,texture,vec2,vec3,vec4,float,mix,normalMap,positionLocal,positionWorld,positionGeometry,cameraViewMatrix,parallaxDirection} from 'three/tsl';
+import {buildingWeatherNodes} from './building-weather-nodes.js';
+import {attribute,texture,vec2,vec3,vec4,float,mix,normalMap,positionLocal,positionWorld,positionGeometry,cameraViewMatrix,parallaxDirection,output} from 'three/tsl';
 /** Repeat inside one semantic cell. Derivatives are taken BEFORE fract, so
  * tile boundaries cannot choose blurry mips; guards isolate adjacent finishes. */
-export function citySurfaceNodes(material){
+export function citySurfaceNodes(material,{preview}={}){
  const spec=material.userData.citySurface;if(!spec)return material;
  const uv=(spec.world?positionWorld.xz:attribute('uv','vec2')).div(spec.tileMeters),data=spec.world?vec4(spec.zone||0,0,0,spec.variation??.025):attribute('uv1','vec4'),zone=data.x.round(),slot=vec2(zone.mod(4),zone.div(4).floor()),scale=vec2(.75/4,.75/2),dx=uv.dFdx().mul(scale),dy=uv.dFdy().mul(scale);
  // Height is packed in ORM alpha: .5 + metres * 40. A bounded two-sample
@@ -17,5 +18,7 @@ export function citySurfaceNodes(material){
  material.colorNode=mix(albedo.rgb.mul(panel.sub(.5).mul(data.w).add(1)),vec3(...spec.dirt),dirt.mul(.24)).mul(vec3(material.color.r,material.color.g,material.color.b));
  if(spec.road)material.colorNode=mix(material.colorNode.mul(float(1).sub(tracks.mul(.055))),vec3(...spec.dirt),edge.mul(spec.wear*.22));
  material.roughnessNode=orm.g.add(data.z).add(dirt.mul(.12)).add(edge.mul(.07)).sub(tracks.mul(.07)).clamp(.22,.98);material.metalnessNode=orm.b.mul(float(1).sub(dirt));material.aoNode=orm.r;material.normalNode=spec.world?vec3(bump.r.mul(2).sub(1),bump.b.mul(2).sub(1),bump.g.mul(2).sub(1)).normalize().transformDirection(cameraViewMatrix):normalMap(bump,vec2(1));
+ buildingWeatherNodes(material,spec);
+ if(preview){let view=albedo.rgb;for(const [id,node]of [[2,bump.rgb],[3,vec3(orm.g)],[4,vec3(orm.b)],[5,vec3(orm.a.sub(.5).mul(5).add(.5))],[6,vec3(orm.r)]])view=mix(view,node,preview.equal(id));material.outputNode=mix(output,vec4(view,1),preview.greaterThan(0));}
  return material;
 }
