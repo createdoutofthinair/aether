@@ -1,0 +1,1082 @@
+{
+  "schema": "aether.environment-studios-plan/1",
+  "status": "implementation-blueprint",
+  "date": "2026-10-23",
+  "baselineCommit": "9263f9228ba05b99d65429d9d4da6bbba3234a29",
+  "specification": "ENVIRONMENT-STUDIOS-MASTERPLAN.md",
+  "rules": {
+    "newRuntime": "WebGPU",
+    "reuseExistingTrees": true,
+    "newPlantsOwner": "plantlife",
+    "cityOwnsAssetGeneration": false,
+    "assetRevisionPolicy": "pinned-accepted-versions",
+    "githubScreenshotPipeline": false,
+    "existingDoesNotMeanCompleteCatalogue": true
+  },
+  "studios": [
+    {
+      "id": "architecture",
+      "title": "Architecture Lab",
+      "status": "partially-implemented-in-city-lab",
+      "route": "architecture",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/model.js",
+        "dist/city/blueprint.js",
+        "dist/city/architecture.js",
+        "dist/city/architecture-model.js"
+      ],
+      "studies": [
+        {
+          "id": "architecture.massing",
+          "components": [
+            "podium",
+            "tower tier",
+            "wing",
+            "atrium",
+            "courtyard",
+            "dome",
+            "building bridge",
+            "crescent",
+            "annular courtyard",
+            "petal loft",
+            "twisted loft",
+            "supported disc",
+            "triad ring crown",
+            "stepped arcology"
+          ],
+          "status": "grammar-implemented-pending-visual-acceptance"
+        },
+        {
+          "id": "architecture.structure",
+          "components": [
+            "column",
+            "beam",
+            "brace",
+            "exoskeleton rib",
+            "dome member",
+            "expansion joint"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.facade",
+          "components": [
+            "cladding cassette",
+            "bay frame",
+            "reveal",
+            "sill",
+            "lintel",
+            "seal",
+            "sunshade"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.glazing",
+          "components": [
+            "pane",
+            "frame",
+            "gasket",
+            "frit/tint",
+            "reflection response",
+            "room depth",
+            "blinds",
+            "occupancy"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.entrance",
+          "components": [
+            "door",
+            "vestibule",
+            "canopy",
+            "threshold",
+            "steps",
+            "ramp",
+            "handrail",
+            "entry sign"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.terrace",
+          "components": [
+            "slab",
+            "upstand",
+            "balustrade",
+            "drain",
+            "planter support",
+            "shade frame"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.roof",
+          "components": [
+            "parapet",
+            "coping",
+            "membrane",
+            "drain",
+            "walkway",
+            "hatch",
+            "solar/shade array"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "architecture.service",
+          "components": [
+            "vent",
+            "cooler",
+            "conduit",
+            "pipe",
+            "panel",
+            "antenna",
+            "equipment mount"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "streets",
+      "title": "Streets Lab",
+      "status": "planned",
+      "route": "streets",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/infrastructure.js"
+      ],
+      "studies": [
+        {
+          "id": "streets.surfaces",
+          "components": [
+            "concrete panels",
+            "stone paving",
+            "service asphalt",
+            "permeable paving",
+            "tactile zones"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.profiles",
+          "components": [
+            "carriage strip",
+            "service strip",
+            "curb",
+            "sidewalk",
+            "planting strip",
+            "drainage reserve"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.geometry",
+          "components": [
+            "straight",
+            "circular arc",
+            "general curve",
+            "slope transition",
+            "junction",
+            "ring/radial merge"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.pedestrian",
+          "components": [
+            "corner",
+            "crossing",
+            "curb cut",
+            "ramp",
+            "steps",
+            "island",
+            "bollard line"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.markings",
+          "components": [
+            "direction",
+            "crossing stripe",
+            "platform edge",
+            "stop zone",
+            "service bay",
+            "route identifier"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.drainage",
+          "components": [
+            "gutter",
+            "channel",
+            "grate",
+            "gully",
+            "curb inlet",
+            "inspection cover"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "streets.bridges",
+          "components": [
+            "deck",
+            "fascia",
+            "bearing",
+            "pier",
+            "expansion joint",
+            "parapet"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "transit",
+      "title": "Transit Infrastructure Lab",
+      "status": "planned",
+      "route": "transit",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/infrastructure.js",
+        "dist/city/blueprint.js"
+      ],
+      "studies": [
+        {
+          "id": "transit.guideway",
+          "components": [
+            "contact surface",
+            "guide rail",
+            "power channel",
+            "fascia",
+            "drainage",
+            "maintenance edge"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.supports",
+          "components": [
+            "pier",
+            "capital",
+            "foundation",
+            "bearing",
+            "bracing",
+            "access hatch"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.switches",
+          "components": [
+            "guide split",
+            "branch profile",
+            "movement envelope",
+            "signal"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.platform",
+          "components": [
+            "deck",
+            "boarding threshold",
+            "gate",
+            "barrier",
+            "docking stop"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.station",
+          "components": [
+            "canopy",
+            "column",
+            "roof drainage",
+            "enclosure",
+            "louver",
+            "glazing",
+            "lighting"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.vertical-circulation",
+          "components": [
+            "stair",
+            "landing",
+            "ramp",
+            "elevator enclosure",
+            "shaft interface"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "transit.interchange",
+          "components": [
+            "ring/radial transfer",
+            "street connection",
+            "gateway",
+            "transfer path",
+            "service access"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "mobility",
+      "title": "Mobility Lab",
+      "status": "planned",
+      "route": "mobility",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/infrastructure.js",
+        "dist/city/blueprint.js",
+        "src/render/resident-pool.js"
+      ],
+      "studies": [
+        {
+          "id": "mobility.families",
+          "components": [
+            "passenger pod",
+            "public shuttle",
+            "interhub carriage",
+            "maintenance vehicle",
+            "logistics vehicle",
+            "accessible variant"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "mobility.body",
+          "components": [
+            "structural shell",
+            "panel",
+            "joint",
+            "gasket",
+            "door",
+            "handle",
+            "hinge",
+            "glazing seal",
+            "light housing",
+            "registry"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "mobility.running-gear",
+          "components": [
+            "wheel/guide",
+            "bogie",
+            "suspension",
+            "coupler",
+            "underbody services"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "mobility.cabin",
+          "components": [
+            "seat bank",
+            "aisle",
+            "boarding zone",
+            "partition",
+            "driver/service area"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "mobility.motion",
+          "components": [
+            "route frame",
+            "arc-length movement",
+            "acceleration",
+            "braking",
+            "station stop",
+            "door state",
+            "articulation",
+            "docking"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "public-space",
+      "title": "Public Space Lab",
+      "status": "planned",
+      "route": "public-space",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/infrastructure.js"
+      ],
+      "studies": [
+        {
+          "id": "public-space.seating",
+          "components": [
+            "bench",
+            "seat module",
+            "table",
+            "leaning rail",
+            "sheltered seating"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.lighting-fixtures",
+          "components": [
+            "pole light",
+            "bollard light",
+            "canopy strip",
+            "step light",
+            "entry light"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.wayfinding",
+          "components": [
+            "district sign",
+            "building number",
+            "transit map",
+            "platform sign",
+            "direction panel"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.boundaries",
+          "components": [
+            "railing",
+            "guard",
+            "bollard",
+            "low wall",
+            "gate",
+            "access barrier"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.equipment",
+          "components": [
+            "recycling/bin",
+            "drinking point",
+            "information kiosk",
+            "docking stand"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.technical",
+          "components": [
+            "cabinet",
+            "service enclosure",
+            "heat exchanger",
+            "conduit rack",
+            "pipe connection",
+            "utility hatch"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "public-space.surface-accessories",
+          "components": [
+            "grate",
+            "inspection cover",
+            "joint insert",
+            "edge",
+            "fixing plate",
+            "access marker"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "plantlife",
+      "title": "Plantlife Lab",
+      "status": "existing-partial",
+      "route": "nature",
+      "routeStatus": "existing",
+      "existingSources": [
+        "dist/nature-studio.html",
+        "dist/nature/main.js",
+        "dist/nature/tree-model.js",
+        "dist/nature/branch-mesh.js",
+        "dist/nature/leaf-model.js",
+        "dist/nature/leaf-bake.js"
+      ],
+      "studies": [
+        {
+          "id": "plantlife.existing-studies",
+          "components": [
+            "wood material",
+            "trunk",
+            "branch",
+            "leaf",
+            "full tree"
+          ],
+          "status": "existing"
+        },
+        {
+          "id": "plantlife.existing-tree-families",
+          "components": [
+            "birch",
+            "oak",
+            "willow"
+          ],
+          "status": "existing"
+        },
+        {
+          "id": "plantlife.shrubs",
+          "components": [
+            "multi-stem shrub",
+            "open shrub",
+            "pruned shrub",
+            "hedge segment",
+            "hedge corner/end"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.grass",
+          "components": [
+            "lawn tuft",
+            "unmown tuft",
+            "ornamental grass",
+            "reed",
+            "seed heads"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.fern",
+          "components": [
+            "frond",
+            "pinnae",
+            "pinnules",
+            "unfurling/age variant",
+            "fern clump"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.flowers",
+          "components": [
+            "stem",
+            "leaf attachment",
+            "flower head",
+            "inflorescence",
+            "bloom/season variant"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.ground-cover",
+          "components": [
+            "rosette patch",
+            "creeping patch",
+            "mat",
+            "soil gap",
+            "patch edge"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.climbers",
+          "components": [
+            "host path",
+            "stem",
+            "attachment",
+            "tendril",
+            "leaf cluster",
+            "optional flower"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.succulents",
+          "components": [
+            "rosette",
+            "thick leaf",
+            "age/arrangement variant"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "plantlife.planted-modules",
+          "components": [
+            "species mix",
+            "soil/root reserve",
+            "spacing",
+            "irrigation",
+            "maintenance pattern"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "landscape",
+      "title": "Landscape Lab",
+      "status": "planned",
+      "route": "landscape",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/city/infrastructure.js",
+        "dist/forest/ecology.js"
+      ],
+      "studies": [
+        {
+          "id": "landscape.soil",
+          "components": [
+            "soil section",
+            "edging",
+            "mulch",
+            "litter",
+            "gravel",
+            "drainage"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "landscape.tree-pit",
+          "components": [
+            "root reserve",
+            "opening/grate",
+            "curb/seat edge",
+            "irrigation",
+            "sidewalk interface"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "landscape.planter",
+          "components": [
+            "wall",
+            "coping",
+            "liner",
+            "drain",
+            "soil fill",
+            "overflow",
+            "maintenance access"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "landscape.grade",
+          "components": [
+            "slope",
+            "terrace",
+            "retaining edge",
+            "steps/ramp",
+            "host anchor surface"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "landscape.water",
+          "components": [
+            "basin edge",
+            "bed/depth profile",
+            "dielectric surface",
+            "outflow",
+            "paving interface"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "landscape.assemblies",
+          "components": [
+            "park patch",
+            "path/bed edge",
+            "seating garden",
+            "roof garden",
+            "planted terrace"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "surfaces",
+      "title": "Surface authoring",
+      "status": "existing-partial",
+      "route": "materials",
+      "routeStatus": "existing",
+      "existingSources": [
+        "dist/hull/surface.js",
+        "dist/hull/material.js",
+        "dist/render/surface-atlas.js",
+        "dist/material-editor.js"
+      ],
+      "studies": [
+        {
+          "id": "surfaces.finishes",
+          "components": [
+            "ceramic",
+            "stone/concrete",
+            "paving",
+            "coated metal",
+            "bare metal",
+            "rubber/seals",
+            "glass",
+            "roofing",
+            "road",
+            "soil/mulch",
+            "water"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "surfaces.layers",
+          "components": [
+            "tiling detail",
+            "trim sheet",
+            "marking atlas",
+            "seal/joint",
+            "exposure",
+            "shelter",
+            "runoff",
+            "repair",
+            "moisture",
+            "scuff"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "surfaces.inspection",
+          "components": [
+            "material swatch",
+            "metric wall",
+            "metric floor",
+            "corner",
+            "grazing sample",
+            "channel views"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "lighting",
+      "title": "Lighting Lab",
+      "status": "planned",
+      "route": "lighting",
+      "routeStatus": "proposed",
+      "existingSources": [
+        "dist/viewer/object-viewer.js",
+        "dist/city/main.js"
+      ],
+      "studies": [
+        {
+          "id": "lighting.contexts",
+          "components": [
+            "neutral inspection",
+            "exterior calibration"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "lighting.exterior",
+          "components": [
+            "sun",
+            "sky/reflections",
+            "exposure",
+            "environment rotation",
+            "fog",
+            "weather/wetness"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "lighting.response",
+          "components": [
+            "fixture emission",
+            "local light budget",
+            "contact shading",
+            "stable shadows",
+            "day/night facade"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "city",
+      "title": "City Lab",
+      "status": "existing-partial",
+      "route": "city",
+      "routeStatus": "existing",
+      "existingSources": [
+        "dist/city/main.js",
+        "dist/city/blueprint.js",
+        "dist/city/assets.js"
+      ],
+      "studies": [
+        {
+          "id": "city.composition",
+          "components": [
+            "hub graph",
+            "district profile",
+            "protected corridors",
+            "lot references",
+            "recipe selection",
+            "clearance checks"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "city.integration",
+          "components": [
+            "reference block",
+            "selected version update",
+            "docking",
+            "connected footpaths",
+            "planting",
+            "traffic"
+          ],
+          "status": "planned-or-refinement"
+        },
+        {
+          "id": "city.scale",
+          "components": [
+            "cell residency",
+            "streaming",
+            "district HLOD",
+            "origin adaptation",
+            "representation coverage",
+            "performance routes"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "forest",
+      "title": "Forest Lab",
+      "status": "existing",
+      "route": "forest",
+      "routeStatus": "existing",
+      "existingSources": [
+        "dist/forest/main.js",
+        "dist/forest/assets.js",
+        "dist/forest/impostor.js",
+        "dist/forest/ecology.js"
+      ],
+      "studies": [
+        {
+          "id": "forest.population",
+          "components": [
+            "species distribution",
+            "ecological patches",
+            "clearings",
+            "tree recipe parity",
+            "wind",
+            "LOD/impostor coverage"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    },
+    {
+      "id": "ships",
+      "title": "Spaceship Studio",
+      "status": "existing",
+      "route": "ships",
+      "routeStatus": "existing",
+      "existingSources": [
+        "dist/ships/model.js",
+        "dist/ships/surfaces.js",
+        "dist/ships/main.js"
+      ],
+      "studies": [
+        {
+          "id": "ships.reuse",
+          "components": [
+            "spacecraft recipes",
+            "manufacturing zones",
+            "service history",
+            "material/transfer mechanisms",
+            "aerial mobility adapter"
+          ],
+          "status": "planned-or-refinement"
+        }
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "E0",
+      "title": "Baseline",
+      "status": "planned",
+      "dependsOn": [],
+      "exitCriteria": [
+        "Reference fixtures reproduce current city, trees and ships.",
+        "Existing capability inventory distinguishes complete and missing features."
+      ]
+    },
+    {
+      "id": "E1",
+      "title": "Shared foundation",
+      "status": "planned",
+      "dependsOn": [
+        "E0"
+      ],
+      "exitCriteria": [
+        "Versioned asset contract, registry, shared studio host and job ownership work.",
+        "A recipe restores identically in its owning lab and a compatibility fixture."
+      ]
+    },
+    {
+      "id": "E2",
+      "title": "Surface and facade",
+      "status": "planned",
+      "dependsOn": [
+        "E1"
+      ],
+      "exitCriteria": [
+        "Metric materials, facade bay/corner, windows, entry and roof parts pass lighting/LOD review."
+      ]
+    },
+    {
+      "id": "E3",
+      "title": "Streets",
+      "status": "planned",
+      "dependsOn": [
+        "E1",
+        "E2"
+      ],
+      "exitCriteria": [
+        "Profile, curve, junction, grade, drainage and markings fit without seams."
+      ]
+    },
+    {
+      "id": "E4",
+      "title": "Public components",
+      "status": "planned",
+      "dependsOn": [
+        "E1",
+        "E2"
+      ],
+      "exitCriteria": [
+        "Furniture, signs, fixtures and technical attachments pass fit and population checks."
+      ]
+    },
+    {
+      "id": "E5",
+      "title": "Transit structures",
+      "status": "planned",
+      "dependsOn": [
+        "E1",
+        "E3"
+      ],
+      "exitCriteria": [
+        "Guideway, supports, platform/station and vertical circulation share valid interfaces."
+      ]
+    },
+    {
+      "id": "E6",
+      "title": "Vehicles",
+      "status": "planned",
+      "dependsOn": [
+        "E1",
+        "E2",
+        "E5"
+      ],
+      "exitCriteria": [
+        "Passenger pod passes body, running gear, doors, motion, stopping and docking tests.",
+        "Additional vehicle families remain independent catalogue tasks."
+      ]
+    },
+    {
+      "id": "E7",
+      "title": "Plantlife extensions",
+      "status": "planned",
+      "dependsOn": [
+        "E1"
+      ],
+      "exitCriteria": [
+        "Existing trees match their authoring/forest specimens through the shared adapter.",
+        "Shrub, grass and ground-cover studies pass form, patch, wind and distance checks.",
+        "Additional botanical studies use the same independent authoring contract."
+      ]
+    },
+    {
+      "id": "E8",
+      "title": "Landscape",
+      "status": "planned",
+      "dependsOn": [
+        "E3",
+        "E4",
+        "E7"
+      ],
+      "exitCriteria": [
+        "Accepted plants attach to soil/root reserves, planters, grade and water edges with clear paths."
+      ]
+    },
+    {
+      "id": "E9",
+      "title": "Compatibility block",
+      "status": "planned",
+      "dependsOn": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8"
+      ],
+      "exitCriteria": [
+        "Station/plaza/building fixture uses accepted references with no stand-in city-only meshes.",
+        "Street/aerial and daylight/night visual review pass."
+      ]
+    },
+    {
+      "id": "E10",
+      "title": "City propagation",
+      "status": "planned",
+      "dependsOn": [
+        "E9"
+      ],
+      "exitCriteria": [
+        "Districts consume pinned accepted recipes, preserve overrides and retain population coverage."
+      ]
+    },
+    {
+      "id": "E11",
+      "title": "Large-world scale",
+      "status": "planned",
+      "dependsOn": [
+        "E10"
+      ],
+      "exitCriteria": [
+        "Streaming, residency, district proxies and origin adaptation pass repeatable measured routes."
+      ]
+    }
+  ],
+  "architectureExtension": {
+    "specification": "PROCEDURAL-ARCHITECTURE.md",
+    "status": "implemented-pending-browser-visual-validation",
+    "schema": "aether.architecture/2",
+    "families": 16,
+    "compositions": 2,
+    "planetProfiles": [
+      "garden",
+      "arid",
+      "glacial",
+      "ocean",
+      "lunar",
+      "lowgravity"
+    ],
+    "runtimeRoute": "city",
+    "scope": "Grammar, planetary modules, catalogue and recipes; independent component pages and E1/E2 gates remain open."
+  }
+}

@@ -1,8 +1,14 @@
 import * as T from 'three/webgpu';
 import {routePoint} from './blueprint.js';
+import {PLANET_STYLES} from './architecture.js';
 export function infrastructure(layout){
  const root=new T.Group(),transit=new T.Group(),gardens=new T.Group(),ground=new T.Group();root.add(ground,gardens,transit);
  const materials={stone:new T.MeshStandardNodeMaterial({color:0x7e8984,roughness:.8}),road:new T.MeshStandardNodeMaterial({color:0x293c43,roughness:.72}),green:new T.MeshStandardNodeMaterial({color:0x4f6c54,roughness:.97}),rail:new T.MeshStandardNodeMaterial({color:0x71888a,roughness:.36,metalness:.7}),light:new T.MeshStandardNodeMaterial({color:0x569ba7,emissive:0x4d9faa,emissiveIntensity:.55,roughness:.4}),water:new T.MeshStandardNodeMaterial({color:0x42717a,roughness:.18,metalness:.45})};
+ const style=layout.options.architecture?.style??'garden',palette=PLANET_STYLES[style].palette;
+ materials.stone.color.set(palette[3]);materials.rail.color.set(palette[1]);
+ // A profile changes the architectural setting without pretending to create
+ // planetary terrain. Dry/cold outposts use mineral belts and covered basins.
+ if(['arid','glacial','lunar'].includes(style)){materials.green.color.set(palette[3]);materials.water.color.set(palette[4]);materials.water.roughness=.7;materials.water.metalness=.05;}
  const dummy=new T.Object3D();
  function instances(geometry,material,placements,parent){const mesh=new T.InstancedMesh(geometry,material,placements.length);placements.forEach((p,i)=>{dummy.position.set(p.x,p.y??0,p.z);dummy.rotation.set(p.rx??0,p.ry??0,0);dummy.scale.set(p.sx??1,p.sy??1,p.sz??1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();parent.add(mesh);return mesh;}
  const hubs=layout.hubs;

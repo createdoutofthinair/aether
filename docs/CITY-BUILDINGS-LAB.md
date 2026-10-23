@@ -2,6 +2,15 @@
 
 Route: `index.html#/city` (DEV → City Buildings Lab). WebGPU only.
 
+## Architecture extension (schema 2)
+
+The current generator uses **16 modular families × two compositions**, six
+planetary architecture profiles and compatible envelope/roof overrides.
+See [Procedural architecture](PROCEDURAL-ARCHITECTURE.md) for research, controls,
+module ownership, schema changes, validation and remaining work. The original
+implementation notes below describe the schema-1 baseline where explicitly
+stated; its 12-prototype GPU result does not validate the new 32-prototype library.
+
 ## Design research and first interpretation
 
 Jacque Fresco / The Venus Project is the starting point for concentric civic,
@@ -26,7 +35,7 @@ Primary references, consulted 23 October 2026:
 | --- | --- |
 | City seed + hub/ring/occupancy settings | Renderer-independent city blueprint, stable lot IDs, district roles, transport graph, parks and building transforms |
 | Protected transport corridors | Ring and radial land reservations before lot placement; intercity lines join the outer orbital route |
-| Architectural grammar | Six families × two profiles; building dimensions, floor height, service history, primary masses and detail parameters |
+| Architectural grammar | Sixteen families × two compositions; planetary modules, building dimensions, floor height, service history, primary masses and detail parameters |
 | Worker manufacturing | Three geometry LODs from the same primary massing; bevels, floor reveals, window piers, entrances, repairs, rooftop/service equipment |
 | Shared finish bake | Eight architectural finish zones; sRGB albedo, linear normal and packed AO/roughness/metallic data |
 | Shared atlas pack | Independently filtered cell mips, guarded UVs, UV1, vertex tint. Same implementation as ship finishes |
@@ -36,8 +45,9 @@ Primary references, consulted 23 October 2026:
 | Runtime visibility | 256 m spatial cells, conservative per-building bounds, screen-size policy, packed hardware instancing and local shadow proxies |
 | Export | Semantic city JSON with recipe, prototypes, plots and transport metadata; runtime LOD/culling fields removed |
 
-Families: stepped spires, planted terraces, courtyard campuses, civic domes,
-connected habitat towers and service/utility buildings. Profiles vary dimensions,
+Families include stepped spires, planted terraces, courtyard campuses, civic domes,
+connected habitats, service buildings, crescents, rings, petals, shells, helixes,
+triads, discs, arcologies, vaults and canopy habitats. Profiles vary dimensions,
 material zones and selected structural details. More seeds change the library
 dimensions and service details as well as the urban population.
 
@@ -77,9 +87,9 @@ alpha so distant room lighting follows the selected lighting preset.
 - Defaults: seven connected hubs, six belts, 85% occupancy; `FRESCO-01` gives
   780 buildings. Maximum preset: 61 hubs, nine belts and 100% occupancy gives
   18,117 buildings. This is an actual generated layout count, not an FPS claim.
-- There are 12 reusable prototypes; each has three mesh LODs and one validated
-  directional impostor. Typical prototype triangle counts are approximately
-  1.7–6.1k near, 0.42–2.8k medium and 0.21–1.43k low.
+- There are 32 reusable prototypes; each has three mesh LODs and one validated
+  directional impostor. Schema-1 triangle budgets are superseded;
+  `test-city.mjs` reports the current per-prototype costs.
 - Automatic thresholds: 260 / 90 / 22 projected pixels, with hysteresis.
   Near and medium promotions are limited to 16 and 96 visible buildings. Mesh
   fallback remains available whenever an impostor is unready.
@@ -154,3 +164,11 @@ it is not silently substituted with thousands of new independent tree objects.
 Infrastructure geometry is shared per ring/route class, but is not yet streamed
 or replaced by district-scale HLOD. Transport routing is a geometric demo, not
 a capacity or civil-engineering simulation.
+
+## Next implementation: independent component studios
+
+The full component catalogue, Plantlife extensions beside the existing trees,
+lab ownership, shared asset contract, interface fixtures, performance strategy
+and delivery gates are specified in
+[ENVIRONMENT-STUDIOS-MASTERPLAN.md](ENVIRONMENT-STUDIOS-MASTERPLAN.md).
+This is a forward implementation blueprint; it does not mark the new labs as built.

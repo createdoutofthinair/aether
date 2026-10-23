@@ -12,7 +12,7 @@ Static Three.js exploration prototype. Serve `dist/` with a static HTTP server, 
 
 ## City Buildings Lab
 
-Open `index.html#/city` through the shared DEV menu. Concord generates circular civic/research/residential districts, interconnected transport hubs, and six procedural building families with shared ship/city PBR finishes, three mesh LODs and validated directional impostors. Presets cover 1–61 connected hubs, including an 18,117-building megaregion. See [the city pipeline and validation notes](docs/CITY-BUILDINGS-LAB.md).
+Open `index.html#/city` through the shared DEV menu. Concord generates circular civic/research/residential districts, interconnected transport hubs, and sixteen modular procedural building families with six planetary architecture profiles, envelope/roof overrides, a comparison catalogue and shared ship/city PBR finishes, three mesh LODs and validated directional impostors. Presets cover 1–61 connected hubs, including an 18,117-building megaregion. See [the city pipeline and validation notes](docs/CITY-BUILDINGS-LAB.md) and [the parts-first environment studios masterplan](docs/ENVIRONMENT-STUDIOS-MASTERPLAN.md).
 
 ## Known limitations
 
