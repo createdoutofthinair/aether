@@ -25,11 +25,15 @@ for(const {id:mass}of MASS_RULES)for(const world of Object.keys(CONSTRUCTION_WOR
  maxTriangles=Math.max(maxTriangles,near.userData.triangles);
  for(const root of [near,far]){
   assert.equal(root.children.length,2);assert.ok(root.userData.triangles<160000,`${mass}/${world}/${root.userData.lod}: ${root.userData.triangles} exceeds default construction budget`);
-  for(const mesh of root.children){const g=mesh.geometry,p=g.attributes.position,n=g.attributes.normal;assert.equal(p.count%3,0);assert.equal(g.attributes.uv1.count,p.count);assert.ok(p.array.every(Number.isFinite));
+  for(const mesh of root.children){const g=mesh.geometry,p=g.attributes.position,n=g.attributes.normal;assert.equal(p.count%3,0);assert.equal(g.attributes.uv1.count,p.count);assert.ok(p.array.every(Number.isFinite));assert.ok(g.attributes.uv.array.every(Number.isFinite));
    for(let i=0;i<n.count;i++)assert.ok(Math.abs(Math.hypot(n.getX(i),n.getY(i),n.getZ(i))-1)<1e-5);
    for(let i=0;i<p.count;i+=3){const a=new T.Vector3().fromBufferAttribute(p,i),b=new T.Vector3().fromBufferAttribute(p,i+1),c=new T.Vector3().fromBufferAttribute(p,i+2),normal=b.sub(a).cross(c.sub(a));assert.ok(normal.lengthSq()>1e-12,'No degenerate faces');assert.ok(normal.dot(new T.Vector3().fromBufferAttribute(n,i))>0,`${mass}/${world}/${root.userData.lod}/${mesh.name}/${i}: winding agrees with outward normal`);}
   }
  }
+ // A manufactured glazing panel must have one continuous affine UV chart,
+ // even when its curved normals cross world-projection axis thresholds.
+ const gg=near.children[1].geometry,metric=gg.attributes.uv,room=gg.attributes.uv1;
+ for(const {firstVertex,vertexCount}of gg.userData.charts){const seen=new Map();for(let i=firstVertex;i<firstVertex+vertexCount;i++){const key=room.getX(i).toFixed(5)+':'+room.getY(i).toFixed(5),uv=[metric.getX(i),metric.getY(i)],previous=seen.get(key);if(previous)assert.ok(Math.hypot(uv[0]-previous[0],uv[1]-previous[1])<1e-4,'No triangle chart jumps on a curved panel');else seen.set(key,uv);}}
  // Ray through the middle of each constructed opening: no opaque host wall
  // is allowed in front of the inset glass. Louvers/entries may own hardware.
  near.updateMatrixWorld(true);const ray=new T.Raycaster(),wall=near.children[0],glass=near.children[1];

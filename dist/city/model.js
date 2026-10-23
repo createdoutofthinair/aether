@@ -22,7 +22,7 @@ export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden',design={}
  ];
  const planet=(PLANET_STYLES[style]||PLANET_STYLES.garden).palette,palette=kit.colors.map((c,i)=>'#'+new T.Color(c).lerp(new T.Color(planet[i]),.18).getHexString());
  recipes.forEach((r,i)=>{if(r.paintCoverage===0)r.substrate=palette[i];else r.paint=palette[i];});
- const tiles=recipes.map((r,index)=>bakeCityFinish({seed:seed+':city:'+index,paint:palette[index],kind:index===2?'service':index===3?'mineral':'paint',roughness:[0,5,6,7].includes(index)?finish.finishRoughness:r.roughness,metalness:index===1?.65:0,wear}));
+ const tiles=recipes.map((r,index)=>bakeCityFinish({seed:seed+':city:'+index,paint:palette[index],kind:index===2?'service':index===3?'mineral':'paint',roughness:[0,5,6,7].includes(index)?finish.finishRoughness:r.roughness,metalness:index===1?.65:0,wear,refined:design.refinedSurfaces===true},design.surfaceResolution===1024?1024:512));
  const atlas=surfaceAtlas(tiles,{seed,name:'Architectural manufacturing surfaces',tileMeters:CITY_TILE_METRES});
  atlas.material.normalScale.set(1,1);atlas.material.userData.citySurface={version:1,tileMeters:CITY_TILE_METRES,wear,variation:finish.panelVariation,dirt:style==='arid'?[.43,.34,.23]:style==='glacial'?[.65,.7,.72]:[.28,.3,.27]};
  const zones=Object.fromEntries(CITY_ZONES.map((zone,index)=>[zone,{zone,index,material:atlas.material}]));

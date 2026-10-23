@@ -4,21 +4,24 @@ import {facadePoint,facadeNormal,surfacePoint,recessLimit} from './grammar-surfa
 // Direct buffer emission keeps thousands of procedural components in two draw
 // streams. Units and UVs are metres. Window holes exist at all mesh LODs.
 class Stream{
- constructor(){this.p=[];this.n=[];this.uv=[];this.zone=[];this.color=[];this.parts={};}
- triangle(a,b,c,zone,tint=1,name='panel',normals){
+ constructor(){this.p=[];this.n=[];this.uv=[];this.zone=[];this.color=[];this.parts={};this.charts=[];}
+ triangle(a,b,c,zone,tint=1,name='panel',normals,uvs){
   const ab=b.map((v,i)=>v-a[i]),ac=c.map((v,i)=>v-a[i]),normal=[ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],ab[0]*ac[1]-ab[1]*ac[0]],length=Math.hypot(...normal);
   if(!Number.isFinite(length))throw Error('Non-finite '+name+' geometry');if(length<1e-8)return;
   const nn=normal.map(v=>v/length),vertical=Math.abs(nn[1])<.7,xFace=Math.abs(nn[0])>.7;
-  for(const [index,v]of [a,b,c].entries()){this.p.push(...v);this.n.push(...(normals?.[index]||nn));this.uv.push(xFace?v[2]:v[0],vertical?v[1]:v[2]);this.zone.push(zone,Math.max(0,nn[1])*.3,0,.025);this.color.push(...(Array.isArray(tint)?tint:[tint,tint,tint]));}
+  for(const [index,v]of [a,b,c].entries()){this.p.push(...v);this.n.push(...(normals?.[index]||nn));this.uv.push(...(uvs?.[index]||[xFace?v[2]:v[0],vertical?v[1]:v[2]]));this.zone.push(zone,Math.max(0,nn[1])*.3,0,.025);this.color.push(...(Array.isArray(tint)?tint:[tint,tint,tint]));}
   this.parts[name]=(this.parts[name]||0)+1;
  }
  quad(a,b,c,d,zone,tint=1,name){this.triangle(a,b,c,zone,tint,name);this.triangle(a,c,d,zone,tint,name);}
- geometry(){const g=new T.BufferGeometry();for(const [name,data,size]of [['position',this.p,3],['normal',this.n,3],['uv',this.uv,2],['uv1',this.zone,4],['color',this.color,3]])g.setAttribute(name,new T.Float32BufferAttribute(data,size));g.computeBoundingSphere();g.userData.components=this.parts;return g;}
+ geometry(){const g=new T.BufferGeometry();for(const [name,data,size]of [['position',this.p,3],['normal',this.n,3],['uv',this.uv,2],['uv1',this.zone,4],['color',this.color,3]])g.setAttribute(name,new T.Float32BufferAttribute(data,size));g.computeBoundingSphere();g.userData.components=this.parts;g.userData.charts=this.charts;return g;}
 }
 const rect=(l,b,r,t,ch=0)=>{ch=Math.max(0,Math.min(ch,(r-l)*.42,(t-b)*.42));return [[l+ch,b],[r-ch,b],[r,b+ch],[r,t-ch],[r-ch,t],[l+ch,t],[l,t-ch],[l,b+ch]];};
 function surfaceTriangle(stream,tr,a,b,c,zone,tint,name){
  const cross=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]),smooth=tr.normal&&cross>1e-8&&/wall-ring|cassette-inlay|armor-cassette|inset-glass|blind-panel/.test(name);
- stream.triangle(tr(...a),tr(...b),tr(...c),zone,tint,name,smooth?[a,b,c].map(v=>tr.normal(...v)):undefined);
+ // Choose the chart in the component's unbent coordinates. World-normal
+ // thresholds switch axes on curved skins, producing triangular texture seams.
+ const ab=b.map((v,i)=>v-a[i]),ac=c.map((v,i)=>v-a[i]),n=[ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],cross],axis=n.map(Math.abs).indexOf(Math.max(...n.map(Math.abs))),axes=axis===2?[0,1]:axis===0?[2,1]:[0,2],scale=tr.metric||[1,1,1];
+ stream.triangle(tr(...a),tr(...b),tr(...c),zone,tint,name,smooth?[a,b,c].map(v=>tr.normal(...v)):undefined,[a,b,c].map(v=>axes.map(i=>v[i]*scale[i])));
 }
 const lerp=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
 function mappedTriangle(stream,tr,a,b,c,zone,name,tint=1,roomUV,uvProject){
@@ -57,6 +60,7 @@ function curvedRoofAndBase(ir,stream,near){
  for(const [loopIndex,loop]of roof.entries())for(let i=0;i<loop.length;i++){
   const a=loop[i],b=loop[(i+1)%loop.length],mid=(i+.5)/loop.length,n=[-(b[2]-a[2]),0,b[0]-a[0]],len=Math.hypot(...n),out=n.map(v=>v/len),height=ir.world.roof==='shield'?.9:.55;
   const tr=(x,y,d)=>[a[0]+(b[0]-a[0])*x+out[0]*d,a[1]+y,a[2]+(b[2]-a[2])*x+out[2]*d];
+  tr.metric=[len,1,1];
   box(stream,tr,0,0,1,height,.02,-.22,0,'curved-crown');if(near)box(stream,tr,0,height,1,height+.07,.07,-.27,1,'crown-coping');
   // Foundation uses the same angular knots as the wall skin.
   const p=base[loopIndex][i],q=base[loopIndex][(i+1)%loop.length];stream.quad([p[0],0,p[2]],[q[0],0,q[2]],q,p,3,1,'curved-foundation-edge');
@@ -88,7 +92,7 @@ export function grammarBuildingModel(ir,materials,{lod=0,clay=false}={}){
    wallZone=f.zone==='base'?3:6===f.floor%7?5:0,
    tint=f.zone==='base'?.93:1,
    left=-bw/2,right=bw/2,bottom=0,top=bh;
-  if(f.surface){transform.step=bw/(3*f.span);transform.stepY=f.floorHeight/2;transform.fanSteps=Math.min(near?4:3,Math.max(3*f.span,2*f.floorSpan));transform.normal=(x,y)=>sample(x,y).n;}
+  if(f.surface){const e=.01,dx=facadePoint(f,e,bh*.5,0).map((v,i)=>v-facadePoint(f,-e,bh*.5,0)[i]),dy=facadePoint(f,0,bh*.5+e,0).map((v,i)=>v-facadePoint(f,0,bh*.5-e,0)[i]);transform.metric=[Math.hypot(...dx)/(2*e),Math.hypot(...dy)/(2*e),1];transform.step=bw/(3*f.span);transform.stepY=f.floorHeight/2;transform.fanSteps=Math.min(near?4:3,Math.max(3*f.span,2*f.floorSpan));transform.normal=(x,y)=>sample(x,y).n;}
   // Lower spandrel, vertical pilaster and thin joints define a visible hierarchy.
   if(f.type==='solid'){
    box(solid,transform,left,bottom,right,top,-.015,-w.wall,wallZone,'blind-panel',tint);
@@ -115,7 +119,9 @@ export function grammarBuildingModel(ir,materials,{lod=0,clay=false}={}){
   // Glazing is inset behind the return, with no host wall behind it.
   // A convex octagon can be fanned without triangulation/CSG ambiguities.
   const glassTint=f.occupied?[.94,.91,.76]:f.variant===0?[.67,.87,.96]:[.8,.96,1.06],center=transform((l+r)/2,(b+t)/2,-recess-.026);
+  const firstVertex=glazing.p.length/3;
   for(let i=0;i<8;i++)mappedTriangle(glazing,transform,[(l+r)/2,(b+t)/2,-recess-.026],[...glassRing[i],-recess-.026],[...glassRing[(i+1)%8],-recess-.026],0,'inset-glass',glassTint,roomUV,([x,y])=>[(x-l)/(r-l),(y-b)/(t-b)]);
+  glazing.charts.push({firstVertex,vertexCount:glazing.p.length/3-firstVertex});
   apertures.push({id:f.id,center:transform((l+r)/2,(b+t)/2,0),normal:facadeNormal(f,(l+r)/2,(b+t)/2),depth:recess,width:r-l,height:t-b});
   if(vent){
    // Louvers have real depth, silhouette and gaps; distant LOD keeps fewer blades.

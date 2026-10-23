@@ -14,11 +14,16 @@ try{
  const ready=()=>page.waitForFunction(()=>document.body.dataset.ready==='true'&&!document.body.dataset.error,{},{timeout:180000}),frame=async()=>{const n=Number(await page.locator('body').getAttribute('data-frame'));await page.locator('#light').dispatchEvent('change');await page.waitForFunction(n=>Number(document.body.dataset.frame)>n&&document.body.dataset.renderedBuild===document.body.dataset.build,n,{timeout:180000});},build=async(action)=>{const n=Number(await page.locator('body').getAttribute('data-build'));await action();await page.waitForFunction(n=>Number(document.body.dataset.build)>n,n,{timeout:180000});await frame();};
  await ready();await frame();await page.screenshot({path:output+'/building.png'});console.log('Captured native building.');
  await page.locator('#detail').click();await frame();await page.screenshot({path:output+'/detail.png'});console.log('Captured true apertures and modules.');
+ await page.locator('#entry').click();await frame();await page.screenshot({path:output+'/street.png'});
+ if(!process.env.CITY_GRAMMAR_QUICK){
+ await build(()=>page.locator('#relief').uncheck());await page.locator('#detail').click();await frame();await page.screenshot({path:output+'/relief-off.png'});await build(()=>page.locator('#relief').check());
+ await page.locator('#quality').selectOption('balanced');await frame();await page.screenshot({path:output+'/balanced.png'});await page.locator('#quality').selectOption('inspection');
  await build(()=>page.locator('#world').selectOption('arid'));await page.locator('#detail').click();await page.locator('#light').selectOption('raking');await frame();await page.screenshot({path:output+'/arid-detail.png'});console.log('Captured arid construction.');
  await build(()=>page.locator('#layout').selectOption('shielded'));await page.locator('#detail').click();await frame();await page.screenshot({path:output+'/shielded.png'});console.log('Captured shielded glazing regions.');
  await build(()=>page.locator('#display').selectOption('clay'));await page.locator('#fit').click();await frame();await page.screenshot({path:output+'/clay.png'});console.log('Captured neutral construction geometry.');
  await build(()=>page.locator('#display').selectOption('materials'));await build(()=>page.locator('#layout').selectOption('clustered'));
  await build(()=>page.locator('#gallery').click());await page.locator('#light').selectOption('day');await frame();await page.screenshot({path:output+'/compositions.png'});console.log('Captured sculpted composition collection.');
- const metrics=await page.locator('body').evaluate(e=>({...e.dataset}));assert.equal(metrics.error,undefined);assert.ok(Number.isFinite(Number(metrics.cameraDistance))&&Number(metrics.cameraDistance)>0);assert.equal(metrics.renderedBuild,metrics.build);assert.deepEqual(errors,[]);await writeFile(output+'/result.json',JSON.stringify({backend:'WebGPU',errors,views:6,metrics},null,2));console.log('Native construction GPU inspection passed:',output);
+ }
+ const metrics=await page.locator('body').evaluate(e=>({...e.dataset}));assert.equal(metrics.error,undefined);assert.ok(Number.isFinite(Number(metrics.cameraDistance))&&Number(metrics.cameraDistance)>0);assert.equal(metrics.renderedBuild,metrics.build);assert.deepEqual(errors,[]);await writeFile(output+'/result.json',JSON.stringify({backend:'WebGPU',errors,views:process.env.CITY_GRAMMAR_QUICK?3:9,metrics},null,2));console.log('Native construction GPU inspection passed:',output);
 
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

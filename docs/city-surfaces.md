@@ -78,3 +78,39 @@ physical deposits, junction-specific wear and additional modeled trim/plate
 assemblies remain separate improvements.
 
 Implementation reference: [Three.js TSL](https://threejs.org/docs/pages/TSL.html).
+
+## Native sculpted building finish review
+
+The native grammar bench (`city-grammar.html`) now emits component-local metric
+UV charts before bending the facade. Chart axes no longer depend on a triangle's
+world-space normal. A curved panel can cross the old projection threshold without
+rotating its texture; crown segments also account for their actual metre length.
+The chart scale is measured at each panel's centre, so strong curvature still has
+bounded local distortion rather than a global, perfectly isometric unwrap.
+
+This bench opts into 1024² tiles (768² useful texels per guarded 2 m repeat),
+with smooth periodic contamination fields varying coating roughness and shallow
+height. The shared production-city defaults stay at 512². Albedo remains quiet;
+normal, roughness, dielectric/metal zoning and occlusion carry the finish.
+ORM alpha stores `.5 + heightMetres * 40`. The native shader uses two explicit-
+gradient height lookups for bounded parallax offset mapping, capped at grazing
+angles. This is shallow relief shading, not displacement or ray-marched POM.
+Openings, reveals, armor cassettes and frame depth remain actual mesh geometry.
+
+Lighting uses a less dominant ambient fill, 4096² filtered sun shadows, and
+half-resolution denoised GTAO for local contact. Inspection renders at 1.5–2.5
+physical pixels per CSS pixel; Balanced follows device resolution up to 1.5.
+Both use FXAA after the tone-map/output transform, with a single-sample scene
+pass so depth-dependent AO has a compatible depth texture. The renderer's canvas
+antialias flag is not counted as scene MSAA in this post-processing path.
+See the [Three.js RenderPipeline documentation](https://threejs.org/docs/pages/RenderPipeline.html)
+for the output-transform boundary and [TSL accessors](https://threejs.org/docs/pages/TSL.html)
+for tangent-space parallax direction. Exposure, relief, contact occlusion and
+resolution are independently inspectable. GPU timing on software Vulkan is not
+a hardware performance benchmark.
+
+Regression checks exercise continuous metric UVs across duplicated curved-panel
+vertices, packed physical height bounds, deterministic refined finishes and WGSL
+compilation with relief enabled. `scripts/check-city-grammar.mjs` remains an
+optional local WebGPU visual inspection, including facade, street, relief-off,
+Balanced, planetary, clay and gallery views; it is not screenshot CI.
