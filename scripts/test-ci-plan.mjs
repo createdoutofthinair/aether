@@ -19,3 +19,5 @@ assert.equal(plan(['package-lock.json']).siteOnly,false);
 assert.equal(plan([]).siteOnly,false);
 
 assert.equal(testGroup('scripts/test-ship-finishes.mjs'),'site');
+
+for(const path of ["dist/city-grammar.html","dist/city-surfaces.html","dist/city/grammar.js","scripts/test-city-grammar.mjs"])assert.deepEqual(plan([path]).groups,["city"]);
