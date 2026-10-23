@@ -19,6 +19,9 @@ for(const name of ['three.core.js','three.webgpu.js','three.tsl.js']){
  gpuFiles[name]=createHash('sha256').update(await readFile(source)).digest('hex');
 }
 await copyFile('node_modules/three/LICENSE','dist/vendor-gpu/LICENSE');
+// Isolated diagnostics only. Production imports remain three.webgpu.js.
+// Both renderers share the exact pinned core and worker buffer format.
+await copyFile('node_modules/three/build/three.module.js','dist/vendor-gpu/three.module.js');
 await writeFile('dist/vendor-gpu/manifest.json',JSON.stringify({version:packageInfo.version,files:gpuFiles},null,2)+'\n');
 await mkdir('dist/render/webgpu',{recursive:true});
 await copyFile('src/render/backend-session.js','dist/render/backend-session.js');

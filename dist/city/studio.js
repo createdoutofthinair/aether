@@ -8,7 +8,7 @@ import {ARCHITECTURAL_KITS} from './design.js';
 import {createStudioState,readAssetLibrary,publishAsset,removeAsset,DRAFT_KEY} from './studio-state.js';
 
 const $=id=>document.getElementById(id),all=selector=>[...document.querySelectorAll(selector)],note=text=>{$('status').textContent=text;},familyById=id=>BUILDING_FAMILIES.find(f=>f.id===id),clone=value=>JSON.parse(JSON.stringify(value));
-let initial=architecturalRecipe('citadel','STRATUM-01',0,{design:{kit:'stratum'},roof:'sealed'});
+let initial=architecturalRecipe('citadel','AURELIA-01',0,{design:{kit:'aurelia'},roof:'garden'});
 try{const saved=localStorage.getItem(DRAFT_KEY);if(saved)initial=restoreArchitecture(JSON.parse(saved));}catch{}
 const state=createStudioState(initial);
 let selected=null,filter='all',variantPage=0,variantRecipes=[],worker=null,jobId=0,renderTimer,disposed=false,preview=null,assembly=null,renderer=null,controls=null,gizmo=null,observer=null,environment=null,pmrem=null,grid=null,ground=null,selectionBox=null,requestFit=true,rendering=false,dragging=false,dragOrigin=null,pointerStart=null;

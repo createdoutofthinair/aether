@@ -3,14 +3,14 @@ import {random} from '../ships/blueprint.js';
 export const ARCHITECTURAL_KITS={
  stratum:{name:'Stratum',subtitle:'Corporate / orbital engineering',skin:'ceramic',frame:'frame',pattern:'curtain',brace:.65,service:.65,accent:'#7dbacb',colors:['#526777','#283844','#1e2831','#535b63','#26313e','#768089','#2f788a','#aa844d']},
  forge:{name:'Foundry',subtitle:'Industrial / infrastructure',skin:'repair',frame:'service',pattern:'punched',brace:1,service:1,accent:'#cf9c62',colors:['#666059','#45484b','#272e32','#65645a','#323c41','#847463','#ae7542','#d2ad6b']},
- aurelia:{name:'Aurelia',subtitle:'Civic / precision composite',skin:'ceramic',frame:'frame',pattern:'ribbon',brace:.3,service:.4,accent:'#8ec4c6',colors:['#a3a99e','#465c66','#263e48','#717d77','#3b5154','#848e80','#3e8b89','#b8a16d']},
+ aurelia:{name:'Aurelia',subtitle:'Civic / precision composite',skin:'ceramic',frame:'frame',pattern:'ribbon',brace:.3,service:.4,accent:'#8ec4c6',colors:['#d4d2bd','#829398','#4d656c','#a99f89','#6b8183','#beb9a2','#559e9d','#c19a67']},
  verdant:{name:'Canopy',subtitle:'Biophilic / inhabited terraces',skin:'ceramic',frame:'frame',pattern:'balcony',brace:.4,service:.5,accent:'#a4b99a',colors:['#7f897c','#3e5756','#263b3d','#666d62','#374e47','#8f9581','#5b8b75','#bd9d6a']},
  monolith:{name:'Obsidian',subtitle:'Monumental / shielded habitat',skin:'roof',frame:'frame',pattern:'vertical',brace:.85,service:.75,accent:'#a2a8df',colors:['#414858','#687384','#252c37','#565c68','#363d4d','#73798a','#747fa6','#ad9a77']}
 };
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const value=(v,f,a,b)=>clamp(Number.isFinite(Number(v))?Number(v):f,a,b);
 export function designOptions(input={}){
- return {kit:Object.hasOwn(ARCHITECTURAL_KITS,input.kit)?input.kit:'stratum',
+ return {kit:Object.hasOwn(ARCHITECTURAL_KITS,input.kit)?input.kit:'aurelia',
   complexity:value(input.complexity,.65,0,1),asymmetry:value(input.asymmetry,.65,0,1),
   plating:value(input.plating,.48,0,.85),structure:value(input.structure,.65,0,1),
   equipment:value(input.equipment,.65,0,1),signage:value(input.signage,.35,0,1),

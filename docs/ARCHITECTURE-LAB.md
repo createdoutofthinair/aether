@@ -148,3 +148,19 @@ authored facade corner/door kits, authored signage, richer interior simulation,
 component-specific graphical editors, terrain attachment and accessibility
 fixtures, district HLOD and streamed asset residency. The broader Environment
 Studios masterplan remains partially implemented.
+
+## Independent geometry bench
+
+Open `architecture-bench.html` directly, or use **Geometry bench** in the Architecture Lab toolbar. This deliberately bypasses the application's WebGPU capability gate. It is a diagnostic page with Three r186's WebGL 2 renderer; it is not an engine backend or fallback.
+
+The bench calls the same `city/studio-worker.js` as the editor and unpacks the same typed vertex/index streams and three baked PBR atlas textures. It supports all 20 families, both compositions, all five construction kits, six planet contexts, three geometry LODs, editor drafts and exported schema-3 recipes. Inspection includes clay, normals, wireframe, mass ownership, UV checker, duplicate-face overlays, construction-layer and mass isolation, back-face display, a horizontal cutaway, daylight/raking/overcast lighting, a turntable and four camera presets. The family review produces a 20-specimen contact sheet. Exported audits include the exact recipe, generation inputs, camera and display settings.
+
+Buffer checks report invalid indices/attributes, degenerate triangles, abnormal normals and coincident triangles at 0.1 mm quantization. These checks do not prove absence of arbitrary mesh intersections or artistic correctness. The WebGL view validates geometry and a standard PBR baseline; WebGPU room nodes, city instancing, production shadows and impostor captures remain separate validation targets.
+
+### Surface ownership and daylight finishes
+
+Closed mass lofts and roof collars are compiled into a CPU surface classifier. Envelope, facade, band, collar, garden and foundation faces are split against neighboring solids; buried fragments are removed, UV/normal streams are interpolated, and coincident faces have deterministic ownership. This is surface clipping, not a watertight Boolean export of every decorative component. Decorative sills, spines, equipment and bridges still use assembled meshes. The classifier retains an unsplit polygon when none of its area was removed, avoiding unnecessary triangle growth. Wrapped floor bands/collars use the same 48-point contour as facade skins at every LOD.
+
+Daylight glazing starts from a blue-green material with low metalness, a small sky-colored emissive fill and bounded bay variation. WebGPU room shading no longer multiplies near-black glazing by another deep shadow. Aurelia is the new default kit: warm pale composite, mineral base, muted teal, and warm identity trim, with existing procedural roughness, seams and runoff. Industrial and shielded palettes remain selectable. Existing saved editor drafts retain their selected kit.
+
+The supplied Reddit reference was readable as a post but its image could not be inspected because Reddit blocked the cloud browser. The finish revision follows the user's stated lighter, inhabited direction; it does not claim an exact visual match to the unavailable image.

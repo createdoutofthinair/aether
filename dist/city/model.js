@@ -35,8 +35,8 @@ export function cityMaterials(seed='FRESCO-01',wear=.35,style='garden',design={}
  });
  const atlas=surfaceAtlas(tiles,{seed,name:'Architectural manufacturing surfaces',tileMeters:4});
  const zones=Object.fromEntries(CITY_ZONES.map((zone,index)=>[zone,{zone,index,material:atlas.material}]));
- const glass=new T.MeshStandardMaterial({name:'Architectural glazing',color:0x183342,roughness:.19,metalness:.48,vertexColors:true});
- const glow=new T.MeshStandardMaterial({name:'Occupied rooms and wayfinding',color:0x31434b,emissive:0xc5a875,emissiveIntensity:.45,roughness:.5,vertexColors:true});
+ const glass=new T.MeshStandardMaterial({name:'Architectural glazing',color:0x91b1ba,emissive:0x60838c,emissiveIntensity:.12,roughness:.3,metalness:.12,vertexColors:true});
+ const glow=new T.MeshStandardMaterial({name:'Occupied rooms and wayfinding',color:0x9bada9,emissive:0xd4b58a,emissiveIntensity:.35,roughness:.5,vertexColors:true});
  const green=new T.MeshStandardMaterial({name:'Planted terraces',color:0x405c44,roughness:.94,vertexColors:true});
  return{atlas,zones,glass,glow,green,palette,all:[atlas.material,glass,glow,green]};
 }
