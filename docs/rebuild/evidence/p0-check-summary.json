@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "sourceBaselineCommit": "0f3bf3d704ff301437e880eff2e6e5aa6c0c732c",
+  "scope": "P0 agent-container audit only",
+  "checks": [
+    {
+      "command": "npm run check",
+      "result": "pass",
+      "checkedModules": 46,
+      "evidence": "p0-functional.log"
+    },
+    {
+      "command": "npm test",
+      "result": "pass",
+      "scripts": 30,
+      "evidence": "p0-functional.log"
+    },
+    {
+      "command": "node --check scripts/rebuild-*.mjs (three named scripts separately)",
+      "result": "pass"
+    },
+    {
+      "command": "node scripts/rebuild-baseline.mjs",
+      "result": "pass",
+      "evidence": "p0-baseline.json"
+    },
+    {
+      "command": "node scripts/rebuild-p0-experiments.mjs",
+      "result": "pass",
+      "fixtures": 3,
+      "evidence": "p0-experiments.json"
+    },
+    {
+      "command": "node scripts/rebuild-http-smoke.mjs",
+      "result": "pass",
+      "endpoints": 8,
+      "evidence": "p0-http-smoke.json"
+    },
+    {
+      "command": "node scripts/benchmark-lod.mjs",
+      "result": "pass",
+      "measurementScope": "isolated CPU fixture",
+      "evidence": "p0-functional.log"
+    },
+    {
+      "command": "node scripts/benchmark-detail.mjs",
+      "result": "pass",
+      "measurementScope": "isolated CPU fixture",
+      "evidence": "p0-functional.log"
+    },
+    {
+      "command": "node scripts/export-shaders.mjs /tmp/aether-p0-shaders",
+      "result": "pass",
+      "programPairs": 12,
+      "evidence": "p0-functional.log"
+    },
+    {
+      "command": "node scripts/check-shaders.mjs /tmp/aether-p0-shaders",
+      "result": "blocked",
+      "reason": "glslangValidator unavailable; package installation failed on environment privileges; compile/link not executed."
+    },
+    {
+      "command": "GitHub Actions baseline run/job metadata",
+      "result": "pass",
+      "run": "https://github.com/createdoutofthinair/aether/actions/runs/38147002852",
+      "shaderCompileStep": "success",
+      "roverVerifyStep": "success",
+      "evidence": "p0-ci.json",
+      "scope": "Remote functional evidence; no visual or GPU claim."
+    }
+  ],
+  "setup": [
+    {
+      "command": "npm ci --ignore-scripts --no-audit --no-fund",
+      "result": "fail",
+      "reason": "No tracked lockfile; no source/dependency declaration changed."
+    },
+    {
+      "command": "npm install --ignore-scripts --no-package-lock --no-audit --no-fund",
+      "result": "pass"
+    },
+    {
+      "command": "npm run dev -- --port 5173",
+      "result": "fail",
+      "reason": "Container uv_interface_addresses restriction with default host."
+    },
+    {
+      "command": "npm run dev -- --host 127.0.0.1 --port 5173",
+      "result": "pass",
+      "limitation": "HTTP service verified with same-process loopback smoke."
+    }
+  ],
+  "visualStatus": "blocked",
+  "performanceStatus": "blocked",
+  "acceptance": "open",
+  "targetMachineKnown": false
+}
