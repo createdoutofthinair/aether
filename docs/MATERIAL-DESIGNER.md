@@ -10,6 +10,18 @@ The typed graph supports source surfaces, procedural masks, finish adjustments, 
 
 The preview supports a panel, sphere and block; beauty and map channels; daylight and grazing light. Height is physical relief in the shared PBR shader, not replacement geometry. Bitmap imports accept color, tangent normal, roughness, metalness, AO and height. Existing building JSON, hull JSON with embedded maps, terrain mix JSON, graph JSON and `.amp` imports are supported. A legacy upward-facing terrain mask becomes a canonical UV-height band because a texture bake has no mesh orientation.
 
+## Visual workflow
+
+The default building graph opens as eight visible tiles: substrate, panel structure, coating, chips/oxidation, joint dirt, rain streaks, deposits/wetness and PBR output. Compact building library sources retain an **Expand 6 material stages** action. Expansion preserves all final recipe fields and maps exactly. Each building stage changes a part of the shared recipe and recomputes the coupled building model; it is not a disconnected screenshot or a generic paint overlay. Stage controls can be edited, bypassed and reordered. A stage requires a building generator upstream.
+
+Every connected workflow tile shows a cropped intermediate image with its own color/normal/roughness/height/AO/metalness selector. Damage, dirt, runoff, deposits and blends also expose their actual placement masks. Noise nodes show grayscale mask images. Unconnected inputs show an explicit connection prompt. Click a tile to inspect its intermediate result on the WebGPU object, or use its arrow to inspect the selected map. **Pin final output** keeps the production result visible while editing another node. **Compare** shows the selected stage beside the final output. Inspection never replaces the graph or its export payload.
+
+Authoring images use a separate worker and bounded content-addressed caches: a 64² draft after 120 ms, a 128² refinement after 850 ms without edits. Obsolete graph jobs are canceled between nodes and stale responses are ignored. Moving nodes does not regenerate images. Library thumbnails are generated lazily as entries enter the visible browser area. These CPU authoring previews do not read back production GPU buffers.
+
+The **Layers** browser tab exposes reachable surfaces and effects with thumbnails, selection, bypass and adjacent-effect reorder controls; blend amount stays in the inspector. Favorites and recently used filters are saved on device. The output inspector and export page display all six map channels, physical scale, production resolution and measured map memory.
+
+Statistics also lists low-resolution CPU preview evaluation/reuse for each workflow stage, explicitly separate from the production CPU/GPU/download measurements. These authoring timings are not per-node GPU timings and are not used as delivery-policy recommendations.
+
 ## Producers and delivery
 
 Building sources use the existing dedicated GPU kernels. Procedural growth, masks, finish, weather and blending have GPU kernels and CPU reference implementations. Hull coatings, photographed terrain, urban surfaces and imported bitmaps are produced or decoded in a worker before GPU composition: these executions are explicitly marked **hybrid**. The graph is a supported node vocabulary, not an arbitrary shader programming language.
