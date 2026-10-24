@@ -9,3 +9,7 @@ dist/render/worker-kit/
 # Built from pinned r186 with guarded reversed-Z comparisons
 dist/render/webgpu/city-GTAONode.js
 dist/render/webgpu/city-DenoiseNode.js
+
+# Reproducible production material artifacts, generated during build.
+/dist/material-production/packs/
+/dist/material-production/catalog.json

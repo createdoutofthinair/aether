@@ -81,6 +81,7 @@ jobs:
             dist/render/
             dist/vendor-gpu/
             dist/foundation-manifest.json
+            dist/material-production/
           if-no-files-found: error
       - name: Package Pages artifact once
         if: inputs.publish && needs.changes.outputs.deploy == 'true'

@@ -1,0 +1,1 @@
+{"schema":"aether.material-catalog-recipes/1","size":256,"materials":[{"id":"inhabited","label":"Inhabited ceramic city","preset":"inhabited","seed":"PRODUCTION-CONCORD-01"},{"id":"coastal","label":"Coastal salt / rain","preset":"coastal","seed":"PRODUCTION-COAST-01"},{"id":"desert","label":"Arid dust / exposure","preset":"desert","seed":"PRODUCTION-ARID-01"}]}
