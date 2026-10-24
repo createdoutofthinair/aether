@@ -13,7 +13,7 @@ try{
 
  const {buildingMaterialRecipe,buildingMaterialPreset,BUILDING_FINISH_KEY}=await import('../dist/city/building-material.js');
  await page.addInitScript(({key,recipe})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(recipe));},{key:BUILDING_FINISH_KEY,recipe:process.env.CITY_MATERIAL_QUICK?{...buildingMaterialPreset('coastal'),resolution:1024}:buildingMaterialRecipe({resolution:512})});
- await page.goto(base+'/city-materials.html');
+ await page.goto(base+'/city-materials.html?legacy=1');
  const ready=()=>page.waitForFunction(()=>document.body.dataset.materialReady==='true'&&document.body.dataset.renderedBuild===document.body.dataset.build&&!document.body.dataset.error,{},{timeout:180000}),frame=async(action)=>{const n=Number(await page.locator('body').getAttribute('data-frame'));await action();await page.waitForFunction(n=>Number(document.body.dataset.frame)>n&&document.body.dataset.renderedBuild===document.body.dataset.build,n,{timeout:180000});},bake=async(action)=>{const n=Number(await page.locator('body').getAttribute('data-finish-version'));await action();await page.waitForFunction(n=>Number(document.body.dataset.finishVersion)>n&&document.body.dataset.baking==='false'&&document.body.dataset.renderedBuild===document.body.dataset.build,n,{timeout:180000});};
  await ready();
  if(process.env.CITY_MATERIAL_QUICK){

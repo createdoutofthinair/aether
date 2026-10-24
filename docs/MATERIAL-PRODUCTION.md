@@ -1,5 +1,7 @@
 # Browser material production pipeline
 
+The production lab is now integrated into the [unified Material Designer](MATERIAL-DESIGNER.md) at `#/materials`; open `#/materials?tab=statistics` for measured delivery comparisons. The original diagnostic page remains available with `?legacy=1`.
+
 `material-production.html` is a separate WebGPU lab. It demonstrates production
 asset delivery and optional GPU authoring using the same building materials as
 the existing designer. The default client path downloads a pregenerated pack;

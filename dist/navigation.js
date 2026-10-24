@@ -11,7 +11,7 @@ const file = location.pathname.split('/').pop();
 const route = pages[file] || 'explorer';
 const captureCredits=file==='credits.html'&&new URLSearchParams(location.search).has('capture');
 if (window === window.top) {
- if(!captureCredits)location.replace('./index.html#/' + route);
+ if(!captureCredits&&!new URLSearchParams(location.search).has('standalone')){const query=new URLSearchParams(location.search);query.delete('embedded');query.delete('standalone');const suffix=route==='materials'&&query.size?'?'+query:'';location.replace('./index.html#/' + route+suffix);}
 } else {
  document.addEventListener('click', event => {
   const link = event.target.closest('a[href]');

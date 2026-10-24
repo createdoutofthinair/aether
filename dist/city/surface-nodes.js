@@ -4,11 +4,12 @@ import {attribute,texture,vec2,vec3,vec4,float,mix,normalMap,positionLocal,posit
  * tile boundaries cannot choose blurry mips; guards isolate adjacent finishes. */
 export function citySurfaceNodes(material,{preview}={}){
  const spec=material.userData.citySurface;if(!spec)return material;
- const uv=(spec.world?positionWorld.xz:attribute('uv','vec2')).div(spec.tileMeters),data=spec.world?vec4(spec.zone||0,0,0,spec.variation??.025):attribute('uv1','vec4'),zone=data.x.round(),slot=vec2(zone.mod(4),zone.div(4).floor()),scale=vec2(.75/4,.75/2),dx=uv.dFdx().mul(scale),dy=uv.dFdy().mul(scale);
+ const columns=spec.atlasColumns||4,rows=spec.atlasRows||2,guard=spec.atlasGuard??.125;
+ const uv=(spec.world?positionWorld.xz:attribute('uv','vec2')).div(spec.tileMeters),data=spec.world?vec4(spec.zone||0,0,0,spec.variation??.025):attribute('uv1','vec4'),zone=data.x.round(),slot=vec2(zone.mod(columns),zone.div(columns).floor()),scale=vec2((1-guard*2)/columns,(1-guard*2)/rows),dx=uv.dFdx().mul(scale),dy=uv.dFdy().mul(scale);
  // Height is packed in ORM alpha: .5 + metres * 40. A bounded two-sample
  // parallax offset adds millimetre relief without inventing silhouette depth.
  // Explicit pre-wrap gradients keep both height lookups and finish mips stable.
- const atlasAt=p=>slot.add(.125).div(vec2(4,2)).add(p.fract().mul(scale));
+ const atlasAt=p=>slot.add(guard).div(vec2(columns,rows)).add(p.fract().mul(scale));
  let shadedUV=uv;
  if(spec.relief&&!spec.world){const direction=parallaxDirection.xy.div(parallaxDirection.z.abs().max(.35)),heightAt=p=>texture(material.roughnessMap,atlasAt(p)).grad(dx,dy).a.sub(.5).div(40*spec.tileMeters),first=heightAt(uv),refined=heightAt(uv.sub(direction.mul(first).mul(spec.relief)));shadedUV=uv.sub(direction.mul(first.add(refined).mul(.5*spec.relief)));}
  const atlasUV=atlasAt(shadedUV);

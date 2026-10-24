@@ -59,3 +59,4 @@ console.log('Resident asset pool and import-map-free ship worker synchronized');
 for(const [name,kind]of [['GTAONode','gtao'],['DenoiseNode','denoise']]){const source=await readFile(`node_modules/three/examples/jsm/tsl/display/${name}.js`,'utf8');await writeFile(`dist/render/webgpu/city-${name}.js`,cityAOCompatibility(source,kind));}
 // Pre-generation happens in the producer/build environment, never the client.
 await (await import('./build-material-catalog.mjs')).buildMaterialCatalog();
+await (await import('./build-material-studio.mjs')).buildMaterialStudio();

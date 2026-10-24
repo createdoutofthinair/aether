@@ -4,7 +4,7 @@ export const routes = {
  forest: ['forest-lab.html', 'Forest Lab'],
  ships: ['spaceship-studio.html', 'Spaceship Studio'],
  explorer: ['explorer.html', 'Planet explorer'],
- materials: ['material-editor.html', 'Material editor'],
+ materials: ['material-editor.html', 'Material Designer'],
  nature: ['nature-studio.html', 'Nature Studio'],
  hud: ['hud-design.html', 'HUD design'],
  studio: ['logo-design.html', 'Object studio'],
@@ -19,13 +19,12 @@ function render() {
  const requested = location.hash.slice(2).split('?')[0];
  const route = Object.hasOwn(routes, requested) ? requested : 'credits';
  if (requested !== route) { location.replace('#/' + route); return; }
- if (route === current) return;
- current = route;
+ const query=new URLSearchParams(location.hash.split('?')[1]||''),materialQuery=new URLSearchParams();if(route==='materials'){for(const key of ['tab','group'])if(query.has(key))materialQuery.set(key,query.get(key));}const key=route+'?'+materialQuery;if(key===current)return;current=key;
  const [file, label] = routes[route];
  const frame = document.createElement('iframe');
  frame.title = 'Aether · ' + label;
  frame.allow = 'autoplay; fullscreen';
- frame.src = file + '?embedded=1';
+ frame.src = file + '?embedded=1'+(materialQuery.size?'&'+materialQuery:'');
  // Destroy the previous browsing context, including GPU contexts, workers and audio.
  host.replaceChildren(frame);
  document.title = 'Aether · ' + label;
