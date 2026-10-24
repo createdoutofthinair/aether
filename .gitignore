@@ -16,3 +16,4 @@ dist/render/webgpu/city-DenoiseNode.js
 /dist/material-studio/studio.js
 /dist/material-studio/studio.css
 /dist/material-studio/THIRD-PARTY-NOTICES.txt
+/dist/city/detail-data.js

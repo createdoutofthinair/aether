@@ -1,4 +1,5 @@
 export const routes = {
+ 'surface-environment': ['surface-environment.html', 'Surface environment'],
  architecture: ['architecture-lab.html', 'Architecture Lab'],
  city: ['city-lab.html', 'City Buildings Lab'],
  forest: ['forest-lab.html', 'Forest Lab'],
@@ -33,7 +34,7 @@ function render() {
   if (a.dataset.route === route) a.setAttribute('aria-current', 'page');
   else a.removeAttribute('aria-current');
  });
- dev.classList.toggle('active', ['hud','studio','renderer','nebula','nature','ships','forest','city','architecture'].includes(route));
+ dev.classList.toggle('active', ['surface-environment','hud','studio','renderer','nebula','nature','ships','forest','city','architecture'].includes(route));
  dev.open = false;
 }
 window.addEventListener('hashchange', render);

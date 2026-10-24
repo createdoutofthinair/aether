@@ -8,7 +8,7 @@ The hierarchical browser combines building finishes, spacecraft coatings, proced
 
 The typed graph supports source surfaces, procedural masks, finish adjustments, weathering, blends and a single PBR output. Connections carry surface or mask values; validation rejects cycles, incompatible ports and multiple connections to an input. Only the reachable output subgraph is evaluated. Moving nodes and changing the material name do not invalidate pixel identity. Undo/redo includes wiring and parameter edits.
 
-The preview supports a panel, sphere and block; beauty and map channels; daylight and grazing light. Height is physical relief in the shared PBR shader, not replacement geometry. Bitmap imports accept color, tangent normal, roughness, metalness, AO and height. Existing building JSON, hull JSON with embedded maps, terrain mix JSON, graph JSON and `.amp` imports are supported. A legacy upward-facing terrain mask becomes a canonical UV-height band because a texture bake has no mesh orientation.
+The preview supports a panel, sphere, block and assembled facade; beauty and map channels; daylight and grazing light. Height is physical relief in the shared PBR shader, not replacement geometry. Bitmap imports accept color, tangent normal, roughness, metalness, AO and height. Existing building JSON, hull JSON with embedded maps, terrain mix JSON, graph JSON and `.amp` imports are supported. A legacy upward-facing terrain mask becomes a canonical UV-height band because a texture bake has no mesh orientation.
 
 ## Visual workflow
 
@@ -44,3 +44,19 @@ The old building finish, surface workshop and production URLs redirect to this w
 ## Validation
 
 `node scripts/test-city-material-studio.mjs` covers graph validation, deterministic pixel identity, source producers, blend math, normals, PNG byte preservation and statistics grouping. `npm run build` creates the pinned React bundle and license notices; `npm run check` checks runtime JavaScript. `scripts/check-material-studio.mjs` is an optional local Playwright/WebGPU visual bench, not a screenshot CI job. Software Vulkan results verify behavior and pixel parity, not consumer GPU performance.
+
+## Shared surface environment
+
+Building rendering now uses a separate spatial layer over the exported PBR maps. Select **Assembled facade** and use **Non-repeating detail / shared weather** for comparison, or open `#/surface-environment` for the larger bench. The native building and city/street shaders use the same environment functions. Exported map pixels remain independent of the test scene.
+
+For architectural materials with known panel spacing, correlated stochastic sampling varies color, normal and ORM/height together inside panels. Source rectangles exclude joints, smooth mirror derivatives handle normal reflection, and height-biased weights avoid a broad muddy crossfade. The original joint region stays aligned. As a result, reusable panel interiors can vary while preserving construction logic. Unstructured asphalt uses whole-tile sampling; paving preserves its grid.
+
+A shared 256² prebuilt neutral signal supplies triplanar stochastic fine detail. Broad 3D fields modulate color, roughness, wetness and deposition continuously in world coordinates. A surface-gradient perturbation adds the scalar detail height over the existing normal. Pixel footprint smoothly reduces detail; the extra nine packed detail samples are skipped when that layer becomes invisible. Interior stochastic sampling adds nine PBR texture lookups where enabled (it still samples lower mips at distance). These are shader costs, not material-generation timings. The shared detail signal consumes about 0.33 MiB including GPU mipmaps, independent of building count.
+
+The Native Building Lab derives a bounded set of runoff sources, repairs, shelter bounds and foundation contacts from its construction grammar. Those masks are evaluated in building coordinates and rotated into world coordinates for the ground. Generic instanced city prototypes receive stochastic material sampling, semantic ledge wear, climate-consistent broad weather and detail; they do not yet receive a unique geometry-aware drainage solution per city instance. The assembled bench has explicit construction anchors matching its ledge, drain, repair and wall footprints.
+
+Shelter boxes and gravity-decaying runoff are appearance approximations, not ray-traced exposure or fluid transport. Parallax retains the structural height field; the added fine detail changes shading rather than silhouette. Source resolution, geometry, lighting and art direction still govern the final realism.
+
+The detail signal is generated at build time by `scripts/build-city-detail.mjs`, packaged with CI artifacts, decoded once and shared at runtime. It does not require per-building CPU synthesis, GPU readback, extra city vertex streams or per-building detail textures.
+
+Technical references: [Practical Real-Time Hex-Tiling](https://jcgt.org/published/0011/03/05/), [Unity stochastic texturing](https://unity.com/blog/engine-platform/procedural-stochastic-texturing-in-unity), and [Epic world-aligned mapping / HeightLerp](https://dev.epicgames.com/documentation/unreal-engine/texturing-material-functions-in-unreal-engine). This is Aether's implementation of the applicable ideas, not a bundled Unity or Unreal renderer.

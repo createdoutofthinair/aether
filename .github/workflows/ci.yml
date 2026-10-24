@@ -83,6 +83,7 @@ jobs:
             dist/foundation-manifest.json
             dist/material-production/
             dist/material-studio/
+            dist/city/detail-data.js
           if-no-files-found: error
       - name: Package Pages artifact once
         if: inputs.publish && needs.changes.outputs.deploy == 'true'

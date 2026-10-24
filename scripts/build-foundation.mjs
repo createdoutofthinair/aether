@@ -60,3 +60,4 @@ for(const [name,kind]of [['GTAONode','gtao'],['DenoiseNode','denoise']]){const s
 // Pre-generation happens in the producer/build environment, never the client.
 await (await import('./build-material-catalog.mjs')).buildMaterialCatalog();
 await (await import('./build-material-studio.mjs')).buildMaterialStudio();
+await import('./build-city-detail.mjs');

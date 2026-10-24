@@ -1,0 +1,4 @@
+import {periodicBuildingNoise} from './building-material.js';
+// A neutral detail signal, deliberately excluding panel seams and rain trails.
+export function detailPixels(size=256,seed=417){if(!Number.isInteger(size)||size<32||size>512||(size&(size-1)))throw Error('Invalid detail size');const noise=periodicBuildingNoise(seed),data=new Uint8Array(size*size*4),byte=v=>Math.round(Math.max(0,Math.min(1,v))*255);for(let y=0;y<size;y++)for(let x=0;x<size;x++){const u=(x+.5)/size,v=(y+.5)/size,a=noise(u,v,4)-.5,b=noise(u,v,16)-.5,c=noise(u,v,64)-.5,i=(y*size+x)*4;data.set([byte(.5+a*.5+b*.25),byte(.5+b*.5+c*.25),byte(.5+b*.22+c*.38),byte(.5+c*.8)],i);}return data;}
+export function triangleWeights(x,y){const sx=x,sy=-x/Math.sqrt(3)+y*2/Math.sqrt(3),ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy;return fx+fy<1?{cells:[[ix,iy],[ix+1,iy],[ix,iy+1]],weights:[1-fx-fy,fx,fy]}:{cells:[[ix+1,iy+1],[ix,iy+1],[ix+1,iy]],weights:[fx+fy-1,1-fx,1-fy]};}

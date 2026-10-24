@@ -1,4 +1,5 @@
 const pages = {
+ 'surface-environment.html':'surface-environment',
  'architecture-lab.html':'architecture',
  'city-lab.html':'city',
  'forest-lab.html':'forest',
