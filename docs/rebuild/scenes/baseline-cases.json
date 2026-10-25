@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 1,
+  "sourceBaselineCommit": "0f3bf3d704ff301437e880eff2e6e5aa6c0c732c",
+  "runtimeManifestHash": "ee9dafff476e939852416c1678169ec2b5f74490840b86d14bdd84928708ce50",
+  "assetManifestHash": "7171a783e00c4b49add576e31899f1f3bb9055416f5709caaf2b65142c9f1e3c",
+  "engine": "Three.js r186 / WebGL2",
+  "manualInspection": true,
+  "automaticCapture": false,
+  "sharedExplorerConditions": {
+    "systemSeed": 6,
+    "starClass": "G",
+    "planetId": "6-G-2",
+    "world": {
+      "seed": 6,
+      "relief": 1,
+      "temperature": 18,
+      "water": -180,
+      "pressure": 1,
+      "activity": 0.45
+    },
+    "environment": {
+      "waterEnabled": true,
+      "iceEnabled": true,
+      "basin": true,
+      "organicGround": false,
+      "gravity": 1.2538610976262423
+    },
+    "quality": "high",
+    "exposure": 1.1,
+    "fovDegrees": 55,
+    "outputResolution": null,
+    "drawingBufferResolution": null
+  },
+  "routePrecision": "Existing input sequences are approximate, not exact pose/time replay.",
+  "cases": [
+    {
+      "id": "V01",
+      "name": "Material specimen",
+      "entry": "/material-editor.html",
+      "actions": [
+        "Select each source family; compare sphere and plane at a fixed view.",
+        "Record studio settings and scale separately from explorer conditions."
+      ],
+      "support": "partial: separate preview evaluator",
+      "overrides": {
+        "fovDegrees": 42,
+        "sunElevationDegrees": null
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V02",
+      "name": "Ground soil and rock",
+      "entry": "/?view=terrain&altitude=2",
+      "actions": [
+        "Wait for loading/detail to settle; record the wait.",
+        "Manually move slowly forward, reverse and sideways; record durations."
+      ],
+      "support": "existing entry",
+      "overrides": {
+        "altitudeAboveHeightFieldMetres": 2,
+        "sunElevationDegrees": 25
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V03",
+      "name": "Rover refinement drive",
+      "entry": "/",
+      "actions": [
+        "Choose Land & explore and wait for touchdown.",
+        "Drive gently forward/reverse and turn while recording actual wheels and ground."
+      ],
+      "support": "existing kinematic rover; failing live route unlocated",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V04",
+      "name": "Formation approach",
+      "entry": "/?view=outcrops&altitude=2",
+      "actions": [
+        "Inspect at 2, 20 and 200 m using the existing selector.",
+        "Manually approach and retreat; export state and note outcrop target."
+      ],
+      "support": "existing entry",
+      "overrides": {
+        "altitudeAboveHeightFieldMetres": 2,
+        "sunElevationDegrees": 25
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V05",
+      "name": "Terrain altitude ladder",
+      "entry": "/?view=terrain&altitude=20",
+      "actions": [
+        "Reload the same terrain view at 2, 20, 200, 2000 and 75000 m.",
+        "Take normal and relevant diagnostic views after loading settles."
+      ],
+      "support": "existing entries",
+      "overrides": {
+        "altitudeLadderMetres": [
+          2,
+          20,
+          200,
+          2000,
+          75000
+        ],
+        "sunElevationDegrees": 25
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V06",
+      "name": "Ground and orbit",
+      "entry": "/",
+      "actions": [
+        "Manually record guided descent and ascent on the default body.",
+        "Observe terrain, horizon, atmosphere and lighting through transitions."
+      ],
+      "support": "existing compact-body route; larger body required later",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V07",
+      "name": "Topology and pole",
+      "entry": "/",
+      "actions": [
+        "Use atlas fields to select lat 0/lon 45 (face boundary), lat 35.26438968/lon 45 (corner), and lat 89.5/lon 0 (near pole).",
+        "Record whether site selection/landing is permitted; inspect and traverse only where supported; save actual route/poses."
+      ],
+      "support": "partial; precise route and full GPU crossing pending",
+      "overrides": {
+        "candidateAtlasCoordinatesDegrees": [
+          [
+            0,
+            45
+          ],
+          [
+            35.26438968,
+            45
+          ],
+          [
+            89.5,
+            0
+          ]
+        ]
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V08",
+      "name": "Windy forest edge",
+      "entry": null,
+      "actions": [
+        "Create the specified vegetated slope/forest reference after M7 population/assets exist.",
+        "Use low sun, wind and slow movement with relevant bounds/shadow views."
+      ],
+      "support": "missing: vegetation subsystem",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "not run",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V09",
+      "name": "Coastal grazing view",
+      "entry": "/?view=coast",
+      "actions": [
+        "Record actual coast-finder availability; wait for coastal readiness.",
+        "Manually move along the shoreline and approach grazing angles; repeat at low sun."
+      ],
+      "support": "existing entry",
+      "overrides": {
+        "sunElevationDegrees": 28
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V10",
+      "name": "Shadow camera motion",
+      "entry": "/?view=terrain&altitude=20",
+      "actions": [
+        "Set a recorded low-sun angle.",
+        "Move sideways slowly across a shadow boundary; capture motion and relevant normal/shadow diagnostics."
+      ],
+      "support": "existing local shadows; failing live route unlocated",
+      "overrides": {
+        "sunElevationDegrees": null
+      },
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V11",
+      "name": "Cold route and reversal",
+      "entry": "/?view=terrain&altitude=20",
+      "actions": [
+        "Start a new process/browser load; state cache conditions.",
+        "Manually accelerate/reverse while recording coverage; repeat warm."
+      ],
+      "support": "partial: approximate route, no constrained budget control",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V12",
+      "name": "World return and edits",
+      "entry": "/",
+      "actions": [
+        "Add/export one declared terrain layer.",
+        "Travel Nacre to another solid body and return; record identity/history and layer restoration.",
+        "Separately test reload/import persistence."
+      ],
+      "support": "session support; complete persistence missing",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "blocked",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V13",
+      "name": "Preview and world parity",
+      "entry": null,
+      "actions": [
+        "Use exactly one versioned recipe and a declared shared evaluator.",
+        "Compare specimen and ground with matched geometry scale/filtering/lighting."
+      ],
+      "support": "missing: shared recipe integration",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "not run",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    },
+    {
+      "id": "V14",
+      "name": "Long traversal and pressure",
+      "entry": null,
+      "actions": [
+        "Use a deterministic mixed route and an explicit constrained memory setting.",
+        "Collect complete raw timings/allocation/queue histories; recover after exhaustion."
+      ],
+      "support": "missing: exact route, pressure control and full-run collector",
+      "overrides": {},
+      "requiredEvidence": [
+        "actual scene/settings identity",
+        "still and relevant debug views",
+        "movement when temporal behavior is assessed",
+        "raw measurements when performance is assessed"
+      ],
+      "functionalStatus": "not run",
+      "visualStatus": "not run",
+      "performanceStatus": "not run",
+      "acceptance": "open"
+    }
+  ]
+}
