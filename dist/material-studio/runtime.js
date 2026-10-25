@@ -2,7 +2,7 @@ import {ProductionPreview} from '../material-production/preview.js';
 import {decodeMaterialPack,encodeMaterialPack,MAPS} from '../material-production/pack.js';
 import {loadProductionMaterial} from '../material-production/loader.js';
 import {GraphGPU} from './gpu-graph.js';
-import {compileGraph,GRAPH_SCHEMA,node,optimizedBuilding} from './model.js';
+import {compileGraph,graphAtNode,GRAPH_SCHEMA,node,optimizedBuilding} from './model.js';
 import {materialCatalog} from './assets.js';
 import {recordStatistic,readStatistics,deliveryAdvice} from './statistics.js';
 export class StudioRuntime{
@@ -10,8 +10,16 @@ export class StudioRuntime{
  async cpu(graph,size){this.worker?.terminate();return new Promise((resolve,reject)=>{const w=this.worker=new Worker(new URL('./worker.js',import.meta.url),{type:'module'});w.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data);w.onerror=e=>reject(Error(e.message));w.postMessage({graph,size,id:1});});}
  async sourceCPU(source,size){const graph={schema:GRAPH_SCHEMA,id:'source',name:'Source adapter',folder:'Internal',nodes:[node(source.kind,'source',{x:0,y:0},source.params),node('output','output',{x:300,y:0})],edges:[{id:'edge',source:'source',target:'output',targetHandle:'in'}]};const result=await this.cpu(graph,size);return decodeMaterialPack(result.bytes);}
  async showInspection(bytes){this.inspectionQueue=(this.inspectionQueue||Promise.resolve()).catch(()=>{}).then(async()=>{await this.preview.apply(decodeMaterialPack(bytes));this.preview.zone(0);});return this.inspectionQueue;}
+ async inspectStage(graph,nodeId,size=1024){
+ this.inspectionQueue=(this.inspectionQueue||Promise.resolve()).catch(()=>{}).then(async()=>{
+ const program=compileGraph(graphAtNode(graph,nodeId));
+ const key=program.signature+':'+size;
+ if(this.stageKey!==key){const next=await this.gpu.bake(program,size,(node,n)=>this.sourceCPU(node,n));this.stageResult?.dispose();this.stageResult=next;this.stageKey=key;}
+ await this.preview.applyGPU(this.stageResult);this.preview.zone(0);
+ });return this.inspectionQueue;
+ }
  async restoreOutput(){this.inspectionQueue=(this.inspectionQueue||Promise.resolve()).catch(()=>{}).then(async()=>{if(this.result)await this.preview.applyGPU(this.result);else if(this.pack)await this.preview.apply(this.pack);if(this.last)this.preview.zone(this.last.program.root.kind==='pack'?this.last.program.root.params.zone||0:0);});return this.inspectionQueue;}
- async render(graph,{size=256,backend='auto',budget=150,onStatus=()=>{}}={}){
+ async render(graph,{size=1024,backend='gpu',budget=150,onStatus=()=>{}}={}){
  await this.inspectionQueue;const requestedSize=size,program=compileGraph(graph),signature=program.signature,start=performance.now();let timings={},actual=backend,downloadBytes=0,sourceCPUms=0;const published=program.root.kind==='pack',advice=deliveryAdvice(readStatistics(),{signature,size,adapter:this.adapter,budget});
  const available=await materialCatalog(),publishedEntry=published?available.entries.find(e=>e.id===program.root.params.packId):null;
  if(backend==='auto'){const warm=published||optimizedBuilding(program)?!!this.gpu.building.pipelines:!!this.gpu.pipeline;actual=published&&publishedEntry?.tileSize===size&&(!warm||advice.choice!=='Client GPU candidate')?'download':'gpu';}
@@ -25,7 +33,7 @@ export class StudioRuntime{
  async exportPack(graph){const program=compileGraph(graph);if(!this.last||this.last.program.signature!==program.signature)throw Error('Bake the current graph before exporting its maps');if(!this.pack){const result=await this.result.readback();this.pack=decodeMaterialPack(result.bytes);}const pack=this.pack,cols=pack.manifest.atlas.columns,rows=pack.manifest.atlas.rows,zone=program.root.params.zone||0,levels=pack.maps.color.map((l,i)=>{const width=l.width/cols,height=l.height/rows,out={width,height};for(const id of MAPS){const data=new Uint8Array(width*height*4),source=pack.maps[id][i];for(let y=0;y<height;y++)data.set(source.data.subarray(((Math.floor(zone/cols)*height+y)*source.width+(zone%cols)*width)*4,((Math.floor(zone/cols)*height+y)*source.width+(zone%cols)*width+width)*4),y*width*4);out[id]=data;}return out;});return encodeMaterialPack({recipe:{...graph,weather:pack.manifest.recipe?.weather},levels,producer:pack.manifest.producer,atlas:{columns:1,rows:1,guardFraction:pack.manifest.atlas.guardFraction}});}
 
  async benchmark(graph,size,budget,onStatus){const results=[];for(const backend of ['cpu','gpu','gpu'])results.push(await this.render(graph,{size,budget,backend,onStatus}));return results;}
- dispose(){this.worker?.terminate();this.result?.dispose();this.preview?.dispose();}
+ dispose(){this.stageResult?.dispose();this.worker?.terminate();this.result?.dispose();this.preview?.dispose();}
 }
 
 export async function pngMaterialPack(runtime,graph){const bytes=await runtime.exportPack(graph),pack=decodeMaterialPack(bytes),{materialPack}=await import('../city/material-pack.js'),{rgbaPNG}=await import('./png.js'),maps=pack.maps,w=maps.color[0].width,g=Math.round(w*pack.manifest.atlas.guardFraction),n=w-g*2,entries=[];for(const name of ['color','normal','surface','ao','roughness','metalness','height']){const data=new Uint8ClampedArray(n*n*4),source=maps[['color','normal'].includes(name)?name:'surface'][0].data,channel={ao:0,roughness:1,metalness:2,height:3}[name];for(let y=0;y<n;y++)for(let x=0;x<n;x++){const from=((g+n-1-y)*w+g+x)*4,to=(y*n+x)*4;if(channel!==undefined)data.set([source[from+channel],source[from+channel],source[from+channel],255],to);else{data.set(source.subarray(from,from+4),to);if(name==='surface')data[to+3]=source[from+3];}}entries.push({name:name+'.png',blob:await rgbaPNG(data,n,n)});}entries.push({name:'graph.json',blob:new Blob([JSON.stringify(graph,null,2)])},{name:'runtime.amp',blob:new Blob([bytes])},{name:'README.txt',blob:new Blob(['Aether Material Designer\nPNG maps are cropped to the useful 2-metre repeat and vertically oriented for conventional bottom-left UVs. Tangent normal is OpenGL +Y. Base color is sRGB; other maps are linear. Height metres = (red/255 - 0.5)/40. Surface RGBA = AO, roughness, metalness, encoded height; packed alpha is data. runtime.amp retains guards and mipmaps. Imported local source packs must also be available to reconstruct an editable graph on another device.\n'])});return materialPack(entries);}
