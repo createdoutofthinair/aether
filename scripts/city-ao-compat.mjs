@@ -6,6 +6,10 @@ export function cityAOCompatibility(source,kind){
  const replace=(a,b)=>{if(source.split(a).length!==2)throw Error('Unexpected r186 '+kind+' source: '+a.slice(0,65));source=source.replace(a,b);};
  replace('const uvNode = uv();','const reversedDepth = builder.renderer.reversedDepthBuffer === true;\n\t\tconst uvNode = uv();');
  if(kind==='gtao'){
+  // textureGather is invalid for WebGPU multisampled depth. Four explicit
+  // depth loads also work for single-sample passes and preserve the 2x2 test.
+  replace('const g = this.depthNode.gather().sample( uv );', 'const step = vec2( 1 ).div( textureSize( this.depthNode ) );\n\t\t\tconst g = vec4( this.depthNode.sample( uv ).r, this.depthNode.sample( uv.add( step.mul( vec2( 1, 0 ) ) ) ).r, this.depthNode.sample( uv.add( step.mul( vec2( 0, 1 ) ) ) ).r, this.depthNode.sample( uv.add( step ) ).r );');
+
   replace('const depth = min( min( g.x, g.y ), min( g.z, g.w ) );','const depth = reversedDepth ? max( max( g.x, g.y ), max( g.z, g.w ) ) : min( min( g.x, g.y ), min( g.z, g.w ) );');
   replace('depth.greaterThanEqual( 1.0 ).discard();','( reversedDepth ? depth.lessThanEqual( 0.0 ) : depth.greaterThanEqual( 1.0 ) ).discard();');
  }else{

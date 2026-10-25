@@ -3,10 +3,10 @@ import {streetMaterials} from './street-materials.js';
 import {random} from '../ships/blueprint.js';
 import {routePoint} from './blueprint.js';
 import {PLANET_STYLES} from './architecture.js';
-export function infrastructure(layout,{wear=.35}={}){
+export function infrastructure(layout,{wear=.35,streetFinish=null}={}){
  const Standard=T.MeshStandardNodeMaterial||T.MeshStandardMaterial,root=new T.Group(),transit=new T.Group(),gardens=new T.Group(),ground=new T.Group();root.add(ground,gardens,transit);
  const materials={stone:new Standard({color:0x9b9c8e,roughness:.88}),road:new Standard({color:0x414b4c,roughness:.9}),green:new Standard({color:0x63765b,roughness:.97}),rail:new Standard({color:0x71888a,roughness:.38,metalness:.45}),light:new Standard({color:0x99b8ad,emissive:0xa5bfa8,emissiveIntensity:.5,roughness:.4}),water:new Standard({color:0x597e80,roughness:.25,metalness:.25}),paint:new Standard({color:0xbcb9a1,roughness:.9})};
- const style=layout.options.architecture?.style??'garden',palette=PLANET_STYLES[style].palette,street=streetMaterials(layout.options.seed||'CITY',wear,style);for(const name of ['stone','road','paint','patch']){materials[name]?.dispose();materials[name]=street[name];}materials.rail.color.set(palette[1]);
+ const style=layout.options.architecture?.style??'garden',palette=PLANET_STYLES[style].palette,street=streetMaterials(layout.options.seed||'CITY',wear,style,streetFinish);for(const name of ['stone','road','paint','patch']){materials[name]?.dispose();materials[name]=street[name];}materials.rail.color.set(palette[1]);
  if(['arid','glacial','lunar'].includes(style)){materials.green.color.set(palette[3]);materials.water.color.set(palette[4]);materials.water.roughness=.7;materials.water.metalness=.05;}
  materials.drain=new Standard({color:0x293a40,roughness:.78,metalness:.25});
  const dummy=new T.Object3D(),streetRandom=random('streets:'+layout.options.seed);

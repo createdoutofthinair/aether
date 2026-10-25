@@ -9,4 +9,4 @@ export const CITY_LIGHTING={
  night:{label:'Moonlit city · inhabited',sun:0xb3d0f1,intensity:.7,ambient:.18,environment:.2,exposure:1.25,sky:0x071327,horizon:0x233749,ground:0x1d292f,direction:[-.4,.6,.55],fog:.000085,imp:[.13,.3,1.15],rooms:3,ao:.45}
 };
 export function cityLighting(id='golden'){return CITY_LIGHTING[id]||CITY_LIGHTING.golden;}
-export const SHADOW_QUALITY={fast:{label:'Fast · 2 cascades / 1024',cascades:2,mapSize:1024,casters:384},balanced:{label:'Balanced · 3 cascades / 1536',cascades:3,mapSize:1536,casters:1024},high:{label:'High · 3 cascades / 2048',cascades:3,mapSize:2048,casters:2048}};
+export const SHADOW_QUALITY={fast:{label:'Fast · 2 cascades / 1024',cascades:2,mapSize:1024,casters:384},balanced:{label:'Balanced · 3 cascades / 2048',cascades:3,mapSize:2048,casters:1024},high:{label:'High · 4 cascades / 2048',cascades:4,mapSize:2048,casters:2048}};

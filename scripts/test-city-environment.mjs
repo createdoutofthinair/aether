@@ -1,3 +1,4 @@
+import {CityCSM,cityCascadeSplits,cityShadowFilter} from '../dist/city/stable-shadows.js';
 import assert from 'node:assert/strict';
 import * as T from 'three/webgpu';
 import {environmentOptions,assemblyContext,grammarContext,validateContext,contextMasks,climateWeather,transformContext,surfacePatterns} from '../dist/city/environment-model.js';
@@ -11,3 +12,12 @@ const c=assemblyContext();const transformed=transformContext(c,Math.PI/2,[10,0,2
 for(const mass of ['court','petal-shell','terraces']){const ir=compileGrammar({seed:'CONTEXT',mass}),a=grammarContext(ir);validateContext(a);assert.deepEqual(a,grammarContext(ir));assert.ok(a.leaks.length>0&&a.leaks.length<=6);for(const leak of a.leaks)assert.ok(leak.point.every(Number.isFinite));}
 assert.equal(environmentOptions({enabled:false}).enabled,false);assert.ok(climateWeather('arid').dust>climateWeather('garden').dust);assert.equal(climateWeather('lunar').rain,0);
 const tex=new T.DataTexture(new Uint8Array([180,180,180,255]),1,1);const material=new T.MeshStandardNodeMaterial({map:tex,normalMap:tex,roughnessMap:tex});material.userData.citySurface={tileMeters:2,surfacePanels:[[1,2]],wear:0,dirt:[.2,.2,.2],surfaceContext:c,surfaceEnvironment:{enabled:true},buildingWeather:climateWeather('ocean')};citySurfaceNodes(material);const g=new T.BoxGeometry(2,2,2);g.setAttribute('uv1',new T.Float32BufferAttribute(Array(g.attributes.position.count*4).fill(0),4));const renderer=new T.WebGPURenderer({canvas:{width:100,height:100,style:{},addEventListener(){},removeEventListener(){}}});renderer.hasFeature=()=>false;renderer.backend.device={limits:{maxUniformBufferBindingSize:65536,maxStorageBufferBindingSize:134217728}};const builder=new T.WGSLNodeBuilder(new T.Mesh(g,material),renderer);builder.scene=new T.Scene();builder.camera=new T.PerspectiveCamera();builder.context.material=material;builder.build();assert.ok(builder.fragmentShader.includes('textureSampleGrad'));assert.ok(!builder.fragmentShader.includes('NaN'));assert.ok(!builder.fragmentShader.includes('Recursion'),'Shader graph must not contain recursive material references');assert.equal(material.userData.surfaceEnvironment.detailSamples,9);assert.equal(material.userData.surfaceEnvironment.contextAnchors,5);material.dispose();g.dispose();tex.dispose();console.log('City environment: deterministic prebuilt detail, stochastic partitions, finite construction anchors, gravity/shelter/contact masks, climate policy and contextual WGSL passed.');
+
+// Near shadow cascades need fine resolution and deterministic filter kernels.
+const shadowCamera=new T.PerspectiveCamera(50,1,.3,65000),shadowLight=new T.DirectionalLight();
+const cityCSM=new CityCSM(shadowLight,{cascades:3,maxFar:4500,mode:'custom',customSplitsCallback:cityCascadeSplits});
+cityCSM._init({camera:shadowCamera,renderer:{coordinateSystem:T.WebGPUCoordinateSystem,reversedDepthBuffer:true}});
+assert.ok(cityCSM.breaks[0]*4500<100);assert.ok(cityCSM.breaks[1]*4500<400);assert.equal(cityCSM.breaks.at(-1),1);
+assert.ok(cityCSM.lights.every(l=>l.shadow.filterNode===cityShadowFilter));
+const before=[...cityCSM.breaks];shadowCamera.position.set(17,3,40);cityCSM.updateFrustums();assert.deepEqual(cityCSM.breaks,before,'Camera motion must not repartition the shadow range');
+cityCSM.dispose();

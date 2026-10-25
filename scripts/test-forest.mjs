@@ -71,3 +71,11 @@ legacy.dispose();oldMesh.dispose();
 console.log(`Forest GPU binding regression: ${packedLayouts.length} bound vertex buffers, one shared instance buffer; legacy layout exceeds the eight-buffer device limit.`);
 
 shaderMesh.geometry.dispose();shaderMesh.dispose();shaderMaterial.dispose();
+
+// Filtered city atlases must use screen derivatives and retain raster depth.
+{
+ const atlas={filtered:true,tile:128,span:40,depthMode:'depth',color:{texture:new T.Texture()},normal:{texture:new T.Texture()}};
+ const m=impostorMaterial(atlas,{sun:uniform(new T.Vector3(0,1,0)),debug:uniform(0),parallax:uniform(1),reconstructDepth:false,smoothSilhouette:true}),mesh=instanceBucket(new T.PlaneGeometry(40,40),m,1);
+ const r=new T.WebGPURenderer({canvas:{width:100,height:100,style:{},addEventListener(){},removeEventListener(){}}});r.hasFeature=()=>false;r.backend.device={limits:{maxUniformBufferBindingSize:65536,maxStorageBufferBindingSize:134217728}};
+ const b=new T.WGSLNodeBuilder(mesh,r);b.scene=new T.Scene();b.camera=new T.PerspectiveCamera();b.context.material=m;b.build();assert.ok(b.fragmentShader.includes('log2'));assert.ok(!b.fragmentShader.includes('@builtin( frag_depth )'));assert.ok(!b.fragmentShader.includes('NaN'));mesh.dispose();mesh.geometry.dispose();m.dispose();atlas.color.texture.dispose();atlas.normal.texture.dispose();
+}
