@@ -6,18 +6,19 @@ import {windowNodes} from './window-nodes.js';
 import {transitionMask} from '../forest/coverage.js';
 /** Restore geometry once; canonical materials and textures are shared by all
  * prototypes, their LODs and every instanced placement in the city. */
-export function restoreLibrary(data,{debug}){
+export function restoreLibrary(data,{debug,finish}){
  const source=unpackShip(data.payload),canonical=new Map(),maps=new Set();
  for(const mesh of source.children){
   const original=mesh.material,key=original.name;
   if(!canonical.has(key)){
    const m=new T.MeshStandardNodeMaterial().copy(original);m.transparent=false;m.depthWrite=true;m.maskNode=transitionMask();
+   if(finish&&m.userData.citySurface){m.map=finish.textures.color;m.normalMap=finish.textures.normal;m.roughnessMap=m.metalnessMap=m.aoMap=finish.textures.surface;m.userData={...m.userData,citySurface:{...m.userData.citySurface,buildingWeather:finish.recipe.weather,surfacePanels:finish.recipe.zones.map(z=>[z.panelsX,z.panelsY])}};}
    citySurfaceNodes(m);if(m.userData.citySurface)m.cityCaptureAlbedo=m.colorNode;
    const base=m.colorNode||(m.map?texture(m.map).rgb.mul(vec3(m.color.r,m.color.g,m.color.b)):vec3(m.color.r,m.color.g,m.color.b)),level=attribute('forestLevel','float');
    m.colorNode=mix(base,vec3(float(.92).sub(level.mul(.22)),float(.29).add(level.mul(.2)),float(.14).add(level.mul(.25))),debug);
    windowNodes(m);canonical.set(key,m);for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])if(m[field])maps.add(m[field]);
   }
-  mesh.material=canonical.get(key);original.dispose();
+  mesh.material=canonical.get(key);if(finish&&original.userData.citySurface)for(const field of ['map','normalMap','roughnessMap','metalnessMap','aoMap'])original[field]?.dispose();original.dispose();
  }
  const variants=data.entries.map(entry=>{
   const lods=entry.lods.map(({start,count})=>source.children.slice(start,start+count)),capture=new T.Group();

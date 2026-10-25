@@ -1,3 +1,5 @@
+import {nativeMidModel,nativeSilhouette} from '../dist/city/native-silhouette.js';
+import {facadeNormal} from '../dist/city/grammar-surfaces.js';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync,existsSync} from 'node:fs';
@@ -28,7 +30,7 @@ const max=cityBlueprint({hubs:61,rings:9,density:1});assert.ok(max.buildings.len
 assert.equal(cityOptions({rings:Infinity,density:'bad'}).rings,6);assert.equal(cityOptions({rings:-4,density:9}).rings,3);assert.equal(cityOptions({density:9}).density,1);
 const manifest=exportCity(a);assert.equal(manifest.units,'metres');assert.equal(manifest.buildings.length,a.buildings.length);assert.deepEqual(cityBlueprint(manifest.options),a);
 for(const route of a.routes){const x=routePoint(route,0),y=routePoint(route,1);assert.ok(Math.hypot(x.x-y.x,x.z-y.z)<1e-6);assert.ok(Object.values(x).every(Number.isFinite));}
-assert.equal(selectBuildingLOD(1000),0);assert.equal(selectBuildingLOD(150),1);assert.equal(selectBuildingLOD(35),2);assert.equal(selectBuildingLOD(5),3);assert.equal(selectBuildingLOD(5,-1,false),2);assert.equal(selectBuildingLOD(5,-1,true,'mesh'),2);assert.equal(selectBuildingLOD(5,-1,false,'impostor'),2);assert.equal(selectBuildingLOD(25,3),3);assert.equal(selectBuildingLOD(20,2),2);
+assert.equal(selectBuildingLOD(1000),0);assert.equal(selectBuildingLOD(150),1);assert.equal(selectBuildingLOD(35),2);assert.equal(selectBuildingLOD(5),3);assert.equal(selectBuildingLOD(5,-1,false),2);assert.equal(selectBuildingLOD(5,-1,true,'mesh'),2);assert.equal(selectBuildingLOD(5,-1,false,'impostor'),2);assert.equal(selectBuildingLOD(25,3),2);assert.equal(selectBuildingLOD(20,2),2);
 const mats=cityMaterials('validation'),triangleCounts=[];
 for(let variant=0;variant<PROTOTYPES;variant++){
  const p=buildingBlueprint(variant,'validation'),levels=[];
@@ -42,12 +44,25 @@ for(let variant=0;variant<PROTOTYPES;variant++){
  for(let lod=1;lod<3;lod++)for(const axis of ['x','y','z'])assert.ok(Math.abs(levels[lod].size[axis]-levels[0].size[axis])<2,`${p.family} changed primary silhouette across LODs (${axis})`);
  triangleCounts.push(levels.map(l=>l.triangles));
 }
+// The actual Metropolis path must include native shells, not only lab previews.
+const nativeCity=cityBlueprint({layout:'grid',hubs:1,architecture:{nativeMassing:true}});
+assert.ok(nativeCity.buildings.some(b=>nativeCity.prototypes[b.variant].native?.mass==='petal-shell'));
+for(const p of nativeCity.prototypes.filter(p=>p.native)){
+ const mid=nativeMidModel(p.native,mats),low=nativeSilhouette(p.native,mats);
+ for(const root of [mid,low])for(const mesh of root.children){const g=mesh.geometry;assert.ok(g.attributes.position.array.every(Number.isFinite));assert.ok(g.index.array.every(i=>i<g.attributes.position.count));assert.ok(g.index.count/3<12000,'Native distant geometry must remain bounded');}
+ const glass=mid.children[1].geometry,f=p.native.facades.find(f=>!['solid','vent','service'].includes(f.type));
+ assert.ok(new T.Vector3().fromBufferAttribute(glass.attributes.normal,0).dot(new T.Vector3(...facadeNormal(f,0,f.height*.5)))>0,'Distant glazing faces outward');
+ // Compare a side normal against the envelope's analytic outward normal.
+ const g=low.children[0].geometry,normal=new T.Vector3().fromBufferAttribute(g.attributes.normal,1),radial=new T.Vector3(g.attributes.position.getX(1),0,g.attributes.position.getZ(1));
+ if(p.native.mass!=='crescent-shell')assert.ok(normal.dot(radial)>0,'Native silhouette walls must face outward');
+ mid.traverse(m=>m.geometry?.dispose());low.traverse(m=>m.geometry?.dispose());
+}
 mats.all.forEach(m=>m.dispose());
 // Verify real worker imports, transfer ownership and material restoration.
 const workerURL=new URL('../dist/city/worker.js',import.meta.url).href,worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`import {parentPort} from 'node:worker_threads';globalThis.self={postMessage:(d,t)=>parentPort.postMessage(d,t)};await import(${JSON.stringify(workerURL)});parentPort.on('message',data=>self.onmessage({data}));parentPort.postMessage({ready:true});`)));
 let data;
-try{await new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);});data=await new Promise((resolve,reject)=>{worker.on('message',d=>{if(!d.progress)resolve(d);});worker.once('error',reject);worker.postMessage({id:1,type:'library',seed:'validation',wear:.35});});}finally{await worker.terminate();}
-assert.equal(data.error,undefined);assert.equal(data.entries.length,PROTOTYPES);assert.equal(data.payload.textures.length,3,'A whole city library shares three bound PBR texture maps');
+try{await new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);});data=await new Promise((resolve,reject)=>{worker.on('message',d=>{if(!d.progress)resolve(d);});worker.once('error',reject);worker.postMessage({id:1,type:'library',seed:'validation',wear:.35,architecture:{nativeMassing:true},gpuFinish:true});});}finally{await worker.terminate();}
+assert.equal(data.error,undefined);assert.ok(data.entries.some(e=>e.plan.native?.mass==='petal-shell'));assert.ok(data.payload.textures.every(t=>t.width<=256),'Worker sends only small bootstrap textures before the GPU bake');assert.equal(data.entries.length,PROTOTYPES);assert.equal(data.payload.textures.length,3,'A whole city library shares three bound PBR texture maps');
 for(const entry of data.entries)for(const lod of entry.lods)assert.ok(lod.count<=4);
 const library=restoreLibrary(data,{debug:uniform(0)});assert.ok(library.materials.length>=3&&library.materials.length<=4);assert.equal(library.maps.length,3);assert.equal(library.variants.length,PROTOTYPES);
 const v=library.variants[0],mesh=instanceBucket(v.lods[0][0].geometry,v.lods[0][0].material,8),renderer=new T.WebGPURenderer({canvas:{width:100,height:100,style:{},addEventListener(){},removeEventListener(){}}});renderer.hasFeature=()=>false;renderer.backend.device={limits:{maxUniformBufferBindingSize:65536,maxStorageBufferBindingSize:134217728}};

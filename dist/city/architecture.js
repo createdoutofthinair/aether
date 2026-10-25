@@ -43,7 +43,7 @@ export const PLANET_STYLES={
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const number=(v,f,a,b)=>clamp(Number.isFinite(Number(v))?Number(v):f,a,b);
 export function architectureOptions(input={}){
- return {style:Object.hasOwn(PLANET_STYLES,input.style)?input.style:'garden',
+ return {nativeMassing:input.nativeMassing===true,style:Object.hasOwn(PLANET_STYLES,input.style)?input.style:'garden',
   variation:number(input.variation,1,0,2),curvature:number(input.curvature,1,.35,1.5),
   taper:number(input.taper,1,0,1.7),twist:number(input.twist,1,0,1.8),height:number(input.height,1,.6,1.4),aspect:number(input.aspect,1,.8,1.2),
   terraces:Math.round(number(input.terraces,4,2,7)),bayWidth:number(input.bayWidth,4.5,3,8),

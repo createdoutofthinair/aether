@@ -25,4 +25,4 @@ export function instanceBucket(g,material,capacity){
  for(const [name,size,offset] of [['forestCenter',3,0],['forestScale',1,3],['forestWidth',1,4],['forestYaw',1,5],['forestPhase',1,6],['forestTint',1,7],['forestFade',1,8],['forestLevel',1,9],['forestOutgoing',1,10]])geometry.setAttribute(name,new T.InterleavedBufferAttribute(data,size,offset));
  const mesh=new T.InstancedMesh(geometry,material,capacity);mesh.userData.forestData=data;mesh.count=0;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);return mesh;
 }
-export function uploadBucket(mesh){mesh.instanceMatrix.needsUpdate=true;mesh.userData.forestData.needsUpdate=true;}
+export function uploadBucket(mesh,partial=false){if(partial){mesh.instanceMatrix.clearUpdateRanges();mesh.instanceMatrix.addUpdateRange(0,mesh.count*16);const data=mesh.userData.forestData;data.clearUpdateRanges();data.addUpdateRange(0,mesh.count*FOREST_INSTANCE_STRIDE);}mesh.instanceMatrix.needsUpdate=true;mesh.userData.forestData.needsUpdate=true;}

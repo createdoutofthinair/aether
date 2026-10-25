@@ -1,3 +1,5 @@
+import {nativePrototype} from './native-prototypes.js';
+import {surfacePoint} from './grammar-surfaces.js';
 import {CITY_LAYOUTS,urbanDistrict} from './layouts.js';
 export {CITY_LAYOUTS} from './layouts.js';
 import {random} from '../ships/blueprint.js';
@@ -12,9 +14,12 @@ export const ROAD_CLEARANCE=54;
 export function buildingBlueprint(variant=0,seed='FRESCO-01',options={},assets=[]){
  variant=((Math.trunc(variant)%PROTOTYPES)+PROTOTYPES)%PROTOTYPES;
  const family=FAMILIES[variant%FAMILIES.length],profile=Math.floor(variant/FAMILIES.length),r=random('architecture:'+seed+':'+variant),generated=architecturalRecipe(family,seed,profile,options),saved=assets.find(a=>a.family===family&&a.profile===profile&&a.style===generated.style),architecture=saved?restoreArchitecture(saved):generated;
+ const native=options.nativeMassing&&!saved?nativePrototype(architecture):null;
  const {width,height,depth,floorHeight}=architecture;
- return{version:ARCHITECTURE_VERSION,id:'building-'+variant,seed:String(seed),variant,family,profile,width,height,depth,architecture,
-  footprintRadius:architectureBounds(compileArchitecture(architecture)).radius,floorHeight,floors:architecture.floorCount,
+ let nativeRadius=0;if(native)for(let row=0;row<=12;row++)for(let col=0;col<96;col++){const p=surfacePoint(native.surface,col/96,row/12,0);nativeRadius=Math.max(nativeRadius,Math.hypot(p[0],p[2])+2);}
+
+ return{version:ARCHITECTURE_VERSION,id:'building-'+variant,seed:String(seed),variant,family,profile,width,height:native?native.bounds.height:height,depth,architecture,native,
+  footprintRadius:native?nativeRadius:architectureBounds(compileArchitecture(architecture)).radius,floorHeight,floors:architecture.floorCount,
   service:{age:.18+r()*.4,registry:'AE-'+String(10000+variant*127+Math.floor(r()*100)),accessSide:r()<.5?-1:1,accent:architecture.palette[6]},
   detail:{bevel:.16,quietFacade:.65,roofEquipmentSide:r()<.5?-1:1,facadeOffset:r(),finCount:profile?6:4}};
 }
@@ -72,7 +77,7 @@ export function projectedPixels(height,distance,viewportHeight,fov=50){return he
 export function selectBuildingLOD(pixels,previous=-1,ready=true,mode='auto'){
  if(mode==='high')return 0;
  if(mode==='impostor')return ready?3:2;
- const max=ready&&mode!=='mesh'?3:2,cuts=[260,90,22];
+ const max=ready&&mode!=='mesh'?3:2,cuts=[260,90,10];
  if(previous>=0&&previous<=max&&pixels>=(previous<max?cuts[previous]*.82:0)&&pixels<=(previous>0?cuts[previous-1]*1.18:Infinity))return previous;
  return Math.min(max,pixels>=cuts[0]?0:pixels>=cuts[1]?1:pixels>=cuts[2]?2:3);
 }
